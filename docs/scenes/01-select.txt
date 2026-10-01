@@ -1,0 +1,22 @@
+# Screen 01 - Select, Condition, Action. Run from the repository root:
+#
+#   docs/scenes/fixture.sh
+#   java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
+#        --script docs/scenes/01-select.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
+#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads"
+#
+# Nothing is awaited by sleeping. A status slot is written last by every document change, so awaiting it is
+# awaiting the change; see docs/framework-notes.md FN-4.
+await items 18 items
+settle
+# The fourth row: trip-recap-final.mp4 (coordinates are the 1440x900 window's).
+click 600,233
+await selected 1 selected
+# "All videos here".
+click 1250,180
+await selected 9 in scope
+# "Move to...".
+click 1103,362
+await selected 9 in scope
+settle
+shot docs/screenshots/01-select-condition-action.png

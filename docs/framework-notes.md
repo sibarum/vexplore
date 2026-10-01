@@ -1,0 +1,120 @@
+# Framework notes
+
+Findings about VexelRay, vexelray-gui, Kronometer, tactroller and atchung that came out of building
+**Vexplore** — things the framework does not have, does not document, or does in a way that cost time to
+discover.
+
+**Why this file exists.** An application built on a framework is the only place its gaps are visible, and they
+are visible exactly once: at the moment they are worked around. A workaround with no note beside it becomes a
+piece of application code nobody can tell from a design decision, and the framework never hears about it. So
+the rule is to write the note *when the workaround is written*, not in a retrospective, and to write down what
+was measured rather than what was assumed.
+
+**Before writing a workaround, ask whether it is a component.** If the answer is "every project on this
+framework will write these same four calls" — that is a finding, and the fix belongs upstream. Say so here
+with that framing, so the retrospective has a candidate rather than a complaint.
+
+## How to write one
+
+    ## FN-1 · One line saying what is missing 🔬
+    
+    What was wanted, what the framework offers instead, and what was done about it.
+    Then: what it costs, and what the framework could do about it.
+
+The markers are a filter, not decoration:
+
+| | |
+| --- | --- |
+| 🔬 | a framework gap — something upstream could fix |
+| 💡 | an idea, not yet a finding |
+| 📋 | carried over: needs re-verifying against a newer build before it is repeated |
+
+## Findings
+
+Written when each workaround was written. The fuller framework-side account, with what each would cost to fix and
+whether it blocks v1, is in `vexelray-framework/docs/TODO.md` under *Found by Vexplore*.
+
+### FN-1 · There is no button component 🔬 — **fixed, in `vexelray-gui-widget`**
+
+This was the template's own finding (FN-0) and it was right: every project writes the same four calls. Writing
+them a fifth time showed what the four calls leave out, which is the keyboard. A text node with a click handler
+cannot be pressed with Enter or Space, and a "disabled" one that only ignores clicks still takes Tab. `Button` now
+claims both keys at `ClaimScope.FOCUSED`, leaves the focus order when disabled, and has a toggle form for chips.
+`Breadcrumb`, `StatusBar` and `SplitPane` came out of the same pass.
+
+### FN-2 · The listener on a model can hear it out of order, and twice at once 🔬
+
+The template's advice is that `show(Doc)` runs on the committing thread, which is a worker. It is a worker of a
+*pool*. `State.commit` swaps the value with a compare-and-set and then delivers to listeners on the committing
+thread, so two handlers finishing together deliver as version 6 then 5, or at the same instant. Seen here as a
+rail with the wrong chips in it and, before the gate, landmarks that had vanished from a rebuilt panel. Fixed in
+`Model.onChange` with a lock and a version check that drops a late, older document; a test drives eight threads and
+asserts the listener finishes on the newest. The framework's template `Model` has the unguarded shape, and so does
+every application that copied it.
+
+Related: `State.commit` counts a function that returned the *same* value as a new version, so re-announcing an
+unchanged selection woke every listener. `Model.select` checks before it commits.
+
+### FN-3 · A wiring keeps its parts to itself, so a capture cannot reach the model 🔬
+
+`--capture` and a test both want to put the application in a known state and look at it. The generated
+`VexploreWiring` holds `model`, `ui` and the rest in private fields with no accessor. `Startup` reads four system
+properties (`vexplore.folder`, `.select`, `.scope`, `.act`) and applies them after the first listing — a stand-in
+that is honest about being one. It has a second use, restoring a session, which is the only reason it is not
+purely a test seam.
+
+### FN-4 · `settle` does not wait for work that left the frame loop 🔬
+
+Listing a folder is on `Gui.offload()` and rebuilding the rail is on a handler thread. A script that clicked a row,
+`settle`d and photographed got the rail from *before* the click, every time. `settle` says so honestly in its own
+javadoc ("exact about the frame loop and the clock and blind to application work in flight"), and the workaround
+is small once known: write one status slot **last** in `Ui.show`, give it a landmark, and `await` that landmark for
+the text that means "done". `Landmarks.ITEMS` and `Landmarks.SELECTED` are those. It works and it is a convention
+every application would have to reinvent; `Lanes` knows its queue depth, so `settle` could know too.
+
+### FN-5 · The layout has no wrapping row 🔬
+
+Chips want to flow: as many as fit, then a new line. `FlexLayout` has `Direction`, `Justify` and `AlignItems` and
+no wrap, so the rail counts chips two to a row. It works because the chips are the same size whatever they say,
+and it is exactly the kind of number that is right at one zoom and wrong at another.
+
+### FN-6 · The palette has one accent and the design has two 🔬💡
+
+Teal means *selected* and amber means *Vexplore is saying something*, and the design is emphatic that they never
+swap. `Palette` has `accent` and `action`; teal is the first and amber is the second, so the one filled button on a
+screen comes out amber for free. That is a fit, not a design: `action` is documented as "the fill of a filled
+control". The wash colours (`Look.SELECTED`, `TARGETED`, `AMBER_WASH`, `AMBER_INK`) are `Role`s defined in the
+application, which `Role` being an open functional interface made easy. A documented pattern, or a third anchor,
+would make it a decision rather than a coincidence.
+
+### FN-7 · `Table` could not be styled, and marks did not exist 🔬 — **partly fixed**
+
+Fixed: `Table.headers(face, size, ink)`, `Table.onSort(...)`, and `ListView.marked(...)` with
+`looks(selected, marked)`. A mark is a fill that is not a selection, and without it the choice was to preview a
+suggestion by *selecting* it, which the design rules out. Still missing: a hairline between rows.
+
+### FN-8 · No resize cursor 🔬
+
+Known (`vexelray-gui/docs/plans/todo.md` §4.2). Two widgets now use `GRAB` for a divider: `Table`'s column grip and
+`SplitPane`.
+
+### FN-9 · The template ships what the docs retire 🔬
+
+`Capture.java` is in the generated project; `vexelray-gui/docs/reference/automation-cli.md` §2 calls per-application
+`--capture` "correct about the chrome and silently wrong about the content" and retires it. Vexplore has no
+marched viewport, so its capture is right, and it was the fastest way to see a layout — but `ottermate`'s `shot`,
+which is the replacement, worked at once and is what the scene ladder should use. The two documents disagree about
+which to reach for, and a new project follows the template.
+
+### FN-10 · Starting a project has no documented route that works today 🔬
+
+The framework README describes what a project looks like and never how to get one. `new vexel-desktop` lives in
+`mainframe`, and `mainframe-dist`'s jar on disk fails with `NoClassDefFoundError: Desktop$Apps`. The way that worked
+was a twenty-five-line Java program against `vexelray-framework-template`'s `Catalogue`, `Answers`, `Scaffold` and
+`Blueprint.Writing` — the same calls the acceptance test's `Support.generate` makes. It should be a `main` in the
+template module, or a script beside it.
+
+### FN-11 · The generated `.gitignore` ignores every PNG 🔬
+
+It means to ignore captures. A project with a `docs/` folder of screenshots (this one is built *from* some) loses
+them silently. `!docs/**/*.png` is appended here. Better for the template to ignore `capture*.png` and `target/`.

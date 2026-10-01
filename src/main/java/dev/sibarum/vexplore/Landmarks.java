@@ -1,0 +1,27 @@
+package dev.sibarum.vexplore;
+
+/**
+ * The names an automation script is allowed to depend on. A landmark is a promise: it is what
+ * {@code Gui.navigate} and the driving socket's {@code click} and {@code shot} take, so renaming one is an edit
+ * to every script that uses it, and adding one is free.
+ */
+final class Landmarks {
+
+    static final String TOP_BAR = "topbar";
+    static final String TREE = "tree";
+    static final String LIST = "list";
+    static final String DOCK = "dock";
+    static final String SPLIT = "split";
+    static final String RAIL = "rail";
+    static final String SUMMARY = "summary";
+    static final String STATUS = "status";
+    /** The rail's "based on ..." tag: it names the file the rail was computed for, so a script can await it. */
+    static final String BASIS = "basis";
+    /** The status line's selection count. It is the last thing a document change writes, so scripts await it. */
+    static final String SELECTED = "selected";
+    /** The status line's item count: "reading..." until a listing lands, so scripts await it before touching rows. */
+    static final String ITEMS = "items";
+
+    private Landmarks() {
+    }
+}

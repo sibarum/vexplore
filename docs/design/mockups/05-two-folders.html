@@ -1,0 +1,188 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#16171a;font-family:'Instrument Sans',system-ui,sans-serif}
+button{font-family:inherit}
+</style>
+</head><body>
+
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #16171a; color: #e8e6e1; font-family: 'Instrument Sans', system-ui, sans-serif; font-size: 14px; overflow: hidden">
+
+<div style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid #2f3339; background: #1a1b1f">
+<span style="font-weight: 600">Two folders</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9a9ea6">compared as soon as both are chosen</span>
+<span style="flex-grow: 1"></span>
+<button style="padding: 6px 12px; border-radius: 6px; border: 1px solid #3a3f46; background: #23262b; color: #e8e6e1; font-size: 13px">Swap sides</button>
+<button style="padding: 6px 12px; border-radius: 6px; border: 1px solid #3a3f46; background: #23262b; color: #e8e6e1; font-size: 13px">Back to one folder</button>
+</div>
+
+<div style="flex-grow: 1; min-height: 0; display: flex">
+
+<div style="width: 520px; flex-shrink: 0; box-sizing: border-box; display: flex; flex-direction: column; border-right: 1px solid #2f3339">
+<div style="height: 72px; flex-shrink: 0; box-sizing: border-box; padding: 10px 20px; background: #1a1b1f; border-bottom: 1px solid #2f3339; display: flex; flex-direction: column; gap: 6px; justify-content: center">
+<div style="display: flex; align-items: center; gap: 10px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #16171a; background: #7cc4c4; border-radius: 4px; padding: 1px 6px">FROM</span><span style="font-weight: 600">Downloads</span><span style="color: #9a9ea6; font-size: 13px">C:\Users\james\Downloads</span></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9a9ea6; border: 1px solid #3a3f46; border-radius: 4px; padding: 1px 8px">videos &middot; 9 of 16</span><span style="color: #9a9ea6; font-size: 12px">filter applies to the comparison</span></div>
+</div>
+<div style="height: 32px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; border-bottom: 1px solid #2f3339; color: #9a9ea6; font-size: 12px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.04em"><span>Name</span><span>Status</span><span style="text-align: right">Size</span><span>Modified</span></div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #223338; border-bottom: 1px solid #202226">
+<span style="color: #f1efe9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">trip-recap-final.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7cc4c4">only here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">1.42 GB</span>
+<span style="color: #9a9ea6">Today</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #223338; border-bottom: 1px solid #202226">
+<span style="color: #f1efe9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">IMG_2231.mov</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7cc4c4">only here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">388 MB</span>
+<span style="color: #9a9ea6">Today</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #223338; border-bottom: 1px solid #202226">
+<span style="color: #f1efe9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">lecture-07.mkv</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7cc4c4">only here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">812 MB</span>
+<span style="color: #9a9ea6">Yesterday</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #2a2418; border-bottom: 1px solid #202226">
+<span style="color: #f3d9a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">lecture-06.mkv</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #e0a458">newer here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">790 MB</span>
+<span style="color: #9a9ea6">Yesterday</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #8a8e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">kiln-cam-timelapse.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7079">identical</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">2.10 GB</span>
+<span style="color: #9a9ea6">Sep 27</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #8a8e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">workshop-clip-a.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7079">identical</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">146 MB</span>
+<span style="color: #9a9ea6">Sep 26</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #8a8e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">workshop-clip-b.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7079">identical</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">171 MB</span>
+<span style="color: #9a9ea6">Sep 26</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #223338; border-bottom: 1px solid #202226">
+<span style="color: #f1efe9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">demo-reel-v3.webm</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7cc4c4">only here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">264 MB</span>
+<span style="color: #9a9ea6">Sep 24</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #223338; border-bottom: 1px solid #202226">
+<span style="color: #f1efe9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">IMG_2198.mov</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7cc4c4">only here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">402 MB</span>
+<span style="color: #9a9ea6">Sep 22</span>
+</div>
+
+</div>
+
+<div style="width: 520px; flex-shrink: 0; box-sizing: border-box; display: flex; flex-direction: column; border-right: 1px solid #2f3339">
+<div style="height: 72px; flex-shrink: 0; box-sizing: border-box; padding: 10px 20px; background: #1a1b1f; border-bottom: 1px solid #2f3339; display: flex; flex-direction: column; gap: 6px; justify-content: center">
+<div style="display: flex; align-items: center; gap: 10px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #16171a; background: #e0a458; border-radius: 4px; padding: 1px 6px">TO</span><span style="font-weight: 600">Videos</span><span style="color: #9a9ea6; font-size: 13px">D:\Media\Videos</span></div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9a9ea6; border: 1px solid #3a3f46; border-radius: 4px; padding: 1px 8px">all files &middot; 6</span><span style="color: #9a9ea6; font-size: 12px">last used destination for videos</span></div>
+</div>
+<div style="height: 32px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; border-bottom: 1px solid #2f3339; color: #9a9ea6; font-size: 12px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.04em"><span>Name</span><span>Status</span><span style="text-align: right">Size</span><span>Modified</span></div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: #2a2418; border-bottom: 1px solid #202226">
+<span style="color: #f3d9a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">lecture-06.mkv</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #e0a458">older here</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">641 MB</span>
+<span style="color: #9a9ea6">Sep 12</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #8a8e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">kiln-cam-timelapse.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7079">identical</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">2.10 GB</span>
+<span style="color: #9a9ea6">Sep 27</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #8a8e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">workshop-clip-a.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7079">identical</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">146 MB</span>
+<span style="color: #9a9ea6">Sep 26</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #8a8e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">workshop-clip-b.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7079">identical</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">171 MB</span>
+<span style="color: #9a9ea6">Sep 26</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #d3d5d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">field-tour-2025.mp4</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9a9ea6">only there</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">3.02 GB</span>
+<span style="color: #9a9ea6">Aug 14</span>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 90px 76px 90px; align-items: center; padding: 0 20px; gap: 10px; background: transparent; border-bottom: 1px solid #202226">
+<span style="color: #d3d5d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">harvest-day.mov</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9a9ea6">only there</span>
+<span style="text-align: right; color: #b7bac0; font-variant-numeric: tabular-nums">1.10 GB</span>
+<span style="color: #9a9ea6">Aug 02</span>
+</div>
+
+<div style="flex-grow: 1"></div>
+<div style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0 20px; border-top: 1px solid #2f3339; background: #1a1b1f; color: #9a9ea6; font-size: 13px">If the move goes ahead: 11 items, 3.3 GB more.</div>
+</div>
+
+<div style="width: 400px; flex-shrink: 0; box-sizing: border-box; background: #1c1e22; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; font-weight: 600">Suggestions</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #e0a458">from the comparison</span>
+</div>
+
+<div style="display: flex; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px">
+<span style="padding: 4px 8px; border-radius: 4px; background: #24393d; color: #7cc4c4">5 only here</span>
+<span style="padding: 4px 8px; border-radius: 4px; background: #2a2418; color: #e0a458">1 conflict</span>
+<span style="padding: 4px 8px; border-radius: 4px; background: #23262b; color: #9a9ea6">3 identical</span>
+</div>
+
+<button style="display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 8px; border: 1px solid #e0a458; background: #2a2418; color: #e8e6e1">
+<span style="font-weight: 600; font-size: 14px">Move the 5 new videos to the right</span>
+<span style="color: #b7bac0; font-size: 13px">3.3 GB, highlighted on the left. Nothing on the right has these names.</span>
+</button>
+<button style="display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 8px; border: 1px solid #3a3f46; background: #23262b; color: #e8e6e1">
+<span style="font-weight: 600; font-size: 14px">Keep the newer lecture-06.mkv</span>
+<span style="color: #b7bac0; font-size: 13px">Left is 790 MB from yesterday, right is 641 MB from Sep 12. The old copy is kept as lecture-06 (2).mkv.</span>
+</button>
+<button style="display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 8px; border: 1px solid #3a3f46; background: #23262b; color: #e8e6e1">
+<span style="font-weight: 600; font-size: 14px">Remove the 3 identical copies from Downloads</span>
+<span style="color: #b7bac0; font-size: 13px">Same size and content on the right. Goes to the recycle bin, so it is recoverable.</span>
+</button>
+
+<div style="flex-grow: 1"></div>
+
+<div style="border: 1px solid #3a3f46; border-radius: 8px; background: #202328; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-size: 15px; font-weight: 600">Downloads &rarr; Videos</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9a9ea6">nothing has moved yet</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #b7bac0"><span>5 files move &middot; 3.3 GB</span><span>1 file needs a choice</span><span>3 files are skipped</span></div>
+<div style="display: flex; gap: 10px">
+<button style="flex-grow: 1; padding: 11px 14px; border-radius: 6px; border: none; background: #e0a458; color: #16171a; font-size: 14px; font-weight: 600">Move 5 files &rarr;</button>
+<button style="padding: 11px 14px; border-radius: 6px; border: 1px solid #3a3f46; background: transparent; color: #e8e6e1; font-size: 14px">Keep as Mark</button>
+</div>
+</div>
+</div>
+</div>
+
+<div style="height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 20px; border-top: 1px solid #2f3339; background: #1a1b1f; color: #9a9ea6; font-size: 12px; font-family: 'IBM Plex Mono', monospace">
+<span>left 9 shown &middot; right 6</span><span>5 highlighted for the suggested move</span>
+</div>
+</div>
+</body></html>

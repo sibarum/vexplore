@@ -1,0 +1,234 @@
+package dev.sibarum.vexplore.files;
+
+import dev.sibarum.vexplore.files.Preview.Tier;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * The bottom two tiers of the preview ladder, which are the ones every file can reach: the first lines of anything
+ * that decodes as text, and, for everything else, a hex dump with the strings inside it and how random it looks.
+ *
+ * <p><b>A bounded read, and nothing else.</b> {@link #SAMPLE} bytes from the start of the file, through a plain
+ * input stream. The file is never mapped, opened by an application, or handed to a decoder that interprets it; the
+ * bytes are counted, decoded as text or dumped as numbers. That is what "previews are read-only and nothing is
+ * executed" reduces to, and why the ladder's floor can be built before its ceiling.
+ *
+ * <p>Blocking: run it on the offload lane.
+ */
+public final class Previews {
+
+    /** How much of a file is read. Enough for a screenful of text and a meaningful entropy; cheap on a network share. */
+    static final int SAMPLE = 64 * 1024;
+
+    /** Bytes shown in the hex dump, sixteen to a row. */
+    static final int DUMP = 16 * 16;
+
+    private static final int TEXT_LINES = 60;
+    private static final int MIN_STRING = 6;
+    private static final int MAX_STRINGS = 8;
+
+    private Previews() {
+    }
+
+    /** A preview of {@code path}: a folder is a folder, a file is text if it decodes as text and bytes if not. */
+    public static Preview of(Path path) {
+        try {
+            if (Files.isDirectory(path)) {
+                return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false);
+            }
+            long size = Files.size(path);
+            byte[] sample = read(path);
+            return of(path, sample, size > sample.length);
+        } catch (IOException | RuntimeException e) {
+            return new Preview(path, Tier.BYTES, "unreadable: " + e.getClass().getSimpleName(), List.of(), 0d,
+                    List.of(), false);
+        }
+    }
+
+    /** The same, from bytes already in hand — what the tests, and any caller with a buffer, use. */
+    public static Preview of(Path path, byte[] sample, boolean truncated) {
+        String text = decode(sample, truncated);
+        if (text != null) {
+            List<String> lines = new ArrayList<>();
+            int start = 0;
+            for (int i = 0; i <= text.length() && lines.size() < TEXT_LINES; i++) {
+                if (i == text.length() || text.charAt(i) == '\n') {
+                    if (i > start || i < text.length()) {
+                        lines.add(text.substring(start, i).replace("\r", ""));
+                    }
+                    start = i + 1;
+                }
+            }
+            String identity = sample.length == 0 ? "empty file" : "UTF-8 text";
+            return new Preview(path, Tier.TEXT, identity, List.copyOf(lines), entropy(sample), List.of(), truncated);
+        }
+        return new Preview(path, Tier.BYTES, identify(sample), dump(sample), entropy(sample), strings(sample),
+                truncated);
+    }
+
+    private static byte[] read(Path path) throws IOException {
+        try (InputStream in = Files.newInputStream(path)) {
+            return in.readNBytes(SAMPLE);
+        }
+    }
+
+    /**
+     * The sample as text, or null if it is not. Text means valid UTF-8 with no control characters other than the
+     * whitespace ones. A multi-byte character cut in half by the end of the sample is not evidence against it — when
+     * the read was truncated, an incomplete tail is forgiven.
+     */
+    static String decode(byte[] sample, boolean truncated) {
+        var decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT);
+        ByteBuffer in = ByteBuffer.wrap(sample);
+        CharBuffer out = CharBuffer.allocate(sample.length + 1);
+        CoderResult r = decoder.decode(in, out, !truncated);
+        if (r.isError()) {
+            return null;
+        }
+        if (r.isUnderflow() && in.hasRemaining() && !truncated) {
+            return null;
+        }
+        out.flip();
+        String s = out.toString();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x20 && c != '\n' && c != '\r' && c != '\t' && c != '\f') {
+                return null;
+            }
+            if (c == 0x7f) {
+                return null;
+            }
+        }
+        return s;
+    }
+
+    /** What the first bytes say the file is. Small on purpose: a signature table is a promise to keep it right. */
+    static String identify(byte[] b) {
+        if (starts(b, 0x89, 'P', 'N', 'G')) {
+            return "PNG image";
+        }
+        if (starts(b, 0xFF, 0xD8, 0xFF)) {
+            return "JPEG image";
+        }
+        if (starts(b, 'G', 'I', 'F', '8')) {
+            return "GIF image";
+        }
+        if (starts(b, '%', 'P', 'D', 'F')) {
+            return "PDF document";
+        }
+        if (starts(b, 'P', 'K', 3, 4)) {
+            return "ZIP archive (or a document built on one)";
+        }
+        if (starts(b, 0x1F, 0x8B)) {
+            return "gzip data";
+        }
+        if (starts(b, '7', 'z', 0xBC, 0xAF)) {
+            return "7-Zip archive";
+        }
+        if (starts(b, 'M', 'Z')) {
+            return "Windows program or library (PE)";
+        }
+        if (starts(b, 0x7F, 'E', 'L', 'F')) {
+            return "ELF program";
+        }
+        if (starts(b, 'R', 'I', 'F', 'F')) {
+            return "RIFF container (WAV, AVI or WebP)";
+        }
+        if (b.length >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p') {
+            return "MPEG-4 container (video or audio)";
+        }
+        if (starts(b, 0x1A, 0x45, 0xDF, 0xA3)) {
+            return "Matroska or WebM video";
+        }
+        if (b.length == 0) {
+            return "empty file";
+        }
+        return "unknown binary";
+    }
+
+    private static boolean starts(byte[] b, int... signature) {
+        if (b.length < signature.length) {
+            return false;
+        }
+        for (int i = 0; i < signature.length; i++) {
+            if ((b[i] & 0xFF) != signature[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Sixteen bytes a row: offset, hex, and the printable characters, the way every hex viewer has drawn it. */
+    static List<String> dump(byte[] b) {
+        List<String> rows = new ArrayList<>();
+        int n = Math.min(b.length, DUMP);
+        for (int off = 0; off < n; off += 16) {
+            StringBuilder hex = new StringBuilder();
+            StringBuilder ascii = new StringBuilder();
+            for (int i = 0; i < 16; i++) {
+                if (off + i < n) {
+                    int v = b[off + i] & 0xFF;
+                    hex.append(String.format(Locale.ROOT, "%02x ", v));
+                    ascii.append(v >= 0x20 && v < 0x7f ? (char) v : '.');
+                } else {
+                    hex.append("   ");
+                }
+                if (i == 7) {
+                    hex.append(' ');
+                }
+            }
+            rows.add(String.format(Locale.ROOT, "%08x  %s |%s|", off, hex, ascii));
+        }
+        return List.copyOf(rows);
+    }
+
+    /** Runs of printable ASCII at least {@value #MIN_STRING} long: often the only readable part of a binary. */
+    static List<String> strings(byte[] b) {
+        List<String> found = new ArrayList<>();
+        StringBuilder run = new StringBuilder();
+        for (int i = 0; i <= b.length && found.size() < MAX_STRINGS; i++) {
+            int v = i < b.length ? b[i] & 0xFF : -1;
+            if (v >= 0x20 && v < 0x7f) {
+                run.append((char) v);
+            } else {
+                if (run.length() >= MIN_STRING) {
+                    found.add(run.length() > 80 ? run.substring(0, 80) : run.toString());
+                }
+                run.setLength(0);
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    /** Shannon entropy in bits per byte: about 0 for a run of one value, about 8 for compressed or encrypted data. */
+    static double entropy(byte[] b) {
+        if (b.length == 0) {
+            return 0d;
+        }
+        long[] count = new long[256];
+        for (byte x : b) {
+            count[x & 0xFF]++;
+        }
+        double h = 0d;
+        for (long c : count) {
+            if (c > 0) {
+                double p = (double) c / b.length;
+                h -= p * (Math.log(p) / Math.log(2));
+            }
+        }
+        return h;
+    }
+}
