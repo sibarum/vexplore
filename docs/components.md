@@ -27,14 +27,14 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | File list, rows a suggestion would reach | `ListView.marked` | **extended** | A fill that is not a selection, so a preview of a suggestion never has to be undone. Selected outranks marked. |
 | Suggestion Rail | a fixed column | app | The rail is *layout*, not a widget: it is a place. What goes in it is Vexplore's. |
 | Rail: Select / Condition / Action chips | `Button` (toggle) | **added** | A chip is a button that holds a value. `pressed(v)` acts as the user would, `show(v)` does not, so a panel re-reading its model cannot loop. |
-| Rail: summary card, primary action | `Button` (`PRIMARY`) | **added** | The one filled control on the screen. Amber comes from the palette's `action` anchor. |
+| Rail: summary card, primary action | `Button` (`PRIMARY`) | **added** | The one filled control on the screen. Amber comes from the palette's `action` anchor. Its label says what pressing it does ("Move 9 files"), and it is disabled, with a reason, when it would do nothing. |
 | Rail: chips wrap to rows | wrapping row | **missing** | The layout engine has no wrap. The rail counts chips two to a row. See TODO. |
 | Preview Dock | `Dock` | app | A header, a tier tag, a body. Text and hex today. |
 | Dock: pop out | `Popout` | had | Not wired yet; the button is present and disabled. |
 | Dock: hex dump | text lines | app | Sixteen bytes a row. A virtualised `ByteView` widget is worth extracting once a second application wants one. |
 | Dock: entropy bar | two `grow` boxes | app | `grow(e)` and `grow(8-e)`, the same trick `Toggle` and `Slider` use. |
 | Status bar | `StatusBar` | **added** | Declared slots on a left and a right side; a slot's place never changes, only what it says. |
-| Modifier keys as intent | `Gui.modifiers()` | had | A `State<Set<Modifier>>`. Nothing subscribes yet. |
+| Modifier keys as intent | `Gui.modifiers()` | had | A `State<Set<Modifier>>`; `Recipes` feeds it to the model, and `suggest/Intents` answers. |
 | Keyboard reachability | `ClaimScope` claims | had | Every chip and button takes Enter and Space. |
 
 ## Still needed for the rest of the design
@@ -72,3 +72,12 @@ The design's **Suggestion Rail** and `vexelray-gui-widget`'s **`Rail`** are unre
 icons with a panel that may be put away; the Suggestion Rail is a fixed column that may be empty. Vexplore does
 not use `Rail`. The code calls the column `rail` in landmarks and `railBody` in `Ui`, and the widget is never
 imported there, so the word means one thing per file.
+
+## Added for milestone 2 (all application-level)
+
+| Component | Where | Notes |
+| --- | --- | --- |
+| Marks list | `RailView` | Chips with a remove button. Recalling a mark selects what is in this folder. |
+| Destination chooser | `RailView` + `Chooser` | Suggested folders as chips, and the native dialog behind *Choose folder…*. The dialog is a `vexelray-gui-nfd` call on the GUI thread, bound late so the tree stays buildable without a window. |
+| Notice + Undo | `RailView` | One line saying what ran or is running, and an Undo that is disabled when there is nothing to undo. |
+| **`Progress`** | — | **Still missing** and now genuinely wanted: a copy of a large folder has a value that moves and wants a cancel beside it. Today the notice says "Copying 3 of 9…". |

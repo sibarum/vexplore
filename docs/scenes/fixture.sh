@@ -21,4 +21,9 @@ touch -d "5 days ago" bee-yard-notes.txt
 printf 'MZ\220\000\003\000\000\000This program cannot be run in DOS mode.\r\r\n$\000\000\000PE\000\000L\001\003\000' > setup-x64.exe
 head -c 8000 /dev/urandom >> setup-x64.exe; touch -d "3 days ago" setup-x64.exe
 head -c 65536 /dev/urandom > backup-key.zip; touch -d "10 days ago" backup-key.zip
-echo "fixture: $(pwd)"
+
+# A sibling that already holds videos: where the rail should suggest moving videos to.
+mkdir -p ../Videos
+cd ../Videos
+truncate -s 700M holiday-1.mp4; truncate -s 300M holiday-2.mp4
+echo "fixture: $D"

@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
  *   <li>{@code vexplore.folder} — the folder to open; the user's Downloads, or their home, when absent;</li>
  *   <li>{@code vexplore.select} — file names to select once the listing has arrived, comma separated;</li>
  *   <li>{@code vexplore.scope}, {@code vexplore.act} — a {@link Scope} and an {@link Act} to have picked;</li>
+
+ *   <li>{@code vexplore.hold} — {@code shift} or {@code control}: act as though that key is down;</li>
  *   <li>{@code vexplore.sync} — list on the calling thread, so a capture is not taken before the folder is read.</li>
  * </ul>
  */
@@ -62,6 +64,8 @@ final class Startup {
         model.select(paths);
         String scope = System.getProperty("vexplore.scope");
         String act = System.getProperty("vexplore.act");
+        String hold = System.getProperty("vexplore.hold", "");
+        model.holding(hold.contains("shift"), hold.contains("control"));
         model.pick(p -> {
             Suggestions.Pick out = p;
             if (scope != null) {

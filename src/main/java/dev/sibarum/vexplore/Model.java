@@ -79,6 +79,28 @@ final class Model {
         change(d -> d.picking(change.apply(d.pick())));
     }
 
+    /** The modifier keys held changed. A no-op, without a version, if they are as they were. */
+    void holding(boolean shift, boolean control) {
+        Doc.Input now = doc().input();
+        if (now.shift() == shift && now.control() == control) {
+            return;
+        }
+        change(d -> d.inputting(d.input().holding(shift, control)));
+    }
+
+    /** The list's order changed. */
+    void sorted(dev.sibarum.vexplore.suggest.Order order) {
+        if (doc().input().order().equals(order)) {
+            return;
+        }
+        change(d -> d.inputting(d.input().sorted(order)));
+    }
+
+    /** Change what is known about doing things. */
+    void work(UnaryOperator<Doc.Work> change) {
+        change(d -> d.working(change.apply(d.work())));
+    }
+
     /**
      * Tell {@code listener} about each new document, <b>in order, one at a time, and never an older one after a
      * newer one</b>.

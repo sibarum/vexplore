@@ -1,0 +1,29 @@
+# Screen 01's second half, carried out: move nine videos to the folder that already holds videos, then undo.
+#
+#   docs/scenes/fixture.sh
+#   java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
+#        --script docs/scenes/02-move.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
+#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash"
+#
+# Landmarks, not coordinates, wherever the layout moves: rail controls are named act.move, act.delete, go, undo...
+await items 18 items
+click 600,233
+await selected 1 selected
+click 1250,180
+await selected 9 in scope
+click act.move
+await go Choose where
+await dest.1 Videos
+shot docs/screenshots/02-move-before.png
+click dest.1
+await destination Videos
+settle
+shot docs/screenshots/02-move-ready.png
+click go
+await notice Moved 9 files
+settle
+shot docs/screenshots/02-move-done.png
+click undo
+await notice Undid
+settle
+shot docs/screenshots/02-move-undone.png

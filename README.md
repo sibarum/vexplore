@@ -19,22 +19,24 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 
 ## Status
 
-**Milestone 1 — read-only browsing, and the rail stating its effect.** It reads real folders, and it does not
-change any of them yet.
+**Milestone 1 — read-only browsing, the rail stating its effect.** Done.
+**Milestone 2 — actions and modifier keys.** Done, with the exceptions in the table.
 
 | Works | Not yet |
 | --- | --- |
-| Tree of the user's folders and drives, lazy | Any action: the rail's buttons are disabled and say so |
-| Breadcrumb, sortable resizable file list, range selection | Modifier keys as intent (`Gui.modifiers()` is not read) |
-| Suggestion Rail: **Select** (this file, all of this kind, big ones, same day), **Condition**, **Action** | Suggested destinations, drag and drop |
-| The rows a suggestion would reach are *marked*, and the card states file count and size first | Fresh-file highlighting, inline row previews |
-| Preview Dock: text (tier 3) and bytes (tier 4: hex, strings, entropy) | Tiers 1 and 2 (images, PDF, CSV, JSON, archives) |
-| Draggable dividers; a status bar that never shifts | Two Folders mode, pop-out |
-| 29 tests, none of which needs a window | Any test of the layout itself |
+| Tree of the user's folders and drives, lazy | Rename (the chip is there, disabled) |
+| Breadcrumb, sortable resizable file list, range selection | Marks do not survive a restart |
+| Suggestion Rail: **Select**, **Condition**, **Action**, and a card that states the effect first | The folder dialog has never been opened by a person (see TODO) |
+| **Shift** held: where the range likely ends, in the order shown. **Control** held: the rule the picks are examples of. Same slot as the ordinary chips; ignoring them costs nothing | A modifier cannot be held from `ottermate`, so the live behaviour is checked by unit tests and `-Dvexplore.hold=` captures |
+| **Move, Copy, Archive, Delete, Mark.** Each plans first (counts, bytes, what would be left alone and why), runs off the frame loop, and can be undone with Ctrl+Z or the Undo button | Drag and drop, fresh-file highlighting |
+| Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
+| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, preview tiers 1 and 2, Two Folders |
+| Preview Dock: text (tier 3), bytes (tier 4) | Any test of the layout itself |
+| 54 tests, none of which needs a window | |
 
-Everything the design says a screenshot cannot show holds today: nothing covers anything else, the rail is a fixed
-column that may be empty, a suggestion arriving or leaving moves no row, and ignoring a suggestion costs nothing
-(the selection is what it was).
+Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
+column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
+every action states what it will affect before it runs and is recoverable.
 
 ## Run it
 
@@ -49,36 +51,46 @@ Needs the stack installed to the local Maven repository first, in the order in
 enabled for Panama.
 
 Startup properties, for a known state (see `Startup`): `vexplore.folder`, `vexplore.select` (comma-separated
-names), `vexplore.scope`, `vexplore.act`, and `vexplore.sync=true` to list on the calling thread.
+names), `vexplore.scope`, `vexplore.act`, `vexplore.hold`, `vexplore.trash`, and `vexplore.sync=true` to list on the calling thread.
+
 
 ### Looking at it without a person
 
-A folder that looks like the first mockup's Downloads, and a script that drives the real window through the
-framework's automation socket:
+A folder that looks like the first mockup's Downloads, and scripts that drive the real window through the
+framework's automation socket. Every control a scene needs has a landmark (`act.move`, `go`, `undo`, `dest.1`), so a
+scene does not depend on where anything is drawn:
 
 ```
 sh docs/scenes/fixture.sh
 java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
-     --script docs/scenes/01-select.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
-     "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads"
+     --script docs/scenes/02-move.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
+     "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash"
 ```
 
-A scene never sleeps. Every document change writes the status line's last slot, and a scene `await`s that — see
-FN-4 in [framework-notes.md](docs/framework-notes.md) for why `settle` is not enough. A headless still, with no
-window, is `-Dapp.args="--capture out.png"` (use `C:/...` paths, not `/c/...`).
+`01-select` is the first mockup; `02-move` moves nine videos to the folder that already holds videos and then undoes
+it; `03-delete-and-mark` does the same for a delete and keeps a mark. A scene never sleeps: every document change
+writes the status line last, and the card's primary button names what it is about to do, so a scene `await`s those —
+see FN-4 in [framework-notes.md](docs/framework-notes.md) for why `settle` is not enough. A headless still, with no
+window, is `-Dapp.args="--capture out.png"` (use `C:/...` paths, not `/c/...`); `-Dvexplore.hold=shift` or `control`
+puts the model as though that key were down, which `ottermate` cannot do.
 
 ## How it is put together
 
 ```
-files/     the file system, and nothing else. Entry, Kind, Folders (the only reader), Preview, Previews.
-           No GUI. Blocking: callers run these on Gui.offload().
-suggest/   the rail's brain as a pure function: Suggestions.of(entries, selected, pick, now, zone) -> Rail.
-           Tested against a folder that is a list of values.
-Model      the one state (Doc), the only way to change it, and an onChange that never delivers an older
-           document after a newer one.
+files/     the file system, and nothing else. Entry, Kind, Folders (the only reader), Preview, Previews,
+           Destinations. No GUI. Blocking: callers run these on Gui.offload().
+suggest/   the rail's brain, as pure functions: Suggestions (Select/Condition/Action), Intents (what Shift and
+           Control are announcing), Order (the sort, shared with the table). Tested against a folder that is a
+           list of values.
+ops/       Plan (what an action would do, a value the card can draw) and Operations (doing it, and undoing it).
+           Tested against real temporary folders.
+Model      the one state (Doc: input + work + the rest), the only way to change it, and an onChange that never
+           delivers an older document after a newer one.
 Browser    navigate + list off the frame loop; a listing for a folder you have left is dropped.
-Previewer  keeps the dock matching the selection, same rule.
-Ui, Dock   the tree. Hold no application state, only a cache of what they last drew.
+Previewer  keeps the dock matching the selection, same rule. Destinator does the same for destinations.
+Actor      the one place a button becomes a change to the disk: run, undo, mark, choose a destination.
+Chooser    the native folder dialog, built with the tree and given its window later (see Recipes).
+Ui, RailView, Dock   the tree. Hold no application state, only a cache of what they last drew.
 Look       colour: the design's hex values as palette anchors, and the roles the palette has no name for.
 Recipes    what is built; the wiring is generated from it.
 ```
@@ -89,9 +101,8 @@ overlay anywhere in `Ui`. A change to the rail rewrites the rail's column and to
 ## Plan
 
 1. **Milestone 1** — read-only, rail states its effect. *Done.*
-2. **Milestone 2 — actions, and the design's centre of gravity.** Mark, Copy, Move, Delete through the Recycle Bin,
-   each stating its effect first and each undoable from a journal; then **modifier keys as intent signals**, which
-   is what makes it Vexplore and not a file list with a side panel.
+2. **Milestone 2 — actions, and modifier keys as intent signals.** *Done* except Rename, persistence of marks,
+   and having watched a person use the folder dialog.
 3. **Milestone 3 — the drag fallback and fresh files.** Drag a row, the *Carrying* card, destinations with reasons;
    a five-second-old file highlighted amber.
 4. **Milestone 4 — previews up the ladder.** Inline row previews, CSV/JSON/archive, images, PDF, pop-out.

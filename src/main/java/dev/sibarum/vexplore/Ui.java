@@ -4,6 +4,7 @@ import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Folders;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.sibarum.vexplore.suggest.Dates;
+import dev.sibarum.vexplore.suggest.Order;
 import dev.sibarum.vexplore.suggest.Suggestions;
 import dev.sibarum.vexplore.suggest.Suggestions.Act;
 import dev.sibarum.vexplore.suggest.Suggestions.Option;
@@ -73,19 +74,16 @@ final class Ui {
     private final Table<Entry> table;
     private final StatusBar status;
     private final Node sortNote;
-    private final Node railBody;
     private final Dock dock;
-    private final List<Node> railKids = new ArrayList<>();
+    private final RailView rail;
 
     /** The last document drawn, so each region redraws only when its own inputs changed. */
     private Doc shown;
-    private Rail shownRail = Rail.EMPTY;
-    private Suggestions.Pick shownPick;
 
     /** Which rows the rail would reach. Read by the list to paint them, replaced when the rail changes. */
     private volatile Set<Path> targeted = Set.of();
 
-    Ui(Gui gui, KronoGui krono, Model model, Browser browser, TitleBar titleBar) {
+    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Actor actor, TitleBar titleBar) {
         this.gui = gui;
         this.model = model;
         this.browser = browser;
@@ -102,8 +100,7 @@ final class Ui {
                 .slot("path", StatusBar.Side.RIGHT, "");
         gui.landmark(Landmarks.ITEMS, status.slot("items"));
         gui.landmark(Landmarks.SELECTED, status.slot("selected"));
-        this.railBody = gui.column().width(Length.FILL).height(Length.FILL)
-                .padding(Length.rem(1.25f)).gap(Length.rem(0.9f)).scroll(false, true);
+        this.rail = new RailView(gui, model, actor);
 
         Node topBar = gui.row().width(Length.FILL).height(Length.rem(3f))
                 .alignItems(AlignItems.CENTER)
@@ -125,13 +122,13 @@ final class Ui {
                 .size(Length.rem(15.625f)).minFirst(Length.rem(9f)).minSecond(Length.rem(24f));
         gui.landmark(Landmarks.SPLIT, split.node());
 
-        Node rail = gui.column().width(Length.rem(25f)).height(Length.FILL)
-                .background(gui.theme().color(Look.RAIL)).children(railBody);
-        gui.landmark(Landmarks.RAIL, rail);
+        Node railPane = gui.column().width(Length.rem(25f)).height(Length.FILL)
+                .background(gui.theme().color(Look.RAIL)).children(rail.node());
+        gui.landmark(Landmarks.RAIL, railPane);
         Node railEdge = gui.box().width(Length.dp(1)).height(Length.FILL).background(gui.theme().color(Role.LINE));
 
         Node main = gui.row().width(Length.FILL).height(Length.grow(1f))
-                .children(split.node(), railEdge, rail);
+                .children(split.node(), railEdge, railPane);
         split.node().width(Length.grow(1f));
 
         status.node().width(Length.FILL).height(Length.rem(1.875f)).background(gui.theme().color(Role.CHROME));
@@ -215,7 +212,11 @@ final class Ui {
                 browser.go(e.path());
             }
         });
-        t.onSort((column, direction) -> sortNote.text(sortWords(column, direction)));
+        t.onSort((column, direction) -> {
+            sortNote.text(sortWords(column, direction));
+            model.sorted(column < 0 || direction == Table.Sort.NONE ? Order.LISTED
+                    : new Order(column, direction == Table.Sort.DESCENDING));
+        });
         gui.landmark(Landmarks.LIST, t.node());
         t.sortBy(3, Table.Sort.DESCENDING);
         return t;
@@ -286,165 +287,22 @@ final class Ui {
         }
 
 
-        Rail rail = doc.rail();
-        if (!rail.equals(shownRail) || !doc.pick().equals(shownPick)) {
-            shownRail = rail;
-            shownPick = doc.pick();
-            targeted = rail.effect().count() > 1 || doc.pick().act() != null
-                    ? Suggestions.paths(rail.effect()) : Set.of();
+        Suggestions.Rail railNow = doc.rail();
+        if (rail.show(doc)) {
+            targeted = railNow.effect().count() > 1 || doc.pick().act() != null
+                    ? Suggestions.paths(railNow.effect()) : Set.of();
             table.rows().remark();
-            rebuildRail(doc, rail);
         }
 
         dock.show(doc.preview());
 
         // Last, so that a script awaiting the status line finds everything else already written.
         status.text("items", doc.loading() ? "reading..." : doc.entries().size() + " items");
-        int reach = rail.effect().count();
+        int reach = railNow.effect().count();
         status.text("selected", doc.selected().isEmpty() ? ""
                 : reach > doc.selected().size()
-                ? reach + " in scope · " + Bytes.format(rail.effect().bytes())
+                ? reach + " in scope · " + Bytes.format(railNow.effect().bytes())
                 : doc.selected().size() + " selected · " + Bytes.format(doc.selectedBytes()));
-    }
-
-    // ------------------------------------------------------------------ the rail
-
-    private void rebuildRail(Doc doc, Rail rail) {
-        for (Node n : railKids) {
-            n.remove();
-        }
-        railKids.clear();
-        Node basis = gui.text(rail.basis().isEmpty() ? "" : "based on " + rail.basis()).font(Type.MONO)
-                .textSize(Type.SMALL).textColor(gui.theme().color(Look.AMBER_INK)).wordWrap(false);
-        gui.landmark(Landmarks.BASIS, basis);
-        Node head = gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).children(
-                gui.text("Suggestions").font(Type.UI).textSize(Type.HEADING)
-                        .textColor(gui.theme().color(Role.INK)),
-                gui.box().width(Length.grow(1f)).height(Length.rem(1f)),
-                basis);
-        add(head);
-
-        if (rail == Rail.EMPTY) {
-            add(gui.box().width(Length.FILL).height(Length.grow(1f)));
-            add(note("Select a file and Vexplore will say what it would do with the others. "
-                    + "Nothing here covers anything else."));
-            return;
-        }
-
-        add(section(1, "Select", chips(rail.scopes(), doc.pick().scope(),
-                s -> model.pick(p -> p.with(s)))));
-        add(section(2, "Condition", chips(rail.conditions(), effectiveCondition(doc, rail),
-                c -> model.pick(p -> p.with(c)))));
-        add(section(3, "Action", actions(rail, doc.pick().act())));
-        add(gui.box().width(Length.FILL).height(Length.grow(1f)));
-        add(summary(doc, rail));
-    }
-
-    private Suggestions.Condition effectiveCondition(Doc doc, Rail rail) {
-        return rail.conditions().stream().anyMatch(o -> o.value() == doc.pick().condition())
-                ? doc.pick().condition() : Suggestions.Condition.ALL;
-    }
-
-    private void add(Node n) {
-        railKids.add(n);
-        railBody.append(n);
-    }
-
-    private Node note(String text) {
-        return gui.text(text).font(Type.UI).textSize(Type.META).textColor(gui.theme().color(Role.FAINT))
-                .wordWrap(true).width(Length.FILL);
-    }
-
-    private Node section(int number, String title, Node body) {
-        Node label = gui.row().gap(Length.rem(0.6f)).alignItems(AlignItems.CENTER).children(
-                gui.text(String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL)
-                        .textColor(gui.theme().color(Role.FAINT)),
-                gui.text(title).font(Type.UI).textSize(Type.RAIL).textColor(gui.theme().color(Role.INK)));
-        return gui.column().width(Length.FILL).gap(Length.rem(0.55f)).children(label, body);
-    }
-
-    /**
-     * Chips, two to a row. The layout engine has no wrapping row yet, so the rail wraps by counting; the chips are
-     * the same size whatever they say, and nothing reflows when a label changes.
-     */
-    private <T> Node chips(List<Option<T>> options, T current, Consumer<T> pick) {
-        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
-        Node row = null;
-        for (int i = 0; i < options.size(); i++) {
-            if (i % 2 == 0) {
-                row = gui.row().gap(Length.rem(0.5f)).scroll(false, false);
-                column.append(row);
-            }
-            Option<T> o = options.get(i);
-            String text = o.count() > 0 ? o.label() + " · " + o.count() : o.label();
-            Button chip = new Button(gui, text).toggle(true).show(o.value().equals(current))
-                    .onToggle(pressed -> pick.accept(o.value()));
-            row.append(chip.node());
-        }
-        return column;
-    }
-
-    private Node actions(Rail rail, Act current) {
-        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
-        Node row = null;
-        List<Act> acts = rail.acts();
-        for (int i = 0; i < acts.size(); i++) {
-            if (i % 2 == 0) {
-                row = gui.row().gap(Length.rem(0.5f)).scroll(false, false);
-                column.append(row);
-            }
-            Act a = acts.get(i);
-            Button b = new Button(gui, actLabel(a)).toggle(true).show(a == current)
-                    .onToggle(pressed -> model.pick(p -> p.with(a)));
-            row.append(b.node());
-        }
-        return column;
-    }
-
-    private static String actLabel(Act a) {
-        return switch (a) {
-            case MOVE -> "Move to…";
-            case COPY -> "Copy to…";
-            case ARCHIVE -> "Archive";
-            case RENAME -> "Rename…";
-            case MARK -> "Mark for later";
-            case DELETE -> "Delete (recoverable)";
-        };
-    }
-
-    /** The effect, stated before anything happens: what would be touched, how much, and that nothing has been. */
-    private Node summary(Doc doc, Rail rail) {
-        Suggestions.Effect fx = rail.effect();
-        Act act = doc.pick().act();
-        String head = fx.count() + (fx.count() == 1 ? " file" : " files") + " · " + Bytes.format(fx.bytes());
-        List<String> names = fx.targets().stream().map(Entry::name).toList();
-        String list = names.size() <= 3 ? String.join(", ", names)
-                : String.join(", ", names.subList(0, 3)) + " and " + (names.size() - 3) + " more, all highlighted in the list";
-
-        Node top = gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).children(
-                gui.text(head).font(Type.UI).textSize(Type.HEADING).textColor(gui.theme().color(Role.INK)),
-                gui.box().width(Length.grow(1f)).height(Length.rem(1f)),
-                gui.text(act == null ? "" : "nothing has changed yet").font(Type.MONO).textSize(Type.SMALL)
-                        .textColor(gui.theme().color(Role.FAINT)).wordWrap(false));
-
-        String verb = act == null ? "Choose" : actLabel(act).replace("…", "").replace(" (recoverable)", "");
-        Button go = new Button(gui, act == null ? "Choose an action" : verb + " " + fx.count()
-                + (fx.count() == 1 ? " file" : " files"))
-                .kind(Button.Kind.PRIMARY).enabled(false);
-        Button keep = new Button(gui, "Keep as Mark").enabled(false);
-        Node buttons = gui.row().gap(Length.rem(0.6f)).children(go.node(), keep.node());
-
-        Node card = gui.column().width(Length.FILL).gap(Length.rem(0.6f))
-                .padding(Length.rem(1f)).corner(Length.rem(0.6f))
-                .background(gui.theme().color(act == null ? Role.PANEL : Look.AMBER_WASH))
-                .border(Length.dp(1), gui.theme().color(act == null ? Role.LINE : Look.AMBER_INK))
-                .children(top,
-                        gui.text(list).font(Type.UI).textSize(Type.META).textColor(gui.theme().color(Role.DIM))
-                                .wordWrap(true).width(Length.FILL),
-                        buttons,
-                        note("Actions are not wired up yet: this card shows the effect and nothing more."));
-        gui.landmark(Landmarks.SUMMARY, card);
-        return card;
     }
 
     /** The title bar this window uses, for a test to find. */

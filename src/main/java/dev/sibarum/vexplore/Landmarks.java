@@ -21,6 +21,15 @@ final class Landmarks {
     static final String SELECTED = "selected";
     /** The status line's item count: "reading..." until a listing lands, so scripts await it before touching rows. */
     static final String ITEMS = "items";
+    /** The rail's one-line account of the last action, or of what is running. Scripts await it. */
+    static final String NOTICE = "notice";
+    static final String UNDO = "undo";
+    /** The card's primary button: the action itself. */
+    static final String GO = "go";
+    static final String CHOOSE = "choose";
+    static final String DESTINATION = "destination";
+    /** The first suggested destination, which a script can await to know the suggestions have arrived. */
+    static final String DEST_FIRST = "dest.1";
 
     private Landmarks() {
     }

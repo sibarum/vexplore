@@ -1,12 +1,15 @@
 package dev.sibarum.vexplore;
 
 import dev.vexelray.framework.api.Configuration;
+import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;
 import dev.vexelray.framework.shell.Appearance;
 import dev.vexelray.gui.core.Gui;
+import dev.vexelray.gui.core.app.GuiApp;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.TitleBar;
+import java.nio.file.Path;
 import sibarum.tactroller.api.Key;
 import sibarum.tactroller.api.Modifier;
 
@@ -43,6 +46,38 @@ final class Recipes {
         return new Browser(gui, model);
     }
 
+
+    /** The folder dialog, built with the tree and given its window by {@link #chooserBinding}. */
+    @Provides
+    Chooser chooser() {
+        return new Chooser();
+    }
+
+    /**
+     * Gives the chooser its window, and takes it back on close. A part of its own in the window's phase, so that
+     * {@code Ui} stays out of it and a headless capture can still build the tree; nothing takes it, and the wiring
+     * builds it all the same. It returns an {@code AutoCloseable} because the container wants an interface and
+     * closes what it can, and because un-binding on the way out is true to what the part does.
+     */
+    @Provides
+    @MainThread
+    AutoCloseable chooserBinding(GuiApp app, Chooser chooser) {
+        chooser.bind(app);
+        return () -> chooser.bind(null);
+    }
+    /** Where deleted files wait. Not the system recycle bin, which Java reaches only through AWT. */
+    @Provides
+    Actor actor(Gui gui, Model model, Browser browser, Chooser chooser) {
+        Path trash = Path.of(System.getProperty("vexplore.trash",
+                Path.of(System.getProperty("user.home"), ".vexplore", "trash").toString()));
+        return new Actor(gui, model, browser, chooser, trash);
+    }
+
+    /** Suggested destinations, kept current while a move or copy is chosen. */
+    @Provides
+    Destinator destinator(Gui gui, Model model) {
+        return new Destinator(gui, model);
+    }
     /**
      * The Preview Dock's reader. A part of its own, and named by {@link #ui} though {@code Ui} never touches it,
      * because a listener has to exist before the state it listens to is seeded: the wiring builds what a recipe
@@ -59,13 +94,18 @@ final class Recipes {
      * tree a capture gets should be the tree a user gets, already carrying a listing.
      */
     @Provides
-    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Previewer previewer, TitleBar titleBar) {
-        Ui ui = new Ui(gui, krono, model, browser, titleBar);
+    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Previewer previewer, Destinator destinator,
+          Actor actor, TitleBar titleBar) {
+        Ui ui = new Ui(gui, krono, model, browser, actor, titleBar);
         // Every change to the state redraws what is derived from it, on the committing thread -- which is a
         // worker, because every control's handler is. The GUI thread never reads the model.
         model.onChange(ui::show);
         ui.show(model.doc());
         zoomShortcuts(gui);
+        // Modifier keys are an intent signal, so the model hears them: Shift announces a range, Control a rule.
+        gui.modifiers().onCommit(v -> model.holding(v.value().contains(Modifier.SHIFT),
+                v.value().contains(Modifier.CONTROL)));
+        gui.shortcut(Key.Z, actor::undo, Modifier.CONTROL);
         // Last, and after the listener above: opening the first folder is a change, and a change nobody is
         // listening for is a window that opens onto an empty list.
         Startup.apply(browser, model);

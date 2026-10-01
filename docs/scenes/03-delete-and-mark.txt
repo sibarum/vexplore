@@ -1,0 +1,29 @@
+# Delete is recoverable, and a mark is a group kept for later.
+#
+#   docs/scenes/fixture.sh
+#   java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
+#        --script docs/scenes/03-delete-and-mark.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
+#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash"
+await items 18 items
+# invoice-sept.pdf, then Delete (recoverable).
+click 600,199
+await selected 1 selected
+click act.delete
+await go Delete 1 file
+settle
+shot docs/screenshots/03-delete-ready.png
+click go
+await notice Deleted 1 file
+settle
+shot docs/screenshots/03-delete-done.png
+click undo
+await notice Undid
+# Keep a file as a mark: choose Mark for later, then the card's button.
+click 600,233
+await selected 1 selected
+click act.mark
+await go Keep as Mark
+click go
+await notice Kept Mark
+settle
+shot docs/screenshots/03-mark.png

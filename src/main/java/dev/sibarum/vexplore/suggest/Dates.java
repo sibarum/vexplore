@@ -29,6 +29,17 @@ public final class Dates {
         return day.getYear() == today.getYear() ? short_(day) : FULL.format(day);
     }
 
+    /** {@code today}, {@code yesterday} or {@code Sep 26}: a day in the middle of a sentence. */
+    public static String dayWords(LocalDate day, LocalDate today) {
+        if (day.equals(today)) {
+            return "today";
+        }
+        if (day.equals(today.minusDays(1))) {
+            return "yesterday";
+        }
+        return short_(day);
+    }
+
     /** {@code Sep 27}. */
     static String short_(LocalDate day) {
         return DAY.format(day);

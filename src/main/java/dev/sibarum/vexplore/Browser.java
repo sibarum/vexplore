@@ -34,4 +34,18 @@ final class Browser {
             gui.offload().execute(listing);
         }
     }
+
+    /** List the folder again, as after something changed it. Selection and picks start over: they described a folder that is gone. */
+    void reload() {
+        Path folder = model.doc().folder();
+        if (folder == null) {
+            return;
+        }
+        Runnable listing = () -> model.listed(folder, Folders.list(folder));
+        if (Startup.synchronous()) {
+            listing.run();
+        } else {
+            gui.offload().execute(listing);
+        }
+    }
 }

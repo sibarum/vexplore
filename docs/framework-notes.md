@@ -118,3 +118,39 @@ template module, or a script beside it.
 
 It means to ignore captures. A project with a `docs/` folder of screenshots (this one is built *from* some) loses
 them silently. `!docs/**/*.png` is appended here. Better for the template to ignore `capture*.png` and `target/`.
+
+## Milestone 2 (actions and modifier keys)
+
+### FN-12 · The processor earned its keep, and then there was no sanctioned way to say "give this a window later" 🔬💡
+
+Two compile errors, both right. A `@Provides` returning a record is "the smell rather than the exception", and a part
+taking `GuiApp` has to be `@MainThread` itself. The second is the design working: the folder dialog needs the window
+handle, and a part that took `GuiApp` would put `Ui` in the window's phase, after which a headless capture could not
+build the tree. What worked is the shape the framework README shows for a clipboard: a part in the tree's phase
+(`Chooser`) and a `@MainThread @Provides AutoCloseable` that binds it to the window when one exists and un-binds on
+close. It is the right shape and a little roundabout for something every dialog-using application will need; a
+`GuiApp`-phase `@Provides` that returns "a thing to call when the window exists" would say it directly.
+
+### FN-13 · A held modifier cannot be driven from outside 🔬
+
+The design's centre is Shift and Control as intent signals, and `ottermate key` is press-and-release, so the
+behaviour is verified by unit tests of the pure engine (`IntentsTest`) and by captures with `-Dvexplore.hold=`. A
+`keydown <KEY>` / `keyup <KEY>` pair on the automation socket would let a scene hold Shift, click the second file and
+photograph the range the rail proposed. `Gui.modifiers()` itself worked first time and needed nothing.
+
+### FN-14 · `await` on a landmark is how a scene waits, and it only works when something changes text 🔬
+
+`await <landmark> <text>` is what made scenes deterministic, and `click <landmark>` (which takes a name, not only a
+ref) is what made them independent of layout. Both needed the application to give the thing a landmark and to make
+the state change visible as text: the card's primary button reads "Choose where to move", then "Move 9 files", so a
+scene can await the choice. That is a good discipline and an accident of this application; `await <landmark>` with no
+text (for "it exists") and a way to wait for the handler and offload lanes to drain (FN-4) would make it the
+default rather than a habit.
+
+### FN-15 · Everything else about building actions went to plan
+
+Worth recording what did not hurt: `Gui.offload()` for disk work landing back through the model, the model's
+single committer, `Gui.modifiers()`, `Gui.shortcut(Key.Z, ..., Modifier.CONTROL)`, and `Button` all did what their
+documentation said. `Plan` as a value the card draws and `Operations.execute` carries out meant the "state the effect
+first" rule fell out of the types: the card cannot describe something the action will not do, because it is the same
+object.
