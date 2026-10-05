@@ -4,7 +4,7 @@ import dev.vexelray.gui.core.layout.Length;
 
 /**
  * Size, face and gutter, named once. Faces are indices into the font table the framework loads; sizes are in
- * {@code rem}, so zoom scales all of them together, and the design's pixel sizes are its rem divided by sixteen.
+ * {@code rem}, so zoom scales all of them together, and each is the design's pixel size divided by sixteen.
  */
 final class Type {
 
@@ -16,7 +16,7 @@ final class Type {
 
     // ------------------------------------------------------------------ type
 
-    /** Section headings and the rail's title: 18 px. */
+    /** Section headings and the rail's title: 17 px. */
     static final Length HEADING = Length.rem(1.0625f);
 
     /** Body text in the list: 14 px. */
