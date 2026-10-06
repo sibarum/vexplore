@@ -16,14 +16,14 @@ import sibarum.tactroller.api.Modifier;
 /**
  * What this application builds — one recipe per part — and nothing about when.
  *
- * <p>{@code VexploreWiring} is written by {@code vexelray-framework-processor} while this project compiles and
+ * <p>{@code VexploreAppWiring} is written by {@code vexelray-framework-processor} while this project compiles and
  * calls each method below once, in the phase its parameters put it in: a part's phase is the latest phase of
  * anything it takes. So the look and the model, which take nothing the framework builds late, exist before the
  * {@code Gui} does; {@link Browser} needs the {@code Gui} for its executors and no window; and the tree waits for
  * the {@code Gui} and its title bar.
  *
- * <p>The driving socket is not here either: it comes from {@code AutomationStarter}, which {@link Vexplore} names
- * in its {@code @VexelApp}.
+ * <p>The driving socket is not here either: it comes from {@code AutomationStarter}, which {@link VexploreApp} names
+ * in its {@code @VexelApp} (debug edition only).
  */
 @Configuration
 final class Recipes {

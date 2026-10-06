@@ -115,3 +115,23 @@ disagree the principle wins.
 
 `docs/design/README.md` → `docs/components.md` → `suggest/Suggestions.java` (the whole idea, in 200 lines with no
 GUI in it) → `Ui.java` → `docs/framework-notes.md`.
+
+## Native builds
+
+Windows, GraalVM 25 as `JAVA_HOME`, from a Visual Studio developer prompt (or after `vcvars64.bat`) so `link.exe` is
+MSVC's and not Git Bash's. Two profiles build the same code as two editions:
+
+```
+mvn -Pnative-release package -DskipTests   # target/vexplore.exe        what ships and is signed
+mvn -Pnative package -DskipTests           # target/vexplore-debug.exe  for ottermate
+```
+
+- **release** (`installer.json` points at this one): linked as a Windows GUI subsystem program, so no console window
+  ever appears, and built without the automation module: the source root `src/edition-release` is compiled instead
+  of `src/edition-debug` and `vexelray-*-automation` is not on its classpath, so the binary cannot open a driving
+  socket (`--automation` is accepted and does nothing). stdout and stderr go nowhere; the log files are still written.
+- **debug**: console subsystem, automation present: `vexplore-debug.exe --automation=0` prints
+  `automation: localhost:<port>` for `ottermate --launch`.
+
+The plain JVM build, tests and `exec:exec` are the debug edition. The linker options are
+`/SUBSYSTEM:WINDOWS|CONSOLE` and `/ENTRY:mainCRTStartup` (pom, `pluginManagement`).

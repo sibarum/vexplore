@@ -1,0 +1,23 @@
+{
+  "id": "vexplore",
+  "name": "Vexplore",
+  "publisher": "sibarum",
+  "description": "A file explorer that suggests instead of asking.",
+  "version": "0.1.0",
+
+  "repo": "sibarum/vexplore",
+  "branch": "main",
+  "releasesRepo": "sibarum/vexplore",
+  "tagFormat": "v{version}",
+
+  "windows": {
+    "binaries": [
+      {
+        "name": "vexplore",
+        "source": "target/vexplore.exe",
+        "addToPath": true,
+        "shortcuts": { "desktop": true, "startMenu": true, "label": "Vexplore" }
+      }
+    ]
+  }
+}

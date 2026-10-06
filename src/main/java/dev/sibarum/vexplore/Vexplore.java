@@ -1,7 +1,5 @@
 package dev.sibarum.vexplore;
 
-import dev.vexelray.framework.api.VexelApp;
-import dev.vexelray.framework.automation.AutomationStarter;
 import dev.vexelray.framework.shell.VexelApplication;
 
 import java.io.IOException;
@@ -18,7 +16,7 @@ import java.io.IOException;
  * command line and closing everything in the right order — this file used to be three hundred lines of exactly
  * that, near-identically to every other application on this stack.
  *
- * <p>What this application actually builds is in {@link Recipes}, one method per part. {@code VexploreWiring},
+ * <p>What this application actually builds is in {@link Recipes}, one method per part. {@code VexploreAppWiring},
  * which builds those parts in order, is generated from them and from the annotation on this class while the project
  * compiles — so the facts below are stated once, here, and the wiring reads them. Everything above that is in
  * {@link Ui}; everything the application <em>knows</em> is in {@link Model}. This class holds no state of its own,
@@ -35,14 +33,11 @@ import java.io.IOException;
  * <p>A misspelled flag is refused by name with the alternatives listed, rather than a stack trace before any
  * window. Needs {@code --enable-native-access=ALL-UNNAMED}.
  *
- * <p><b>{@code starters} is everything configuring this application beyond {@link Recipes}</b>, listed rather
- * than discovered. {@link AutomationStarter} is the driving socket — off unless {@code --automation} or
- * {@code -Dautomation} asks, and loopback-only when it is, because it hands whoever reaches it full control of the
- * application's input. Delete it here, and the {@code vexelray-framework-automation} dependency in the pom, and the
- * binary links no socket at all.
+ * <p><b>The {@code @VexelApp} declaration is {@link VexploreApp}, and there are two of it</b>: the debug edition
+ * ({@code src/edition-debug}) names {@code AutomationStarter}, the driving socket; the release edition
+ * ({@code src/edition-release}) names no starters and its build has no automation module at all. This class
+ * holds the facts both read.
  */
-@VexelApp(name = Vexplore.APP, title = Vexplore.TITLE, width = Vexplore.W, height = Vexplore.H,
-        starters = AutomationStarter.class)
 public final class Vexplore {
 
     /** The application's own name, which is what its settings directory is called. Stable across releases. */
@@ -79,7 +74,7 @@ public final class Vexplore {
             Capture.run(cleaned);
             return;
         }
-        VexelApplication.run(new VexploreWiring(), cleaned);
+        VexelApplication.run(new VexploreAppWiring(), cleaned);
     }
 
     private Vexplore() {

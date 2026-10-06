@@ -82,7 +82,7 @@ final class Capture {
 
     /** Build this application as far as its tree, hand it to {@code scene}, and close it. */
     private static void on(Scene scene) throws IOException {
-        Shell shell = VexelApplication.tree(new VexploreWiring(), NO_ARGS);
+        Shell shell = VexelApplication.tree(new VexploreAppWiring(), NO_ARGS);
         try {
             scene.shoot(shell);
         } finally {
