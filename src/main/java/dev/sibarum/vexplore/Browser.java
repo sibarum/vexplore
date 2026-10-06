@@ -4,6 +4,8 @@ import dev.sibarum.vexplore.files.Folders;
 import dev.vexelray.gui.core.Gui;
 
 import java.nio.file.Path;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Moving between folders: the model change, and the listing that follows it.
@@ -28,6 +30,26 @@ final class Browser {
             return;
         }
         Runnable listing = () -> model.listed(folder, Folders.list(folder));
+        if (Startup.synchronous()) {
+            listing.run();
+        } else {
+            gui.offload().execute(listing);
+        }
+    }
+
+    /**
+     * Show the folder {@code file} is in, with {@code file} selected once the listing has arrived — what another
+     * application means by "show this file". The selection is dropped if the user has gone elsewhere by then.
+     */
+    void reveal(Path file) {
+        Path folder = file.getParent();
+        model.navigate(folder);
+        Runnable listing = () -> {
+            model.listed(folder, Folders.list(folder));
+            if (Objects.equals(model.doc().folder(), folder)) {
+                model.select(Set.of(file));
+            }
+        };
         if (Startup.synchronous()) {
             listing.run();
         } else {

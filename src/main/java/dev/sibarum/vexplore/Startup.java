@@ -48,9 +48,22 @@ final class Startup {
         return Boolean.getBoolean("vexplore.sync");
     }
 
-    /** Open the starting folder and apply whatever selection and picks were asked for. */
-    static void apply(Browser browser, Model model) {
-        browser.go(folder());
+    /**
+     * Open the starting folder and apply whatever selection and picks were asked for.
+     *
+     * <p>{@code given} is the command line's positional arguments, and the first one wins over
+     * {@code vexplore.folder}: a folder is opened, and a file is shown selected in its folder. That is how another
+     * application of the suite says "show this here" ({@code vexplore <folder>}, {@code vexplore <file>}). A path
+     * that does not exist is ignored rather than refused, since the window is still useful where it would have
+     * opened anyway.
+     */
+    static void apply(Browser browser, Model model, List<String> given) {
+        Path asked = given.isEmpty() ? null : Path.of(given.getFirst()).toAbsolutePath().normalize();
+        if (asked != null && Files.isRegularFile(asked) && asked.getParent() != null) {
+            browser.reveal(asked);
+            return;
+        }
+        browser.go(asked != null && Files.isDirectory(asked) ? asked : folder());
         String select = System.getProperty("vexplore.select");
         if (select == null || select.isBlank()) {
             return;

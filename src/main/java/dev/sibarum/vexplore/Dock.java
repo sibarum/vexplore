@@ -8,6 +8,7 @@ import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.widget.Button;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +28,7 @@ import java.util.Locale;
 final class Dock {
 
     private final Gui gui;
+    private final Opener opener;
     private final Node frame;
     private final Node header;
     private final Node body;
@@ -35,8 +37,9 @@ final class Dock {
     private Preview shown;
     private Boolean empty;
 
-    Dock(Gui gui) {
+    Dock(Gui gui, Opener opener) {
         this.gui = gui;
+        this.opener = opener;
         this.header = gui.row().width(Length.FILL).height(Length.rem(2.75f))
                 .alignItems(AlignItems.CENTER).padding(Length.ZERO, Length.rem(1.25f)).gap(Length.rem(0.75f))
                 .scroll(false, false);
@@ -75,6 +78,13 @@ final class Dock {
         addHeader(text(preview.tier().tag(), Type.SMALL, Role.ACCENT, Type.MONO)
                 .padding(Length.rem(0.2f), Length.rem(0.5f)).corner(Length.rem(0.3f))
                 .border(Length.dp(1), gui.theme().color(Role.ACCENT)));
+        if (preview.tier() == Preview.Tier.TEXT) {
+            // Said even when it cannot be done, so the way to edit a file is visible before the editor is installed.
+            boolean editor = opener.editorInstalled();
+            Path file = preview.path();
+            addHeader(new Button(gui, editor ? "Open in Text Editor" : "Text Editor not installed").enabled(editor)
+                    .onPress(() -> opener.edit(file)).node());
+        }
         addHeader(new Button(gui, "Pop out").enabled(false).node());
 
         switch (preview.tier()) {

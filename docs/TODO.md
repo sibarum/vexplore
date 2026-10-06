@@ -22,23 +22,15 @@ Vexplore, mainframe and the text editor install separately and are meant to star
 process and a new window**. The framework side (finding a sibling, the helper) is in
 [`vexelray-framework/docs/TODO.md`](../../vexelray-framework/docs/TODO.md); this is what Vexplore itself owes.
 
-- [ ] **Take a start folder, and a file to select, on the command line.** `vexplore <folder> [--select <file>]`,
-      so another app can say "show this file here". The shape is the suite's own to agree (ruled in the framework
-      TODO: the framework defines no argument conventions between apps). Today it takes none: the start folder is the JVM property
-      `-Dvexplore.folder` (and `vexplore.trash`), and the one positional argument is a *frame count* (run that many
-      frames and quit, for scenes). That has to give way or move behind a flag, since a path is the more natural
-      positional. Also `--capture out.png [w h]` and `--key=value` exist and must keep working.
 - [ ] **Only a launch with no arguments may restore or write saved state.** The same rule as the text editor's. A
-      Vexplore started with a folder or file (by another app) starts clean and saves nothing, or two windows
-      overwrite each other's window placement and settings. Window placement is the framework's `WindowMemory`
-      and shares `Settings` with everything else, so the seam is partly upstream: see *Settings and the session* in
-      the framework TODO. Marks, once they survive a restart (above), are session state and follow the same rule.
-- [ ] **Open a text or source file in the text editor.** Enter or double-click on a file does nothing yet (see
-      *Open a file*, below). For text and source files the answer is to start `text-editor <file>`, found through
-      the editor's install record (`commands.text-editor.path`, read through the
-      framework's `Apps.find`), and to say so in the row's menu when the editor is not
-      installed; for everything else, the shell's own open. Waits on the framework's sibling-lookup helper, or a
-      copy of its three lines until that exists.
+      Vexplore started with a folder or file (`vexplore <path>`, which is how the editor's *Open in Vexplore* starts
+      it) should start clean and save nothing, or two windows overwrite each other's window placement and settings.
+      Vexplore keeps no session of its own yet, so what is left is upstream: window placement is the framework's
+      `WindowMemory` and shares `Settings` with everything else (*Settings and the session* in the framework TODO).
+      Marks, once they survive a restart (below), are session state and follow the same rule.
+- [ ] **A row menu.** Opening is Enter, double-click, or the dock's *Open in Text Editor*; `ListView` has no
+      context menu (the editor's tree and tabs do), so there is no *Open with* and no *Copy path* on a row. A
+      framework change first.
 - [ ] **Two running windows share one log directory.** The native exe writes `vexplore.log` and
       `vexplore-probe.csv` under `~/.vexplore/logs`. Unchecked whether two processes at once overwrite or
       interleave them; spawned windows make that normal, not rare.
@@ -100,7 +92,6 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       the tree does not reveal it. `TreeView.revealPath(chain, then)` exists; it needs the tree's items to be the
       same values as the chain's.
 - [ ] **Back / forward / up.** Alt+Left, Alt+Right, Alt+Up, Backspace. History belongs in the model.
-- [ ] **Open a file.** Enter or double-click on a file does nothing yet; on a folder it navigates.
 
 ## Details found while building
 

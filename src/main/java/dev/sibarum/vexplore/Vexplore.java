@@ -25,6 +25,8 @@ import java.io.IOException;
  *
  * <pre>
  * Vexplore                     the window, interactively
+ * Vexplore &lt;folder&gt;            open that folder
+ * Vexplore &lt;file&gt;              open the folder it is in, with it selected (another app's "show this here")
  * Vexplore &lt;frames&gt;            run a fixed number of frames and quit (a script, not a session)
  * Vexplore --key=value         override a setting for this launch
  * Vexplore --capture out.png   headless PNG; see {@link Capture}

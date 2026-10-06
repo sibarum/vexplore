@@ -68,6 +68,7 @@ final class Ui {
     private final Gui gui;
     private final Model model;
     private final Browser browser;
+    private final Opener opener;
     private final TitleBar titleBar;
 
     private final Breadcrumb<Path> crumbs;
@@ -83,10 +84,11 @@ final class Ui {
     /** Which rows the rail would reach. Read by the list to paint them, replaced when the rail changes. */
     private volatile Set<Path> targeted = Set.of();
 
-    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Actor actor, TitleBar titleBar) {
+    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Actor actor, TitleBar titleBar) {
         this.gui = gui;
         this.model = model;
         this.browser = browser;
+        this.opener = opener;
         this.titleBar = titleBar;
 
         Node tree = tree();
@@ -111,7 +113,7 @@ final class Ui {
 
         Node treePane = gui.column().width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Role.CHROME)).padding(Length.rem(0.6f)).children(tree);
-        this.dock = new Dock(gui);
+        this.dock = new Dock(gui, opener);
         gui.landmark(Landmarks.DOCK, dock.node());
         SplitPane listAndDock = new SplitPane(gui, SplitPane.Orientation.STACKED, table.node(), dock.node())
                 .sized(SplitPane.Pane.SECOND).size(Length.rem(15f))
@@ -210,6 +212,8 @@ final class Ui {
         t.rows().onActivate(e -> {
             if (e.folder()) {
                 browser.go(e.path());
+            } else {
+                opener.open(e.path());
             }
         });
         t.onSort((column, direction) -> {
@@ -283,6 +287,10 @@ final class Ui {
             }
             if (!table.selection().selection().equals(want)) {
                 table.selection().set(want);
+                // One file chosen from outside (another app's "show this file") may be far down a long folder.
+                if (want.size() == 1) {
+                    table.rows().reveal(want.iterator().next());
+                }
             }
         }
 

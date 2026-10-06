@@ -15,6 +15,7 @@
       {
         "name": "vexplore",
         "source": "target/vexplore.exe",
+        "icon": "src/main/rc/vexplore.ico",
         "addToPath": true,
         "shortcuts": { "desktop": true, "startMenu": true, "label": "Vexplore" }
       }

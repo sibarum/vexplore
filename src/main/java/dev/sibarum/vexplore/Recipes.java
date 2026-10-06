@@ -3,6 +3,7 @@ package dev.sibarum.vexplore;
 import dev.vexelray.framework.api.Configuration;
 import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;
+import dev.vexelray.framework.core.Launch;
 import dev.vexelray.framework.shell.Appearance;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.app.GuiApp;
@@ -73,6 +74,12 @@ final class Recipes {
         return new Actor(gui, model, browser, chooser, trash);
     }
 
+    /** Opening a file: the suite's text editor for text, the shell's open for the rest. */
+    @Provides
+    Opener opener(Gui gui) {
+        return new Opener(gui);
+    }
+
     /** Suggested destinations, kept current while a move or copy is chosen. */
     @Provides
     Destinator destinator(Gui gui, Model model) {
@@ -94,9 +101,9 @@ final class Recipes {
      * tree a capture gets should be the tree a user gets, already carrying a listing.
      */
     @Provides
-    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Previewer previewer, Destinator destinator,
-          Actor actor, TitleBar titleBar) {
-        Ui ui = new Ui(gui, krono, model, browser, actor, titleBar);
+    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Previewer previewer,
+          Destinator destinator, Actor actor, TitleBar titleBar, Launch launch) {
+        Ui ui = new Ui(gui, krono, model, browser, opener, actor, titleBar);
         // Every change to the state redraws what is derived from it, on the committing thread -- which is a
         // worker, because every control's handler is. The GUI thread never reads the model.
         model.onChange(ui::show);
@@ -108,7 +115,7 @@ final class Recipes {
         gui.shortcut(Key.Z, actor::undo, Modifier.CONTROL);
         // Last, and after the listener above: opening the first folder is a change, and a change nobody is
         // listening for is a window that opens onto an empty list.
-        Startup.apply(browser, model);
+        Startup.apply(browser, model, launch.rest());
         return ui;
     }
 

@@ -53,6 +53,18 @@ enabled for Panama.
 Startup properties, for a known state (see `Startup`): `vexplore.folder`, `vexplore.select` (comma-separated
 names), `vexplore.scope`, `vexplore.act`, `vexplore.hold`, `vexplore.trash`, and `vexplore.sync=true` to list on the calling thread.
 
+A path on the command line wins over `vexplore.folder`: `vexplore <folder>` opens it, and `vexplore <file>` opens the
+folder it is in with that file selected. That is how the suite's other apps say "show this here".
+
+## Opening a file, and the suite
+
+Enter or a double-click on a file opens it. Text and source (whatever the Preview Dock shows as text) go to the
+suite's text editor, started as `text-editor <file>` in a new window; everything else, and text when the editor is
+not installed, goes to the shell's own open, as in Explorer. The dock's header has *Open in Text Editor* for a text
+file, and says *Text Editor not installed* instead when it is not. The editor is found through its install record
+(`vexelray-installer`, read by the framework's `Apps`), so it has to be installed; a run from the checkout still
+finds an installed editor.
+
 
 ### Looking at it without a person
 
@@ -134,4 +146,5 @@ mvn -Pnative package -DskipTests           # target/vexplore-debug.exe  for otte
   `automation: localhost:<port>` for `ottermate --launch`.
 
 The plain JVM build, tests and `exec:exec` are the debug edition. The linker options are
-`/SUBSYSTEM:WINDOWS|CONSOLE` and `/ENTRY:mainCRTStartup` (pom, `pluginManagement`).
+`/SUBSYSTEM:WINDOWS|CONSOLE` and `/ENTRY:mainCRTStartup` (pom, `pluginManagement`). Both profiles also link
+`src/main/rc/vexplore.rc`, the executable's icon (the `vexplore` mark from `vexelray-icons`), compiled by `rc.exe`.
