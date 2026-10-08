@@ -82,7 +82,7 @@ final class Dock {
             // Said even when it cannot be done, so the way to edit a file is visible before the editor is installed.
             boolean editor = opener.editorInstalled();
             Path file = preview.path();
-            addHeader(new Button(gui, editor ? "Open in Text Editor" : "Text Editor not installed").enabled(editor)
+            addHeader(new Button(gui, editor ? "Open in Vex" : "Vex not installed").enabled(editor)
                     .onPress(() -> opener.edit(file)).node());
         }
         addHeader(new Button(gui, "Pop out").enabled(false).node());

@@ -60,8 +60,8 @@ folder it is in with that file selected. That is how the suite's other apps say 
 
 Enter or a double-click on a file opens it. Text and source (whatever the Preview Dock shows as text) go to the
 suite's text editor, started as `text-editor <file>` in a new window; everything else, and text when the editor is
-not installed, goes to the shell's own open, as in Explorer. The dock's header has *Open in Text Editor* for a text
-file, and says *Text Editor not installed* instead when it is not. The editor is found through its install record
+not installed, goes to the shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text
+file, and says *Vex not installed* instead when it is not. The editor is found through its install record
 (`vexelray-installer`, read by the framework's `Apps`), so it has to be installed; a run from the checkout still
 finds an installed editor.
 

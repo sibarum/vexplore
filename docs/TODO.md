@@ -28,7 +28,7 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       Vexplore keeps no session of its own yet, so what is left is upstream: window placement is the framework's
       `WindowMemory` and shares `Settings` with everything else (*Settings and the session* in the framework TODO).
       Marks, once they survive a restart (below), are session state and follow the same rule.
-- [ ] **A row menu.** Opening is Enter, double-click, or the dock's *Open in Text Editor*; `ListView` has no
+- [ ] **A row menu.** Opening is Enter, double-click, or the dock's *Open in Vex*; `ListView` has no
       context menu (the editor's tree and tabs do), so there is no *Open with* and no *Copy path* on a row. A
       framework change first.
 - [ ] **Two running windows share one log directory.** The native exe writes `vexplore.log` and
