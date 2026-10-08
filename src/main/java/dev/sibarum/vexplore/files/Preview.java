@@ -7,8 +7,8 @@ import java.util.List;
  * What the Preview Dock shows for one file, decided once and read-only.
  *
  * <p>Nothing in a previewed file is ever executed, and this record is the reason that is easy to keep true: it is
- * text and numbers, produced by {@link Previews} from a bounded read of the first bytes. A renderer that needed
- * the file to <em>do</em> anything would have to be a different kind of value, and would be refused at review.
+ * text, numbers and decoded pixels, produced by {@link Previews}. A renderer that needed the file to <em>do</em>
+ * anything would have to be a different kind of value, and would be refused at review.
  *
  * @param path     the file
  * @param tier     which renderer produced this — see {@link Tier}
@@ -17,9 +17,10 @@ import java.util.List;
  * @param entropy  Shannon entropy of the sample in bits per byte, 0 to 8; meaningful for {@link Tier#BYTES}
  * @param strings  printable runs found in the sample; meaningful for {@link Tier#BYTES}
  * @param truncated whether the file is longer than what was read
+ * @param picture  the decoded image for {@link Tier#IMAGE}, and null for every other tier
  */
 public record Preview(Path path, Tier tier, String identity, List<String> lines, double entropy,
-                      List<String> strings, boolean truncated) {
+                      List<String> strings, boolean truncated, Picture picture) {
 
     /**
      * The tiers of the design, from best to fallback. A type with no renderer falls to the next tier down, so no
@@ -28,6 +29,8 @@ public record Preview(Path path, Tier tier, String identity, List<String> lines,
     public enum Tier {
         /** A folder: not a file, but the dock is never empty either. */
         FOLDER("folder"),
+        /** Tier 1: the picture itself, animated if the file is. */
+        IMAGE("tier 1 · image"),
         /** Tier 3: the first lines of anything that decodes as text. */
         TEXT("tier 3 · text"),
         /** Tier 4: a hex dump, the strings in the file and an entropy bar. */

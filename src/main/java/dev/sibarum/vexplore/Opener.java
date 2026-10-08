@@ -1,6 +1,5 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.vexplore.files.Preview;
 import dev.sibarum.vexplore.files.Previews;
 import dev.vexelray.framework.shell.Apps;
 import dev.vexelray.gui.core.Gui;
@@ -40,7 +39,7 @@ final class Opener {
     /** Open {@code file}: the editor for text, the shell's open for the rest. */
     void open(Path file) {
         gui.offload().execute(() -> {
-            if (Previews.of(file).tier() == Preview.Tier.TEXT && start(file)) {
+            if (Previews.isText(file) && start(file)) {
                 return;
             }
             shell(file);

@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  * <p>It exists in the tree's phase and is given its window later, because the dialog needs the window's handle and
  * the window does not exist until after the tree has been built. A part that took {@code GuiApp} directly would put
  * {@code Ui} in the window's phase and a headless capture could no longer build it; this is the late-bound shape the
- * framework README shows for a clipboard. {@link Recipes#chooserBinding} binds it.
+ * framework README shows for a clipboard. {@link Recipes#windowBinding} binds it.
  *
  * <p>Call {@link #pick} from a worker, never the frame loop: it posts the dialog to the GUI thread, where its
  * contract requires it to run, and waits for the answer.

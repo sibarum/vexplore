@@ -169,3 +169,37 @@ single committer, `Gui.modifiers()`, `Gui.shortcut(Key.Z, ..., Modifier.CONTROL)
 documentation said. `Plan` as a value the card draws and `Operations.execute` carries out meant the "state the effect
 first" rule fell out of the types: the card cannot describe something the action will not do, because it is the same
 object.
+
+## Milestone 4 (image previews)
+
+### FN-16 · There is no box that keeps its aspect ratio 🔬
+
+An image wants to be shown whole, at its own aspect, as large as the dock allows. `Length` has no aspect-ratio
+unit and a node cannot size one axis from the other, so the picture sits in a well that fills the dock, `Gui.onResize`
+reports the well's content box, and the picture is sized in `Length.percent` of it, recomputed on every resize.
+Percent was the right unit because it needs neither the density nor a pixel length, which `Length` deliberately
+lacks. It works and it is a dozen lines every image viewer, video surface and thumbnail grid will write again. A
+`Node.aspect(w, h)` (contain-fit inside whatever the flex gives it) would make it a declaration.
+
+### FN-17 · Two late-bound parts cannot each have their own window binding 🔬
+
+`Textures` needs the window for the same reason `Chooser` does (FN-12), so it got the same shape: a tree-phase part
+and a `@MainThread @Provides AutoCloseable` that binds it. The processor then refused the build, rightly, because two
+providers of `AutoCloseable` is an ambiguity. The fix was one `windowBinding` that binds both. Fine for two; it means
+every future late-bound part edits one shared method rather than declaring its own binding beside itself. This is
+FN-12's "give this a window later" provider again, with a second witness.
+
+### FN-18 · A scene cannot photograph an animation 🔬
+
+`settle` errors after 10 s while an animation runs, which its message says and which is right. What it leaves is no
+way to wait *a while* and then shoot: the workaround was an `await` on text that never appears, which waits out its
+30 s and fails. Seen and not pinned down: after a `settle` that timed out, the shot showed the GIF's first frame both
+times, while after an idle 30 s `await` the animation had stepped 300 times. Whether `settle` holds the clock while it
+waits is worth checking in `vexelray-gui-automation`; a `wait <ms>` verb would remove the need either way.
+
+### FN-19 · Pixels in, texture out, texture back: the image path worked as documented
+
+`imagelib-wrapper` decoded every format tried, across the native boundary, in the JVM and in tests. `GuiApp.texture`,
+`Node.image(image, ImageRegion.cell(...))` and `GuiApp.release` did exactly what their Javadoc said, and the one
+thing `release` asks of an application (stop naming the texture first) is what the dock does anyway when it leaves the
+image tier. An animation as one sheet and a moving region needed no per-frame upload, as promised.

@@ -1,6 +1,9 @@
 package dev.sibarum.vexplore.files;
 
 import dev.sibarum.vexplore.files.Preview.Tier;
+import sibarum.imagelib.Frames;
+import sibarum.imagelib.Imagelib;
+import sibarum.probe.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,13 +20,18 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The bottom two tiers of the preview ladder, which are the ones every file can reach: the first lines of anything
- * that decodes as text, and, for everything else, a hex dump with the strings inside it and how random it looks.
+ * The preview ladder: the picture for anything imagelib can decode, then the first lines of anything that decodes as
+ * text, and, for everything else, a hex dump with the strings inside it and how random it looks.
  *
- * <p><b>A bounded read, and nothing else.</b> {@link #SAMPLE} bytes from the start of the file, through a plain
- * input stream. The file is never mapped, opened by an application, or handed to a decoder that interprets it; the
- * bytes are counted, decoded as text or dumped as numbers. That is what "previews are read-only and nothing is
- * executed" reduces to, and why the ladder's floor can be built before its ceiling.
+ * <p><b>A bounded read, and nothing executed.</b> {@link #SAMPLE} bytes from the start of the file, through a plain
+ * input stream, decide the tier. Only an image is read further, whole and up to {@link #MAX_IMAGE}, and handed to
+ * imagelib, whose decoders are pure Rust that turn bytes into pixels and run nothing the file names. The file is
+ * never mapped or opened by an application. That is what "previews are read-only and nothing is executed" reduces
+ * to.
+ *
+ * <p><b>Every failure falls a tier.</b> A file that says it is an image and will not decode, an image too large to
+ * hold, or a machine where the native decoder will not load: each one previews as the bytes it is, so no file is ever
+ * blank and none takes the dock down.
  *
  * <p>Blocking: run it on the offload lane.
  */
@@ -31,6 +39,17 @@ public final class Previews {
 
     /** How much of a file is read. Enough for a screenful of text and a meaningful entropy; cheap on a network share. */
     static final int SAMPLE = 64 * 1024;
+
+    /** The largest image file decoded. Past it the file is bytes, as any file is; its pixels would not fit anyway. */
+    static final long MAX_IMAGE = 128L * 1024 * 1024;
+
+    /** The long side a vector document is rasterised at: a {@link Picture#FRAME_SIDE}, since a vector has no size. */
+    static final int VECTOR_SIDE = Picture.FRAME_SIDE;
+
+    private static final Log LOG = Log.of("vexplore.preview");
+
+    /** Said once: a decoder that will not load fails the same way for every file after the first. */
+    private static volatile boolean decoderReported;
 
     /** Bytes shown in the hex dump, sixteen to a row. */
     static final int DUMP = 16 * 16;
@@ -46,14 +65,15 @@ public final class Previews {
     public static Preview of(Path path) {
         try {
             if (Files.isDirectory(path)) {
-                return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false);
+                return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false, null);
             }
             long size = Files.size(path);
             byte[] sample = read(path);
-            return of(path, sample, size > sample.length);
+            Preview image = image(path, sample, size);
+            return image != null ? image : of(path, sample, size > sample.length);
         } catch (IOException | RuntimeException e) {
             return new Preview(path, Tier.BYTES, "unreadable: " + e.getClass().getSimpleName(), List.of(), 0d,
-                    List.of(), false);
+                    List.of(), false, null);
         }
     }
 
@@ -72,10 +92,101 @@ public final class Previews {
                 }
             }
             String identity = sample.length == 0 ? "empty file" : "UTF-8 text";
-            return new Preview(path, Tier.TEXT, identity, List.copyOf(lines), entropy(sample), List.of(), truncated);
+            return new Preview(path, Tier.TEXT, identity, List.copyOf(lines), entropy(sample), List.of(), truncated,
+                    null);
         }
         return new Preview(path, Tier.BYTES, identify(sample), dump(sample), entropy(sample), strings(sample),
-                truncated);
+                truncated, null);
+    }
+
+    /** Whether {@code path} previews as text: the sample alone decides, so no image is decoded to answer it. */
+    public static boolean isText(Path path) {
+        try {
+            if (Files.isDirectory(path)) {
+                return false;
+            }
+            byte[] sample = read(path);
+            return decode(sample, Files.size(path) > sample.length) != null;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The image tier, or null to fall through to the others. The sample's first bytes say whether imagelib wants the
+     * file; only then is the whole of it read.
+     */
+    static Preview image(Path path, byte[] sample, long size) {
+        Imagelib.Kind kind;
+        try {
+            kind = Imagelib.probe(sample);
+        } catch (RuntimeException | LinkageError e) {
+            unavailable(e);
+            return null;
+        }
+        if (kind == Imagelib.Kind.UNKNOWN || size > MAX_IMAGE) {
+            return null;
+        }
+        try {
+            Stamp stamp = Stamp.of(path);
+            byte[] bytes = Files.readAllBytes(path);
+            Picture picture;
+            String what;
+            if (kind == Imagelib.Kind.VECTOR) {
+                Imagelib.Size intrinsic = Imagelib.svgSize(bytes);
+                int[] box = vectorBox(intrinsic.width(), intrinsic.height());
+                picture = Picture.of(stamp, Imagelib.rasterize(bytes, box[0], box[1]),
+                        Math.round(intrinsic.width()), Math.round(intrinsic.height()), true);
+                what = "SVG image";
+            } else {
+                Frames frames = Imagelib.decode(bytes);
+                picture = Picture.of(stamp, frames, frames.width(), frames.height(), false);
+                String named = identify(sample);
+                what = named.endsWith(" image") ? named : "image";
+            }
+            return new Preview(path, Tier.IMAGE, describe(what, picture), List.of(), 0d, List.of(), false, picture);
+        } catch (OutOfMemoryError e) {
+            // The one error worth catching: it is this file's pixels that did not fit, and the next file's will.
+            LOG.warn("{} is too large to decode for a preview", path);
+            return null;
+        } catch (IOException | RuntimeException | LinkageError e) {
+            if (e instanceof LinkageError) {
+                unavailable(e);
+            }
+            return null;
+        }
+    }
+
+    /** A vector's raster size: its own aspect, with the long side at {@link #VECTOR_SIDE}, and never zero. */
+    static int[] vectorBox(float width, float height) {
+        float w = width > 0f ? width : 1f;
+        float h = height > 0f ? height : 1f;
+        float scale = VECTOR_SIDE / Math.max(w, h);
+        return new int[] {Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))};
+    }
+
+    /** "PNG image · 1920 × 1080", and for an animation its frame count and length. */
+    static String describe(String what, Picture p) {
+        StringBuilder s = new StringBuilder(what).append(" · ").append(p.sourceWidth()).append(" × ")
+                .append(p.sourceHeight());
+        if (p.animated()) {
+            long ms = 0;
+            for (int d : p.delays()) {
+                ms += d;
+            }
+            s.append(" · ").append(p.count()).append(" frames");
+            if (ms > 0) {
+                s.append(String.format(Locale.ROOT, ", %.1f s", ms / 1000d));
+            }
+        }
+        return s.toString();
+    }
+
+    private static void unavailable(Throwable e) {
+        if (!decoderReported) {
+            decoderReported = true;
+            LOG.warn("images preview as bytes: the image decoder is unavailable ({})", e.toString());
+        }
     }
 
     private static byte[] read(Path path) throws IOException {

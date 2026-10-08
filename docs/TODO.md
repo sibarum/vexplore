@@ -80,9 +80,18 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       the tree's folders. The rail already never moves anything, so this is content, not layout.
 - [ ] **Inline previews in rows** (screen 03): thumbnail, sparkline, waveform, first line, page count. Cheap
       ones first: *first line* and *page count* need no decoding.
-- [ ] **Preview tiers 1 and 2.** Tier 4 (bytes) and tier 3 (text) are built and are the floor. Next: CSV (a `Table`),
-      JSON (a `TreeView`), archive listing (a `TreeView`), then images (`imagelib-wrapper`), then PDF. Executable
-      signature info reads the PE header as bytes and runs nothing.
+- [ ] **Preview tiers 1 and 2.** Tier 4 (bytes) and tier 3 (text) are built and are the floor, and tier 1 has its
+      images (`imagelib-wrapper`: raster, animated, SVG). Next: CSV (a `Table`), JSON (a `TreeView`), archive listing
+      (a `TreeView`), then PDF. Executable signature info reads the PE header as bytes and runs nothing.
+- [ ] **Images in the native executable are unverified.** The pom links imagelib's static library into the image
+      (`imagelib.static.dir`, staged by imagelib-wrapper's `native/build.sh`), and the JVM run, the tests and a
+      driven session all decode. Nobody has built `-Pnative` since, opened an image in it, and checked that the
+      DLL was not extracted. `natives/.*` is still included as a resource, so the DLL rides along unused.
+- [ ] **A transparent image sits on the well colour, not a checkerboard.** Right for icons, which is most of what
+      a transparent file is; a designer checking an alpha edge would want the checks.
+- [ ] **A large decode runs to the end after the selection has moved on**, and its result is then dropped as stale.
+      Arrowing quickly through a folder of photographs pays for every one. Abandoning it needs imagelib to offer a
+      cancel, which it does not.
 - [ ] **Pop out** the dock (`Popout` exists).
 - [ ] **Two Folders mode** (screen 05). Two tables, a status per row, suggestions from the comparison. **Open
       question from the design:** how "identical" is decided. Size and date are cheap; hashing is exact and slow for

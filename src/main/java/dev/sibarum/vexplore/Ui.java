@@ -84,7 +84,8 @@ final class Ui {
     /** Which rows the rail would reach. Read by the list to paint them, replaced when the rail changes. */
     private volatile Set<Path> targeted = Set.of();
 
-    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Actor actor, TitleBar titleBar) {
+    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Actor actor,
+       TitleBar titleBar) {
         this.gui = gui;
         this.model = model;
         this.browser = browser;
@@ -113,7 +114,7 @@ final class Ui {
 
         Node treePane = gui.column().width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Look.CHROME)).padding(Length.rem(0.6f)).children(tree);
-        this.dock = new Dock(gui, opener);
+        this.dock = new Dock(gui, krono, opener, textures);
         gui.landmark(Landmarks.DOCK, dock.node());
         SplitPane listAndDock = new SplitPane(gui, SplitPane.Orientation.STACKED, table.node(), dock.node())
                 .sized(SplitPane.Pane.SECOND).size(Length.rem(15f))

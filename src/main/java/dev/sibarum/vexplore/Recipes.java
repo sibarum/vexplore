@@ -48,24 +48,36 @@ final class Recipes {
     }
 
 
-    /** The folder dialog, built with the tree and given its window by {@link #chooserBinding}. */
+    /** The folder dialog, built with the tree and given its window by {@link #windowBinding}. */
     @Provides
     Chooser chooser() {
         return new Chooser();
     }
 
+    /** Pictures on the GPU, built with the tree and given its window by {@link #windowBinding}. */
+    @Provides
+    Textures textures() {
+        return new Textures();
+    }
+
     /**
-     * Gives the chooser its window, and takes it back on close. A part of its own in the window's phase, so that
-     * {@code Ui} stays out of it and a headless capture can still build the tree; nothing takes it, and the wiring
-     * builds it all the same. It returns an {@code AutoCloseable} because the container wants an interface and
-     * closes what it can, and because un-binding on the way out is true to what the part does.
+     * Gives the parts that need the window their window, and takes it back on close. A part of its own in the
+     * window's phase, so that {@code Ui} stays out of it and a headless capture can still build the tree; nothing
+     * takes it, and the wiring builds it all the same. It returns an {@code AutoCloseable} because the container
+     * wants an interface and closes what it can, and because un-binding on the way out is true to what the part
+     * does. One binding for every late-bound part, not one each: the container holds one provider per type.
      */
     @Provides
     @MainThread
-    AutoCloseable chooserBinding(GuiApp app, Chooser chooser) {
+    AutoCloseable windowBinding(GuiApp app, Chooser chooser, Textures textures) {
         chooser.bind(app);
-        return () -> chooser.bind(null);
+        textures.bind(app);
+        return () -> {
+            textures.bind(null);
+            chooser.bind(null);
+        };
     }
+
     /** Where deleted files wait. Not the system recycle bin, which Java reaches only through AWT. */
     @Provides
     Actor actor(Gui gui, Model model, Browser browser, Chooser chooser) {
@@ -101,9 +113,9 @@ final class Recipes {
      * tree a capture gets should be the tree a user gets, already carrying a listing.
      */
     @Provides
-    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Previewer previewer,
-          Destinator destinator, Actor actor, TitleBar titleBar, Launch launch) {
-        Ui ui = new Ui(gui, krono, model, browser, opener, actor, titleBar);
+    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures,
+          Previewer previewer, Destinator destinator, Actor actor, TitleBar titleBar, Launch launch) {
+        Ui ui = new Ui(gui, krono, model, browser, opener, textures, actor, titleBar);
         // Every change to the state redraws what is derived from it, on the committing thread -- which is a
         // worker, because every control's handler is. The GUI thread never reads the model.
         model.onChange(ui::show);

@@ -29,7 +29,7 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | Rail: Select / Condition / Action chips | `Button` (toggle) | **added** | A chip is a button that holds a value. `pressed(v)` acts as the user would, `show(v)` does not, so a panel re-reading its model cannot loop. |
 | Rail: summary card, primary action | `Button` (`PRIMARY`) | **added** | The one filled control on the screen. Violet, from the palette's `action` anchor, which `Look` sets to the accent. Its label says what pressing it does ("Move 9 files"), and it is disabled, with a reason, when it would do nothing. |
 | Rail: chips wrap to rows | wrapping row | **missing** | The layout engine has no wrap. The rail counts chips two to a row. See TODO. |
-| Preview Dock | `Dock` | app | A header, a tier tag, a body. Text and hex today. |
+| Preview Dock | `Dock` | app | A header, a tier tag, a body. Images, text and hex today. An image is `Node.image` on a box sized in percent of a well whose box `Gui.onResize` reports, since the layout has no aspect-ratio length; an animation is one sheet and `ImageRegion.cell` stepped on the krono clock. |
 | Dock: pop out | `Popout` | had | Not wired yet; the button is present and disabled. |
 | Dock: hex dump | text lines | app | Sixteen bytes a row. A virtualised `ByteView` widget is worth extracting once a second application wants one. |
 | Dock: entropy bar | two `grow` boxes | app | `grow(e)` and `grow(8-e)`, the same trick `Toggle` and `Slider` use. |
@@ -43,8 +43,8 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | --- | --- | --- | --- |
 | 02 Fresh file, drag start | "new" tag on a row, drag ghost replaced by a *Carrying* card | missing | `TreeView` and `Reorder` do drag and drop between tree nodes; dragging a *list row* to the tree does not exist. The card that stands in for the drag ghost is app code over `Gui.drag()`. |
 | 02 | Marks on tree rows (destination counts) | missing | `TreeView.rowNode(item)` gives the row, so it is expressible, but a `TreeView.marked(...)` mirroring the list's would be the reusable form. |
-| 03 | Inline row previews: thumbnail, sparkline, waveform, first line, page count | missing | Sparkline and waveform are `Sketch` → `Picture` marks (draw lane). Thumbnails need an image decode and `Node.image`, which wants a device-owned `SampledImage`. |
-| 03/04 | Preview tier 1 (image, PDF, video, audio) | missing | Needs image decode (`imagelib-wrapper` exists) and a PDF and video story. |
+| 03 | Inline row previews: thumbnail, sparkline, waveform, first line, page count | missing | Sparkline and waveform are `Sketch` → `Picture` marks (draw lane). Thumbnails are now the dock's path at a smaller size: `Previews` decodes, `Textures` uploads through `GuiApp.texture` and gives back through `GuiApp.release`. |
+| 03/04 | Preview tier 1 (image, PDF, video, audio) | **images built** | Images through `imagelib-wrapper` (raster, animated and SVG). PDF, video and audio still need a decoder story. |
 | 04 | Preview tier 2 (CSV table, JSON tree, archive listing) | missing | CSV is a `Table`, JSON is a `TreeView`, an archive is a `TreeView`: composition, not new widgets. |
 | 04 | Executable signature info | missing | Read the PE header as bytes. Never run anything. |
 | 05 | Two-folder mode, per-row comparison status | missing | Two `Table`s side by side inside a `SplitPane`, a status column, and a comparison engine beside `Suggestions`. |

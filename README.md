@@ -30,9 +30,9 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | **Shift** held: where the range likely ends, in the order shown. **Control** held: the rule the picks are examples of. Same slot as the ordinary chips; ignoring them costs nothing | A modifier cannot be held from `ottermate`, so the live behaviour is checked by unit tests and `-Dvexplore.hold=` captures |
 | **Move, Copy, Archive, Delete, Mark.** Each plans first (counts, bytes, what would be left alone and why), runs off the frame loop, and can be undone with Ctrl+Z or the Undo button | Drag and drop, fresh-file highlighting |
 | Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
-| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, preview tiers 1 and 2, Two Folders |
-| Preview Dock: text (tier 3), bytes (tier 4) | Any test of the layout itself |
-| 54 tests, none of which needs a window | |
+| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2, Two Folders |
+| Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
+| 72 tests, none of which needs a window (the image ones decode for real, through imagelib) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
@@ -89,8 +89,9 @@ puts the model as though that key were down, which `ottermate` cannot do.
 ## How it is put together
 
 ```
-files/     the file system, and nothing else. Entry, Kind, Folders (the only reader), Preview, Previews,
-           Destinations. No GUI. Blocking: callers run these on Gui.offload().
+files/     the file system, and nothing else. Entry, Kind, Folders (the only reader), Preview, Previews, Picture
+           (a decoded image packed into one sheet), Stamp (which version of a file), Destinations. No GUI.
+           Blocking: callers run these on Gui.offload().
 suggest/   the rail's brain, as pure functions: Suggestions (Select/Condition/Action), Intents (what Shift and
            Control are announcing), Order (the sort, shared with the table). Tested against a folder that is a
            list of values.
@@ -99,9 +100,11 @@ ops/       Plan (what an action would do, a value the card can draw) and Operati
 Model      the one state (Doc: input + work + the rest), the only way to change it, and an onChange that never
            delivers an older document after a newer one.
 Browser    navigate + list off the frame loop; a listing for a folder you have left is dropped.
-Previewer  keeps the dock matching the selection, same rule. Destinator does the same for destinations.
+Previewer  keeps the dock matching the selection, same rule, and keeps recent decoded images (an LRU by bytes).
+           Destinator does the same for destinations.
+Textures   pictures on the GPU: uploaded once, recent ones kept, the rest handed to GuiApp.release. Late-bound.
 Actor      the one place a button becomes a change to the disk: run, undo, mark, choose a destination.
-Chooser    the native folder dialog, built with the tree and given its window later (see Recipes).
+Chooser    the native folder dialog, built with the tree and given its window later (Recipes.windowBinding).
 Ui, RailView, Dock   the tree. Hold no application state, only a cache of what they last drew.
 Look       colour: the design's hex values as palette anchors, and the roles the palette has no name for.
 Recipes    what is built; the wiring is generated from it.

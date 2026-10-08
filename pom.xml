@@ -21,6 +21,10 @@
         <vexelray-gui.version>0.1.0-SNAPSHOT</vexelray-gui.version>
         <vexelray.version>0.1.0-SNAPSHOT</vexelray.version>
         <tactroller.version>1.0-SNAPSHOT</tactroller.version>
+        <imagelib.version>0.1.0-SNAPSHOT</imagelib.version>
+        <!-- imagelib's static library and the linker arguments beside it, staged by imagelib-wrapper's
+             native/build.sh. Only the native image reads them; a JVM run extracts the DLL from the jar. -->
+        <imagelib.static.dir>${project.basedir}/../imagelib-wrapper/native/dist/static/windows-x86_64</imagelib.static.dir>
         <junit.version>5.11.4</junit.version>
 
         <app.mainClass>dev.sibarum.vexplore.Vexplore</app.mainClass>
@@ -110,6 +114,13 @@
             <artifactId>tactroller-clipboard</artifactId>
             <version>${tactroller.version}</version>
         </dependency>
+        <!-- Pixels from any image file (PNG, JPEG, GIF, WebP, SVG and the rest) as RGBA8 ready to upload: the
+             Preview Dock's first tier. The GUI decodes nothing itself, by design. -->
+        <dependency>
+            <groupId>sibarum.imagelib</groupId>
+            <artifactId>imagelib-wrapper</artifactId>
+            <version>${imagelib.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -151,6 +162,11 @@
                             <buildArg>-H:NativeLinkerOption=/SUBSYSTEM:${native.subsystem}</buildArg>
                             <buildArg>-H:NativeLinkerOption=/ENTRY:mainCRTStartup</buildArg>
                             <buildArg>-H:NativeLinkerOption=${project.build.directory}/vexplore.res</buildArg>
+                            <!-- imagelib linked in rather than extracted: its loader finds the symbols in the
+                                 executable and skips the DLL. The args file exports them, which is what keeps the
+                                 linker from dropping a library nothing calls by name. -->
+                            <buildArg>-H:NativeLinkerOption=${imagelib.static.dir}/imagelib.lib</buildArg>
+                            <buildArg>@${imagelib.static.dir}/imagelib-link.args</buildArg>
                         </buildArgs>
                     </configuration>
                 </plugin>
