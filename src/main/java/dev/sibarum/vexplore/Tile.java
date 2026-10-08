@@ -36,6 +36,13 @@ final class Tile {
     static final Length GAP = Length.rem(0.5f);
     private static final Length GLYPH = Length.rem(1.625f);
 
+    /**
+     * How much of a tile's fill is drawn: the picture and the backdrop show through it. Only the fill: the edge, the
+     * icon and the word stay opaque, so a tile reads the same over anything. There is no backdrop blur to soften
+     * what shows through (FN-25), so this stays well above half.
+     */
+    static final float GLASS = 0.62f;
+
     private static final Shortcut ENTER = Shortcut.of(Key.ENTER);
     private static final Shortcut SPACE = Shortcut.of(Key.SPACE);
 
@@ -126,6 +133,11 @@ final class Tile {
         return this;
     }
 
+    /** {@code c} as a see-through fill: {@link #GLASS} of it. */
+    static Color glass(Color c) {
+        return Color.withAlpha(c, c.a() * GLASS);
+    }
+
     private void activate() {
         if (enabled) {
             onPress.run();
@@ -155,7 +167,7 @@ final class Tile {
             ink = theme.color(Role.INK);
             word = theme.color(Look.TEXT);
         }
-        node.background(fill).border(Length.dp(1), edge).lit(enabled)
+        node.background(glass(fill)).border(Length.dp(1), edge).lit(enabled)
                 .elevation(enabled ? theme.elevation(Relief.RAISED, s) : Length.ZERO);
         label.textColor(word);
         float px = glyphPx;

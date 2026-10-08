@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.files.Picture;
+import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.ImageRegion;
 import dev.vexelray.gui.core.Node;
@@ -219,12 +220,13 @@ final class Filmstrip {
         gui.focusable(n, false);
         gui.cursor(n, live ? CursorShape.POINTER : CursorShape.DEFAULT);
         if (p == null) {
-            n.background(gui.theme().color(Role.CHROME)).border(Length.dp(1), gui.theme().color(Role.LINE))
+            n.background(Tile.glass(gui.theme().color(Role.CHROME))).border(Length.dp(1), gui.theme().color(Role.LINE))
                     .lit(false).elevation(Length.ZERO);
             plates[slot].background(gui.theme().color(Role.NONE));
             return;
         }
-        n.background(gui.theme().color(here ? Role.ACCENT : Role.RAISED, s))
+        Color fill = gui.theme().color(here ? Role.ACCENT : Role.RAISED, s);
+        n.background(here ? fill : Tile.glass(fill))
                 .border(Length.dp(1), gui.theme().color(here ? Look.ENTROPY_HIGH : Look.LINE_STRONG))
                 .lit(true).elevation(Length.ZERO);
         plates[slot].background(gui.theme().color(Role.WELL));

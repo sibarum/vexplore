@@ -3,6 +3,7 @@ package dev.sibarum.vexplore;
 import dev.sibarum.vexplore.ImageView.Backdrop;
 import dev.sibarum.vexplore.files.Picture;
 import dev.sibarum.vexplore.files.Preview;
+import dev.vexelray.canvas.Color;
 import dev.vexelray.framework.shell.Appearance;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
@@ -80,6 +81,9 @@ final class Viewer {
     /** The title's text column is this wide and clips, so a long name never pushes the filmstrip aside. */
     private static final Length TITLE_W = Length.rem(10f);
     private static final Length SWATCH = Length.rem(1.75f);
+    /** How much of a panel's fill is drawn. Its tiles are see-through too ({@link Tile#GLASS}), so together they cover
+     *  about four fifths: the picture shows behind the controls and the words on them stay legible. */
+    static final float PANEL_ALPHA = 0.5f;
 
     private final Gui gui;
     private final KronoGui krono;
@@ -528,7 +532,7 @@ final class Viewer {
     /** A group of tiles on a panel of its own. */
     private Node slab(Node n) {
         return n.width(Length.AUTO).height(Length.AUTO).padding(Tile.GAP).gap(Tile.GAP).corner(SLAB_CORNER)
-                .scroll(false, false).background(gui.theme().color(Look.CHROME))
+                .scroll(false, false).background(Color.withAlpha(gui.theme().color(Look.CHROME), PANEL_ALPHA))
                 .border(Length.dp(1), gui.theme().color(Role.LINE))
                 .elevation(gui.theme().elevation(Relief.FLOATING));
     }
