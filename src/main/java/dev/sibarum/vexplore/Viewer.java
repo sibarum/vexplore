@@ -101,6 +101,10 @@ final class Viewer {
     private final Node menu;
     private final Map<Backdrop, Tile> swatches = new EnumMap<>(Backdrop.class);
 
+    /** The window's box, for drawing the checkerboard across it, and the size it was last drawn at. */
+    private volatile NodeLayout windowBox = NodeLayout.ABSENT;
+    private long checkered = -1;
+
     private volatile GuiApp app;
     private volatile AppWindow window;
     private volatile boolean open;
@@ -175,12 +179,15 @@ final class Viewer {
                 .floatAt(Length.percent(100f), Length.percent(100f)).visible(false)
                 .children(slab(gui.column()).alignItems(AlignItems.CENTER).children(caption, choices));
 
-        this.image = new ImageView(gui, krono, textures, Length.rem(1f), Length.rem(1f));
+        this.image = new ImageView(gui, krono, textures, Length.rem(1f), Length.rem(1f)).bare();
         gui.onClick(image.node(), this::closeMenu);
         Node stage = gui.column().width(Length.FILL).height(Length.grow(1f)).scroll(false, false)
                 .children(image.node(), menu);
-        gui.root().direction(Direction.COLUMN).background(gui.theme().color(Role.WELL))
-                .children(bar.node(), stage, controls);
+        gui.root().direction(Direction.COLUMN).children(bar.node(), stage, controls);
+        gui.onResize(gui.root(), box -> {
+            windowBox = box;
+            paintBackdrop();
+        });
         backdrop(Backdrop.DARK);
 
         gui.shortcut(Key.LEFT, () -> step(-1));
@@ -397,7 +404,31 @@ final class Viewer {
 
     private void backdrop(Backdrop b) {
         image.backdrop(b);
+        paintBackdrop();
         swatches.forEach((k, t) -> t.on(k == b));
+    }
+
+    /**
+     * The backdrop is the whole window's, not only the picture's: the window's own fill, and for the checkerboard its
+     * drawing, redrawn when the window changes size. The picture's frames are bare, so one pattern runs behind it all.
+     */
+    private synchronized void paintBackdrop() {
+        Backdrop b = image.backdrop();
+        Node root = gui.root();
+        root.background(ImageView.color(gui.theme(), b));
+        if (b != Backdrop.CHECKER) {
+            root.picture(null);
+            checkered = -1;
+            return;
+        }
+        NodeLayout box = windowBox;
+        int w = Math.round(box.rect().w());
+        int h = Math.round(box.rect().h());
+        long size = (long) w << 32 | h;
+        if (box.present() && w > 0 && h > 0 && size != checkered) {
+            checkered = size;
+            root.picture(ImageView.checks(w, h).picture());
+        }
     }
 
     private void toggleMenu() {

@@ -89,6 +89,8 @@ final class ImageView {
     private final AtomicInteger transition = new AtomicInteger();
     private volatile NodeLayout stageBox = NodeLayout.ABSENT;
     private volatile Backdrop backdrop = Backdrop.DARK;
+    /** Whether the backdrop is left to whatever is behind the view ({@link #bare}). */
+    private volatile boolean bare;
 
     ImageView(Gui gui, KronoGui krono, Textures textures, Length padY, Length padX) {
         this.gui = gui;
@@ -158,6 +160,18 @@ final class ImageView {
         transition.incrementAndGet();
         front.clear();
         back.clear();
+    }
+
+    /**
+     * Leave the backdrop to whatever is behind the view: the frames are bare, so a transparent pixel shows the window
+     * itself, and {@link #backdrop} is only remembered. The viewer paints its backdrop across the whole window, so a
+     * checkerboard runs on unbroken past the picture's edge.
+     */
+    synchronized ImageView bare() {
+        bare = true;
+        front.paint();
+        back.paint();
+        return this;
     }
 
     Backdrop backdrop() {
@@ -323,6 +337,10 @@ final class ImageView {
         }
 
         void paint() {
+            if (bare) {
+                frame.background(Color.TRANSPARENT).picture(null);
+                return;
+            }
             frame.background(color(gui.theme(), backdrop));
             if (backdrop != Backdrop.CHECKER) {
                 frame.picture(null);
@@ -344,7 +362,7 @@ final class ImageView {
             float[] f = fraction(p, cw, ch);
             frame.size(Length.percent(100f * f[0]), Length.percent(100f * f[1]))
                     .floatAt(Length.percent(50f * (1f - f[0])), Length.percent(50f * (1f - f[1])));
-            if (backdrop == Backdrop.CHECKER) {
+            if (!bare && backdrop == Backdrop.CHECKER) {
                 int w = Math.round(f[0] * cw);
                 int h = Math.round(f[1] * ch);
                 long size = (long) w << 32 | h;
