@@ -74,7 +74,7 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 ## The design's own promises, still open
 
 - [ ] **A file that landed five seconds ago is highlighted** (screen 02). Needs a `WatchService` on the shown folder,
-      a "fresh" mark in amber (`Look.AMBER_WASH` exists), and the *new* tag. Mark, don't select.
+      a "fresh" mark in amber (`Look.ANCHOR_DIM` exists), and the *new* tag. Mark, don't select.
 - [ ] **Drag and drop as the fallback** (screen 02). A dragged list row, a *Carrying* card at the top of the rail,
       likely destinations listed with reasons (`Destinator` already computes them), and the same numbers marked on
       the tree's folders. The rail already never moves anything, so this is content, not layout.

@@ -9,54 +9,87 @@ import dev.vexelray.gui.core.style.Shading;
 import dev.vexelray.gui.core.style.Theme;
 
 /**
- * Colour, decided once. The design handoff names its colours as hex values; the palette wants anchors, so each is
- * read straight from the value the design gives ({@link Oklab#of}) and the ladders do the rest.
+ * Colour, decided once, from the Vexplore design system's tokens (its {@code tokens.json}; the token names are
+ * written beside each value here so a search for one finds both). The palette's anchors are read straight from
+ * token values ({@link Oklab#of}) and the ladders give the framework's widgets their surfaces; the roles below
+ * that the ladders cannot reach are the tokens themselves, by name.
  *
- * <h2>Two chromatic anchors, and they do not mean the same thing</h2>
- * <b>Teal is selection</b> and is the palette's {@code accent}. <b>Amber is Vexplore speaking</b> — a suggestion, a
- * new file, a decision to make — and is the palette's {@code action}, so the one filled button on a screen (the
- * suggestion's own action) is amber without a widget naming a colour. The design is explicit that they are not
- * interchangeable: a screen where amber marked selection would teach the user to ignore the rail.
+ * <h2>Violet is "you chose this", amber is "this is why you are seeing this"</h2>
+ * <b>Violet</b> ({@code accent}, about 258 degrees) is the palette's {@code accent} <em>and</em> its {@code action}:
+ * a chosen chip, focus, and the one filled button on a screen are all the user's own choice, so they share a hue.
+ * Vex owns cyan in the suite; the accent stays violet so the two windows are told apart at a glance.
+ * <b>Amber</b> ({@code anchor}) is not in the palette at all. It marks provenance only — the "based on" label, the
+ * fresh file, a name that conflicts — and is never a button fill. Rose ({@code danger}) is destructive and nothing
+ * else.
+ *
+ * <h2>Where the ladder lands</h2>
+ * The surface ladder starts at {@code bg-0} and steps 0.03 in Oklab lightness, which puts the framework's levels
+ * within 0.01 of the tokens a widget would have used: level 1 is {@code bg-1}, 2 is {@code card}, 3 is
+ * {@code raised}/{@code hover}, 4 is {@code tree-active}/{@code line}. The ink fades from {@code text-hi} so that
+ * level 1 is {@code text-dim} and level 2 is {@code text-disabled}. {@code LookTest} pins each of these.
  */
 final class Look {
 
-    // ---------------------------------------------------------------- anchors, from the handoff's hex values
+    // ---------------------------------------------------------------- anchors, from the tokens
 
-    private static final Oklab PAGE = of(0x16171a);
-    private static final Oklab INK = of(0xe8e6e1);
-    private static final Oklab TEAL = of(0x7cc4c4);
-    private static final Oklab AMBER = of(0xe0a458);
-    private static final Oklab DANGER = of(0xc4353b);
-    private static final Oklab DEPTH = of(0x08090b);
+    private static final Oklab PAGE = of(0x0e0c14);      // bg-0
+    private static final Oklab INK = of(0xece8f5);       // text-hi
+    private static final Oklab VIOLET = of(0xb08fff);    // accent
+    private static final Oklab DANGER = of(0xe06a7a);    // danger
 
-    /** Lightness per rung; the handoff's page, panel, rail, card, divider and border are rungs 0 to 5 of this. */
-    private static final double STEP = 0.0185;
-    private static final double FADE = 0.2;
+    /** Lightness per rung: bg-0, bg-1, card, raised, line are rungs 0 to 4 of this. */
+    private static final double STEP = 0.03;
+    /** text-hi to text-dim is 0.387 of the way to the page; the next rung lands on text-disabled. */
+    private static final double FADE = 0.387;
     private static final double SHADOW_ALPHA = 0.55;
 
-    static final Palette PALETTE = new Palette(PAGE, STEP, INK, FADE, TEAL, AMBER, DANGER, DEPTH, SHADOW_ALPHA);
+    /** Shadows are drawn in the ground itself (the visual guide's drag shadow is "in bg-0"). */
+    static final Palette PALETTE = new Palette(PAGE, STEP, INK, FADE, VIOLET, VIOLET, DANGER, PAGE, SHADOW_ALPHA);
 
     static final Theme THEME = Theme.of(PALETTE, Shading.ON_DARK, Relief.STANDARD, false, false);
 
-    // ---------------------------------------------------------------- roles the palette does not name
+    // ---------------------------------------------------------------- tokens the ladders do not reach
 
-    /** The selected rows: the page with a fifth of teal in it (the handoff's {@code #223338}). */
-    static final Role SELECTED = p -> p.page().mix(p.accent(), 0.20).toColor();
+    /** {@code bg-1}: the file list body. */
+    static final Role LIST = token(0x15121d);
 
-    /** The row the selection is anchored on: a little more (the handoff's {@code #2a4247}). */
-    static final Role ANCHOR = p -> p.page().mix(p.accent(), 0.27).toColor();
+    /** {@code chrome}: the tree, the status bar and the dock — darker than the list, which no rung above the page is. */
+    static final Role CHROME = token(0x13101a);
 
-    /** Rows a suggestion would reach: the selected look, quieter, so a selection still reads through it. */
-    static final Role TARGETED = p -> p.page().mix(p.accent(), 0.13).toColor();
+    /** {@code rail}: the Suggestion Rail. */
+    static final Role RAIL = token(0x16131f);
 
-    /** A card or a row that Vexplore is suggesting or that is new: the page with amber in it. */
-    static final Role AMBER_WASH = p -> p.page().mix(p.action(), 0.12).toColor();
+    /** {@code card}: the summary card at the foot of the rail. */
+    static final Role CARD = token(0x1c1827);
 
-    /** Amber as text on the dark ground: the action colour lifted toward the ink so it reads at small sizes. */
-    static final Role AMBER_INK = p -> p.action().mix(p.ink(), 0.35).toColor();
+    /** {@code line-strong}: the border of a control or the summary card, 3:1 against every surface it sits on. */
+    static final Role LINE_STRONG = token(0x70669a);
 
-    /** The rail's own ground, one rung above the page's chrome. */
-    static final Role RAIL = p -> p.surface(2);
+    /** {@code text}: values — sizes, the summary card's file list, metadata on a washed row. */
+    static final Role TEXT = token(0xbdb6cc);
+
+    /** {@code anchor-wash}: the selected row, the file the suggestions are derived from. */
+    static final Role SELECTED = token(0x3e3260);
+
+    /** {@code scope-wash}: rows the current Select and Condition would reach. */
+    static final Role TARGETED = token(0x2c244c);
+
+    /** {@code anchor}: amber, as text — "based on", a conflict. Provenance only, never a fill. */
+    static final Role ANCHOR = token(0xe8a85c);
+
+    /** {@code anchor-dim}: the wash behind a fresh file or a conflicting row. */
+    static final Role ANCHOR_DIM = token(0x2a1f14);
+
+    /** The dock's entropy bar below 5 bits per byte: the accent hue, darker (the visual guide's {@code #6e5fc0}). */
+    static final Role ENTROPY_LOW = token(0x6e5fc0);
+
+    /** The dock's entropy bar above 7.5 bits per byte: the accent hue, lighter (the visual guide's {@code #d9ccff}). */
+    static final Role ENTROPY_HIGH = token(0xd9ccff);
+
+    private static Role token(int rgb) {
+        Color c = Color.rgb(rgb);
+        return p -> c;
+    }
 
     private static Oklab of(int rgb) {
         return Oklab.of(Color.rgb(rgb));

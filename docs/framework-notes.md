@@ -78,14 +78,29 @@ Chips want to flow: as many as fit, then a new line. `FlexLayout` has `Direction
 no wrap, so the rail counts chips two to a row. It works because the chips are the same size whatever they say,
 and it is exactly the kind of number that is right at one zoom and wrong at another.
 
-### FN-6 · The palette has one accent and the design has two 🔬💡
+### FN-6 · The design system names colours the palette's ladders cannot reach 🔬💡
 
-Teal means *selected* and amber means *Vexplore is saying something*, and the design is emphatic that they never
-swap. `Palette` has `accent` and `action`; teal is the first and amber is the second, so the one filled button on a
-screen comes out amber for free. That is a fit, not a design: `action` is documented as "the fill of a filled
-control". The wash colours (`Look.SELECTED`, `TARGETED`, `AMBER_WASH`, `AMBER_INK`) are `Role`s defined in the
-application, which `Role` being an open functional interface made easy. A documented pattern, or a third anchor,
-would make it a decision rather than a coincidence.
+The Vexplore design system (violet, about 258°) gives every surface its own token. `Look` reads the palette's
+anchors from those tokens and steps the ladder 0.03 from `bg-0`, so the framework's levels land within 0.01 of
+the matching tokens; `LookTest` pins each gap. Violet is both `accent` and `action`, because a chosen chip and the
+primary button are both the user's choice. Amber (`anchor`) is provenance only and is not in the palette at all.
+The tokens that sit between rungs (`bg-1` as the list, `chrome` darker than the list, `rail`, `card`,
+`line-strong`, the two row washes, amber) are `Role`s in `Look`, named after their tokens.
+
+What the palette cannot fix, because a widget names the role:
+
+- **List and tree bodies are `WELL`**, one rung *below* the page (`#08060c`), where the design wants `bg-1`
+  (`#15121d`) for the list. Out-of-scope rows are darker than designed.
+- **`Button` (`SECONDARY`) borders are `EDGE`** (rung 6). The design's `line-strong` is 3:1 against every surface,
+  about rung 13, so chip edges are fainter than designed.
+- **A chosen toggle fills with `HIGHLIGHT`**, the accent at 35% alpha. The design wants an opaque `accent-fill`
+  with a `text-bright` label ("interactive means opaque").
+- **A disabled button keeps a `LINE` border.** The design wants it to blend into its panel, with no border.
+- **A row has no edge marker**, so the anchor row's 3px amber `anchor-edge` is not drawn. It has the
+  `anchor-wash` fill only.
+
+Each wants a role the widget asks for by purpose (a control's edge, a chosen fill, a list body), so an
+application can point it at a token.
 
 ### FN-7 · `Table` could not be styled, and marks did not exist 🔬 — **partly fixed**
 

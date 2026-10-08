@@ -27,7 +27,7 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | File list, rows a suggestion would reach | `ListView.marked` | **extended** | A fill that is not a selection, so a preview of a suggestion never has to be undone. Selected outranks marked. |
 | Suggestion Rail | a fixed column | app | The rail is *layout*, not a widget: it is a place. What goes in it is Vexplore's. |
 | Rail: Select / Condition / Action chips | `Button` (toggle) | **added** | A chip is a button that holds a value. `pressed(v)` acts as the user would, `show(v)` does not, so a panel re-reading its model cannot loop. |
-| Rail: summary card, primary action | `Button` (`PRIMARY`) | **added** | The one filled control on the screen. Amber comes from the palette's `action` anchor. Its label says what pressing it does ("Move 9 files"), and it is disabled, with a reason, when it would do nothing. |
+| Rail: summary card, primary action | `Button` (`PRIMARY`) | **added** | The one filled control on the screen. Violet, from the palette's `action` anchor, which `Look` sets to the accent. Its label says what pressing it does ("Move 9 files"), and it is disabled, with a reason, when it would do nothing. |
 | Rail: chips wrap to rows | wrapping row | **missing** | The layout engine has no wrap. The rail counts chips two to a row. See TODO. |
 | Preview Dock | `Dock` | app | A header, a tier tag, a body. Text and hex today. |
 | Dock: pop out | `Popout` | had | Not wired yet; the button is present and disabled. |

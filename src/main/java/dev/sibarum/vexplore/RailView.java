@@ -88,7 +88,7 @@ final class RailView {
         Rail rail = key.rail();
 
         Node basis = gui.text(rail.basis().isEmpty() ? "" : "based on " + rail.basis()).font(Type.MONO)
-                .textSize(Type.SMALL).textColor(gui.theme().color(Look.AMBER_INK)).wordWrap(false);
+                .textSize(Type.SMALL).textColor(gui.theme().color(Look.ANCHOR)).wordWrap(false);
         gui.landmark(Landmarks.BASIS, basis);
         add(gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).children(
                 gui.text("Suggestions").font(Type.UI).textSize(Type.HEADING).textColor(gui.theme().color(Role.INK)),
@@ -149,7 +149,7 @@ final class RailView {
     private Node notice(Work work) {
         boolean busy = !work.busy().isEmpty();
         Node text = gui.text(busy ? work.busy() : work.notice()).font(Type.UI).textSize(Type.META)
-                .textColor(gui.theme().color(busy ? Look.AMBER_INK : Role.DIM)).wordWrap(true)
+                .textColor(gui.theme().color(busy ? Look.TEXT : Role.DIM)).wordWrap(true)
                 .width(Length.grow(1f));
         gui.landmark(Landmarks.NOTICE, text);
         Button undo = new Button(gui, "Undo").kind(Button.Kind.GHOST)
@@ -199,10 +199,10 @@ final class RailView {
 
         Node card = gui.column().width(Length.FILL).gap(Length.rem(0.6f))
                 .padding(Length.rem(1f)).corner(Length.rem(0.6f))
-                .background(gui.theme().color(act == null ? Role.PANEL : Look.AMBER_WASH))
-                .border(Length.dp(1), gui.theme().color(act == null ? Role.LINE : Look.AMBER_INK));
+                .background(gui.theme().color(Look.CARD))
+                .border(Length.dp(1), gui.theme().color(Look.LINE_STRONG));
         card.append(top);
-        card.append(gui.text(list).font(Type.UI).textSize(Type.META).textColor(gui.theme().color(Role.DIM))
+        card.append(gui.text(list).font(Type.UI).textSize(Type.META).textColor(gui.theme().color(Look.TEXT))
                 .wordWrap(true).width(Length.FILL));
 
         if (act == Act.MOVE || act == Act.COPY) {
@@ -211,7 +211,7 @@ final class RailView {
         if (planned && !plan.skipped().isEmpty()) {
             card.append(gui.text(plan.skipped().size() + " will be left alone: "
                     + plan.skipped().get(0).reason() + ".").font(Type.UI).textSize(Type.META)
-                    .textColor(gui.theme().color(Look.AMBER_INK)).wordWrap(true).width(Length.FILL));
+                    .textColor(gui.theme().color(Look.ANCHOR)).wordWrap(true).width(Length.FILL));
         }
         if (act == Act.ARCHIVE && plan != null) {
             card.append(gui.text("into " + plan.archive().toString()).font(Type.MONO).textSize(Type.SMALL)

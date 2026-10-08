@@ -46,7 +46,7 @@ final class Dock {
         this.body = gui.column().width(Length.FILL).height(Length.grow(1f))
                 .padding(Length.rem(0.5f), Length.rem(1.25f)).gap(Length.rem(0.15f)).scroll(false, true);
         this.frame = gui.column().role("preview").width(Length.FILL).height(Length.FILL)
-                .background(gui.theme().color(Role.CHROME)).scroll(false, false).children(header, body);
+                .background(gui.theme().color(Look.RAIL)).scroll(false, false).children(header, body);
         show(null);
     }
 
@@ -103,7 +103,8 @@ final class Dock {
         Node bar = gui.row().width(Length.FILL).height(Length.dp(6)).corner(Length.dp(3)).scroll(false, false)
                 .background(gui.theme().color(Role.WELL))
                 .children(gui.box().width(Length.grow((float) e)).height(Length.FILL)
-                                .background(gui.theme().color(e > 7.5 ? Look.AMBER_INK : Role.ACCENT)),
+                                .background(gui.theme().color(e > 7.5 ? Look.ENTROPY_HIGH
+                                        : e < 5.0 ? Look.ENTROPY_LOW : Role.ACCENT)),
                         gui.box().width(Length.grow((float) (8.0 - e) + 0.001f)).height(Length.FILL));
         addBody(text(String.format(Locale.ROOT, "entropy %.1f of 8 bits per byte · %s", p.entropy(),
                 p.entropy() > 7.5 ? "looks compressed or encrypted"

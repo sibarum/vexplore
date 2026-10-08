@@ -107,19 +107,19 @@ final class Ui {
         Node topBar = gui.row().width(Length.FILL).height(Length.rem(3f))
                 .alignItems(AlignItems.CENTER)
                 .padding(Length.ZERO, Length.rem(1.25f))
-                .background(gui.theme().color(Role.CHROME))
+                .background(gui.theme().color(Look.CHROME))
                 .children(crumbs.node(), gui.box().width(Length.grow(1f)).height(Length.FILL), sortNote);
         gui.landmark(Landmarks.TOP_BAR, topBar);
 
         Node treePane = gui.column().width(Length.FILL).height(Length.FILL)
-                .background(gui.theme().color(Role.CHROME)).padding(Length.rem(0.6f)).children(tree);
+                .background(gui.theme().color(Look.CHROME)).padding(Length.rem(0.6f)).children(tree);
         this.dock = new Dock(gui, opener);
         gui.landmark(Landmarks.DOCK, dock.node());
         SplitPane listAndDock = new SplitPane(gui, SplitPane.Orientation.STACKED, table.node(), dock.node())
                 .sized(SplitPane.Pane.SECOND).size(Length.rem(15f))
                 .minFirst(Length.rem(8f)).minSecond(Length.rem(6f));
         Node listPane = gui.column().width(Length.FILL).height(Length.FILL)
-                .background(gui.theme().color(Role.PAGE)).children(listAndDock.node());
+                .background(gui.theme().color(Look.LIST)).children(listAndDock.node());
         SplitPane split = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, treePane, listPane)
                 .size(Length.rem(15.625f)).minFirst(Length.rem(9f)).minSecond(Length.rem(24f));
         gui.landmark(Landmarks.SPLIT, split.node());
@@ -133,7 +133,7 @@ final class Ui {
                 .children(split.node(), railEdge, railPane);
         split.node().width(Length.grow(1f));
 
-        status.node().width(Length.FILL).height(Length.rem(1.875f)).background(gui.theme().color(Role.CHROME));
+        status.node().width(Length.FILL).height(Length.rem(1.875f)).background(gui.theme().color(Look.CHROME));
         gui.landmark(Landmarks.STATUS, status.node());
 
         gui.root().direction(Direction.COLUMN)
