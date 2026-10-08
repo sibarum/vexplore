@@ -31,6 +31,9 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | Rail: chips wrap to rows | wrapping row | **missing** | The layout engine has no wrap. The rail counts chips two to a row. See TODO. |
 | Preview Dock | `Dock` | app | A header, a tier tag, a body. Images, text and hex today. An image is `Node.image` on a box sized in percent of a well whose box `Gui.onResize` reports, since the layout has no aspect-ratio length; an animation is one sheet and `ImageRegion.cell` stepped on the krono clock. |
 | Dock: pop out | `AppWindow` + `TitleBar` | app | For an image, the `Viewer`: its own `Gui` and a named window, as `Popout` builds its away tree, but a different view rather than the same panel moved. Steps drive the selection; five backdrops. `Popout` itself does not fit: the dock is not edge-docked. |
+| Viewer: controls | `Tile` | app | One square size for every control, an icon over a word. `Button` is one text node and takes no icon, so this is `Popout.button`'s recipe with `Button`'s keys (FN-24). Icons are `Icons`, strokes in a `Sketch`. |
+| Viewer: filmstrip | `Filmstrip` | app | Tile-sized thumbnails either side of the shown image, from what `Previewer` already decoded; how many show is decided by the bar's width. |
+| Viewer: idle fade | input bus + krono | app | The bar fades after 2.5 s without input and keeps its room. Pointer moves read off the bus (no per-node hook); the cursor cannot be hidden (FN-26). |
 | Dock: hex dump | text lines | app | Sixteen bytes a row. A virtualised `ByteView` widget is worth extracting once a second application wants one. |
 | Dock: entropy bar | two `grow` boxes | app | `grow(e)` and `grow(8-e)`, the same trick `Toggle` and `Slider` use. |
 | Status bar | `StatusBar` | **added** | Declared slots on a left and a right side; a slot's place never changes, only what it says. |

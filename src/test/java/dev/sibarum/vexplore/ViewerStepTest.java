@@ -55,6 +55,31 @@ class ViewerStepTest {
         assertEquals(List.of(), Previewer.around(ordered, Path.of("notes.txt")));
     }
 
+    @Test
+    void theFilmstripsReachIsWhatAroundLeavesWithinThree() {
+        List<Entry> ordered = new java.util.ArrayList<>();
+        for (char c = 'a'; c <= 'h'; c++) {
+            ordered.add(entry(c + ".png", false));
+        }
+        Path d = Path.of("d.png");
+        assertEquals(List.of(Path.of("b.png"), Path.of("g.png"), Path.of("a.png")), Previewer.reach(ordered, d));
+        assertEquals(List.of(Path.of("d.png")), Previewer.reach(ordered, A),
+                "from the first, only three after: around has the next two");
+        assertEquals(List.of(), Previewer.reach(ordered, Path.of("notes.txt")));
+    }
+
+    @Test
+    void thumbnailsTakeWhatTheTwoSidesLeave() {
+        // 72 px tiles and 8 px gaps, as drawn at the design's size: the middle slab is 16 + 72 + (n + 1) * 80.
+        float tile = 72f;
+        float gap = 8f;
+        float side = 300f;
+        float middleFor7 = 2 * gap + 9 * tile + 8 * gap;
+        assertEquals(7, Viewer.thumbnails(2 * side + 2 * 16f + middleFor7, side, tile, gap, 16f));
+        assertEquals(6, Viewer.thumbnails(2 * side + 2 * 16f + middleFor7 - 1f, side, tile, gap, 16f));
+        assertEquals(0, Viewer.thumbnails(500f, side, tile, gap, 16f), "no room: Previous and Next only");
+    }
+
     private static Entry entry(String name, boolean folder) {
         return new Entry(Path.of(name), folder, 1, Instant.EPOCH);
     }

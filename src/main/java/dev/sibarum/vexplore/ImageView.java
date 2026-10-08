@@ -10,6 +10,7 @@ import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.layout.NodeLayout;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.core.style.Theme;
 import dev.vexelray.gui.draw.Sketch;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.krono.Scheduled;
@@ -190,16 +191,20 @@ final class ImageView {
         }
     }
 
-    /** The plain backdrops are a background colour; the checkerboard is drawn, in {@link #fit}, at the frame's size. */
-    private void paint() {
-        Color c = switch (backdrop) {
-            case DARK -> gui.theme().color(Role.WELL);
+    /** The colour a backdrop shows; for the checkerboard, its light squares. A swatch of it uses the same. */
+    static Color color(Theme theme, Backdrop b) {
+        return switch (b) {
+            case DARK -> theme.color(Role.WELL);
             case LIGHT -> Color.rgb(0xF4F4F4);
             case CHECKER -> CHECK_LIGHT;
             case MAGENTA -> Color.rgb(0xFF00FF);
             case GREEN -> Color.rgb(0x00FF00);
         };
-        frame.background(c);
+    }
+
+    /** The plain backdrops are a background colour; the checkerboard is drawn, in {@link #fit}, at the frame's size. */
+    private void paint() {
+        frame.background(color(gui.theme(), backdrop));
         if (backdrop != Backdrop.CHECKER) {
             frame.picture(null);
         }
@@ -217,10 +222,15 @@ final class ImageView {
 
     /** The dark squares of a {@code w x h} checkerboard; the light ones are the frame's background. */
     static Sketch checks(int w, int h) {
+        return checks(w, h, CHECK_PX);
+    }
+
+    /** The same with squares of {@code side} px: a swatch of the checkerboard wants smaller ones. */
+    static Sketch checks(int w, int h, int side) {
         Sketch s = new Sketch().tag("checker");
-        for (int y = 0, row = 0; y < h; y += CHECK_PX, row++) {
-            for (int x = (row & 1) * CHECK_PX; x < w; x += 2 * CHECK_PX) {
-                s.fill(x, y, Math.min(CHECK_PX, w - x), Math.min(CHECK_PX, h - y), CHECK_DARK);
+        for (int y = 0, row = 0; y < h; y += side, row++) {
+            for (int x = (row & 1) * side; x < w; x += 2 * side) {
+                s.fill(x, y, Math.min(side, w - x), Math.min(side, h - y), CHECK_DARK);
             }
         }
         return s;

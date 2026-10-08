@@ -86,6 +86,12 @@ final class Look {
     /** The dock's entropy bar above 7.5 bits per byte: the accent hue, lighter (the visual guide's {@code #d9ccff}). */
     static final Role ENTROPY_HIGH = token(0xd9ccff);
 
+    /**
+     * The viewer's chosen control: an opaque violet fill ("interactive means opaque"), edged in {@code accent} and
+     * labelled in {@link #ENTROPY_HIGH}'s light violet. The fill is the viewer mockups' chosen-button violet.
+     */
+    static final Role CHOSEN = token(0x3d2f78);
+
     private static Role token(int rgb) {
         Color c = Color.rgb(rgb);
         return p -> c;

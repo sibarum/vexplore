@@ -100,7 +100,18 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 - [ ] **Pop out for the other tiers.** Text and bytes have the button greyed. A text pop-out is the editor (Vex),
       which the dock already offers, so this may never be wanted.
 - [ ] **The viewer has no zoom or pan.** It fits the picture to the window and never enlarges a raster. 1:1 and a
-      drag to pan are the next thing an image viewer is asked for.
+      drag to pan are the next thing an image viewer is asked for. The lit redesign (the *Vexplore Viewer, lit* row
+      of the design canvas) draws them as a Size menu (Fit, Fill, Width, Height, 1:1), Zoom in, Zoom out and Rotate,
+      each a `Tile` in the bar; rotation also needs the framework, which has no rotate (FN-25).
+- [ ] **The viewer's file actions.** The redesign has Favorite, Move to, Open with and Delete beside the picture.
+      Move and Delete are the `Actor`'s already (to the trash, with undo); Favorite is probably a Mark; Open with
+      does not exist anywhere yet (see *A row menu*). Left off the screen until they work, not shown disabled.
+- [ ] **The viewer's lighting pass. On hold (2026-10-08).** The redesign is lit: the picture's own colours glowing behind it, light
+      shafts, a vignette, a floor reflection, glass tiles with a specular highlight and a coloured glow when on. The
+      first pass is flat: solid fills, the framework's `lit` bevel and its drop shadow. Every one of the rest needs
+      something the renderer does not have (FN-25); decide whether that is generated textures here or effects
+      upstream before starting.
+- [ ] **The viewer cannot hide the cursor** when its bar fades, which the redesign's idle state wants (FN-26).
 - [ ] **Two Folders mode** (screen 05). Two tables, a status per row, suggestions from the comparison. **Open
       question from the design:** how "identical" is decided. Size and date are cheap; hashing is exact and slow for
       a multi-gigabyte video. Proposal: size + date first, hash only on demand and only when they disagree in a way

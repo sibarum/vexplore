@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Keeps the Preview Dock's contents matching the selection.
@@ -33,7 +34,9 @@ import java.util.Objects;
  *
  * <p><b>While the viewer is open</b> ({@link #large}), each image is also made at the viewer's size from the same
  * decode, and an idle worker reads ahead: the next image in the folder, then the previous, then the one after next,
- * so stepping through finds them waiting. Reading ahead stops the moment a real request arrives.
+ * so stepping through finds them waiting. Then, at the dock's size only, the rest of what the viewer's filmstrip
+ * shows ({@link #reach}), so its thumbnails fill in. Reading ahead stops the moment a real request arrives, and each
+ * image it reads is announced to {@link #onRead}, since no model change says so.
  */
 final class Previewer {
 
@@ -48,9 +51,14 @@ final class Previewer {
     private Path last;
     private Path wanted;
     private boolean running;
-    private final Deque<Path> ahead = new ArrayDeque<>();
+    private final Deque<Ahead> ahead = new ArrayDeque<>();
 
     private volatile boolean large;
+    private volatile Consumer<Path> read = p -> { };
+
+    /** A read ahead: an image, and whether it is wanted at the viewer's size or only as a thumbnail. */
+    private record Ahead(Path path, boolean big) {
+    }
 
     Previewer(Gui gui, Model model) {
         this.gui = gui;
@@ -73,13 +81,34 @@ final class Previewer {
         }
     }
 
+    /** Who to tell when a read ahead lands, on the worker that read it. One listener: the viewer. */
+    void onRead(Consumer<Path> listener) {
+        read = listener == null ? p -> { } : listener;
+    }
+
+    /**
+     * The preview already decoded for {@code path}, or null if there is none or the file has changed since. Reads the
+     * file's stamp, so not on the GUI thread.
+     */
+    Preview kept(Path path) {
+        try {
+            return images.get(Stamp.of(path));
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     private void follow(Doc doc) {
         follow(doc, false);
     }
 
     private void follow(Doc doc, boolean again) {
         Path want = doc.single();
-        List<Path> next = large && want != null ? around(doc.ordered(), want) : List.of();
+        List<Ahead> next = new ArrayList<>();
+        if (large && want != null) {
+            around(doc.ordered(), want).forEach(p -> next.add(new Ahead(p, true)));
+            reach(doc.ordered(), want).forEach(p -> next.add(new Ahead(p, false)));
+        }
         synchronized (this) {
             if (Objects.equals(want, last) && !again) {
                 return;
@@ -115,21 +144,27 @@ final class Previewer {
             while (true) {
                 Path path;
                 boolean real;
+                boolean big;
                 synchronized (this) {
                     path = wanted;
                     wanted = null;
                     real = path != null;
+                    big = large;
                     if (!real) {
-                        path = ahead.poll();
+                        Ahead a = ahead.poll();
+                        path = a == null ? null : a.path();
+                        big = a != null && a.big() && large;
                     }
                     if (path == null) {
                         running = false;
                         return;
                     }
                 }
-                Preview p = preview(path);
+                Preview p = preview(path, big);
                 if (real) {
                     model.previewed(path, p);
+                } else {
+                    read.accept(path);
                 }
             }
         } catch (RuntimeException | Error e) {
@@ -140,8 +175,7 @@ final class Previewer {
         }
     }
 
-    private Preview preview(Path path) {
-        boolean big = large;
+    private Preview preview(Path path, boolean big) {
         try {
             Preview kept = images.get(Stamp.of(path));
             if (kept != null && (!big || kept.large() != null)) {
@@ -166,6 +200,26 @@ final class Previewer {
         }
         List<Path> out = new ArrayList<>(3);
         for (int d : new int[] {1, -1, 2}) {
+            int j = i + d;
+            if (j >= 0 && j < pictures.size()) {
+                out.add(pictures.get(j));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The rest of what the viewer's filmstrip shows around {@code at}, beyond {@link #around}: two before, then three
+     * after and three before. Wanted as thumbnails only.
+     */
+    static List<Path> reach(List<Entry> ordered, Path at) {
+        List<Path> pictures = images(ordered);
+        int i = pictures.indexOf(at);
+        if (i < 0) {
+            return List.of();
+        }
+        List<Path> out = new ArrayList<>(3);
+        for (int d : new int[] {-2, 3, -3}) {
             int j = i + d;
             if (j >= 0 && j < pictures.size()) {
                 out.add(pictures.get(j));

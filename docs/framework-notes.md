@@ -235,3 +235,33 @@ The viewer is `Popout`'s recipe applied by hand: its own `Gui` on the host's lan
 a `TitleBar` composed onto the `WindowSpec` with `commands`, and `GuiApp.window(key, spec)`, which made opening it
 twice raise the one that exists. Textures uploaded for the main window drew in the viewer unchanged, the krono
 clock animated nodes in either tree, and `GuiApp.release` already looked in every window before closing anything.
+
+## The viewer, redesigned
+
+### FN-24 · A control that is an icon over a word has to be built from parts 🔬
+
+The redesigned viewer makes every control the same square, an icon over a label, so nothing is icon-only. `Button` is
+one text node with no icon and no content of its own, and there is no UI icon set: `vexelray-icons` holds application
+marks, and the fonts have no star, rotate or cross (`×` and `‹ ›` are there). So `Tile` is `Popout.button`'s recipe
+again (a box, `onClick`, `onState` for hover, `focusable`, `cursor`, and Enter and Space claimed while focused), and
+`Icons` draws each icon as `Sketch` strokes on a 24-unit grid, redrawn when its box changes size. Every application
+with a toolbar will write both. A `Button` that takes an icon node (or any content), and a small stroke icon set in the
+draw lane, would make them declarations.
+
+### FN-25 · The renderer draws flat boxes, so a lit design has to be faked or wait 🔬
+
+The redesign is lit: radial glows, gradients, a blurred copy of the picture behind it, coloured shadows, glass with a
+specular highlight. The engine draws a rounded box with one solid fill, one uniform border, a drop shadow in the
+theme's colour at a fixed offset, and the `lit` bevel; `architecture.md` defers blur and bloom, and lists scale,
+rotation and tint as not built. The first pass is therefore flat by choice. What would be needed, cheapest first:
+gradient fills (a 1×N texture stretched over a box works today, at one upload per gradient), a shadow or glow colour
+per node, image tint and opacity, and a blurred sample of a texture (or a downscaled copy made on the CPU, which also
+works today). Rotation for the viewer's Rotate is the same gap.
+
+### FN-26 · Nothing can hide the cursor 🔬
+
+A viewer at rest hides its controls and the pointer. `CursorShape` has no `NONE`, and the native window maps only an
+arrow, a text beam and the resize cursors; the cursor is hidden only during a pointer-locked drag. The bar fades and
+the arrow stays. A `CursorShape.HIDDEN` on a node would cover it. Related: fading the bar on idle reads pointer moves
+off the input bus, since there is no per-node move hook, and the framework's own rule is that nothing appears on hover.
+This is a fade after *no* input, which brings the bar back on any input, so it is kept; worth a word in that rule.
