@@ -28,9 +28,10 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       Vexplore keeps no session of its own yet, so what is left is upstream: window placement is the framework's
       `WindowMemory` and shares `Settings` with everything else (*Settings and the session* in the framework TODO).
       Marks, once they survive a restart (below), are session state and follow the same rule.
-- [ ] **A row menu.** Opening is Enter, double-click, or the dock's *Open in Vex*; `ListView` has no
-      context menu (the editor's tree and tabs do), so there is no *Open with* and no *Copy path* on a row. A
-      framework change first.
+- [ ] ***Open with* on a row.** The row menu (`Ui.rowMenu`) has Open, View, Open in Vex, the staged actions and
+      Copy path / name. *Open with* would be Windows' own chooser (`rundll32 shell32.dll,OpenAs_RunDLL <file>`);
+      unbuilt, and unverified from a native exe. *Show in Explorer* (`explorer /select,<file>`) is the same kind of
+      call.
 - [ ] **Two running windows share one log directory.** The native exe writes `vexplore.log` and
       `vexplore-probe.csv` under `~/.vexplore/logs`. Unchecked whether two processes at once overwrite or
       interleave them; spawned windows make that normal, not rare.
@@ -105,7 +106,7 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       each a `Tile` in the bar; rotation also needs the framework, which has no rotate (FN-25).
 - [ ] **The viewer's file actions.** The redesign has Favorite, Move to, Open with and Delete beside the picture.
       Move and Delete are the `Actor`'s already (to the trash, with undo); Favorite is probably a Mark; Open with
-      does not exist anywhere yet (see *A row menu*). Left off the screen until they work, not shown disabled.
+      does not exist anywhere yet (see *Open with on a row*). Left off the screen until they work, not shown disabled.
 - [ ] **The viewer's lighting pass. On hold (2026-10-08).** The redesign is lit: the picture's own colours glowing behind it, light
       shafts, a vignette, a floor reflection, glass tiles with a specular highlight and a coloured glow when on. The
       first pass is flat: solid fills, the framework's `lit` bevel and its drop shadow. Every one of the rest needs

@@ -40,6 +40,7 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | Status bar | `StatusBar` | **added** | Declared slots on a left and a right side; a slot's place never changes, only what it says. |
 | Modifier keys as intent | `Gui.modifiers()` | had | A `State<Set<Modifier>>`; `Recipes` feeds it to the model, and `suggest/Intents` answers. |
 | Keyboard reachability | `ClaimScope` claims | had | Every chip and button takes Enter and Space. |
+| File list: row menu | `ListView.onContextMenu` | **extended** | The item under the pointer and a `MenuSink`, as `TreeView` has; a right click selects first unless the row is already selected. Vexplore's menu opens at once and *stages* actions on the rail, so the card still states the effect first. |
 
 ## Still needed for the rest of the design
 

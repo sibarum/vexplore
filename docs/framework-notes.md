@@ -272,3 +272,17 @@ The viewer's step now slides and fades its picture and glides its filmstrip, abo
 is nowhere to ask whether the person wants less motion: no setting in the framework, and nothing read from the OS's
 own (Windows' "Show animations"). Each application that animates will invent its own flag. A `Gui.reducedMotion()`
 state, fed from the OS, that `KronoGui.ramp` and `animate` honour by jumping to the end, would cover every one.
+
+## The row menu
+
+### FN-28 · `ListView` had no context menu 🔬 — **fixed, in `vexelray-gui-widget`**
+
+`TreeView` and `Tabs` each give their rows a menu with the item in hand; `ListView`, and so `Table`, did not, and its
+rows are built and dropped as they scroll, so an application cannot attach one per row and keep it. `ListView` now has
+`onContextMenu(BiConsumer<T, MenuSink>)`, held by the list and asked by each row. A right click selects the row first,
+unless it is already part of the selection (then the menu is about all of it), and only on a list that has a menu,
+so a `Select`'s options are not chosen by one. A `Table` reaches it through `rows()`.
+
+Not a framework matter but worth recording: the design says nothing may cover the file list, and a context menu does,
+for as long as the user holds it open. It is the user's own request at the user's pointer, which is what the rule
+exists to protect, so it is kept.

@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.files.Entry;
+import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Folders;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.sibarum.vexplore.suggest.Dates;
@@ -11,6 +12,7 @@ import dev.sibarum.vexplore.suggest.Suggestions.Option;
 import dev.sibarum.vexplore.suggest.Suggestions.Rail;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
+import dev.vexelray.gui.core.input.MenuSink;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
 import dev.vexelray.gui.core.layout.Length;
@@ -70,6 +72,7 @@ final class Ui {
     private final Browser browser;
     private final Opener opener;
     private final TitleBar titleBar;
+    private final Viewer viewer;
 
     private final Breadcrumb<Path> crumbs;
     private final Table<Entry> table;
@@ -98,6 +101,7 @@ final class Ui {
         this.browser = browser;
         this.opener = opener;
         this.titleBar = titleBar;
+        this.viewer = viewer;
 
         Node tree = tree();
         this.crumbs = new Breadcrumb<Path>(gui, Ui::crumbLabel).font(Type.UI).onNavigate(browser::go);
@@ -221,6 +225,7 @@ final class Ui {
                 model.select(paths(sel));
             }
         });
+        t.rows().onContextMenu(this::rowMenu);
         t.rows().onActivate(e -> {
             if (e.folder()) {
                 browser.go(e.path());
@@ -236,6 +241,72 @@ final class Ui {
         gui.landmark(Landmarks.LIST, t.node());
         t.sortBy(3, Table.Sort.DESCENDING);
         return t;
+    }
+
+    /**
+     * A row's right-click menu. The list has already selected the row, unless it was part of a selection, in which
+     * case the menu is about every selected row, in the order shown.
+     *
+     * <p><b>Opening is immediate; acting is staged.</b> Open, View and Open in Vex do what they say. Move, Copy,
+     * Archive, Delete and Mark put the files and the action on the Suggestion Rail, exactly as choosing the Action chip
+     * would, so the summary card says what will happen ("9 files, 6.5 GB, nothing has moved yet") and its button does
+     * it: an action shows its effect before it runs, whichever door it came in by. Hence the ellipsis on each.
+     */
+    private void rowMenu(Entry clicked, MenuSink menu) {
+        Set<Entry> selected = table.selection().selection();
+        List<Entry> on = new ArrayList<>();
+        if (selected.contains(clicked)) {
+            for (Entry e : model.doc().ordered()) {
+                if (selected.contains(e)) {
+                    on.add(e);
+                }
+            }
+        }
+        if (on.isEmpty()) {
+            on.add(clicked);
+        }
+        Set<Path> paths = paths(Set.copyOf(on));
+        boolean one = on.size() == 1;
+        if (one && clicked.folder()) {
+            menu.item("Open", () -> browser.go(clicked.path()));
+            menu.separator();
+        } else if (one) {
+            menu.item("Open", () -> opener.open(clicked.path()));
+            if (clicked.kind() == Kind.IMAGE) {
+                menu.item("View", () -> {
+                    model.select(paths);
+                    viewer.open();
+                });
+            }
+            menu.item("Open in Vex", opener.editorInstalled(), () -> opener.edit(clicked.path()));
+            menu.separator();
+        }
+        menu.item("Move to…", () -> stage(paths, Act.MOVE));
+        menu.item("Copy to…", () -> stage(paths, Act.COPY));
+        menu.item("Archive…", () -> stage(paths, Act.ARCHIVE));
+        menu.item("Delete…", () -> stage(paths, Act.DELETE));
+        menu.item("Mark for later…", () -> stage(paths, Act.MARK));
+        menu.separator();
+        menu.item(one ? "Copy path" : "Copy " + on.size() + " paths",
+                () -> gui.clipboard().set(join(on, e -> e.path().toString())));
+        menu.item(one ? "Copy name" : "Copy " + on.size() + " names", () -> gui.clipboard().set(join(on, Entry::name)));
+    }
+
+    /** Put {@code paths} and {@code act} on the rail: those files selected, and nothing else chosen but the action. */
+    private void stage(Set<Path> paths, Act act) {
+        model.change(d -> {
+            Doc s = d.selected().equals(paths) ? d : d.selecting(paths);
+            return s.picking(Suggestions.Pick.NONE.with(act));
+        });
+    }
+
+    /** One line each, for the clipboard. */
+    private static String join(List<Entry> entries, java.util.function.Function<Entry, String> line) {
+        StringBuilder out = new StringBuilder();
+        for (Entry e : entries) {
+            out.append(out.isEmpty() ? "" : System.lineSeparator()).append(line.apply(e));
+        }
+        return out.toString();
     }
 
     private Node cell(Gui g, String text, int face, Length size, Role ink, HAlign align) {
