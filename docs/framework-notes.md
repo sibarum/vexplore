@@ -265,3 +265,10 @@ arrow, a text beam and the resize cursors; the cursor is hidden only during a po
 the arrow stays. A `CursorShape.HIDDEN` on a node would cover it. Related: fading the bar on idle reads pointer moves
 off the input bus, since there is no per-node move hook, and the framework's own rule is that nothing appears on hover.
 This is a fade after *no* input, which brings the bar back on any input, so it is kept; worth a word in that rule.
+
+### FN-27 · Motion has no "reduce" switch 🔬
+
+The viewer's step now slides and fades its picture and glides its filmstrip, about a quarter of a second each. There
+is nowhere to ask whether the person wants less motion: no setting in the framework, and nothing read from the OS's
+own (Windows' "Show animations"). Each application that animates will invent its own flag. A `Gui.reducedMotion()`
+state, fed from the OS, that `KronoGui.ramp` and `animate` honour by jumping to the end, would cover every one.

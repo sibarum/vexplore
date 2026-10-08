@@ -72,4 +72,18 @@ final class Textures {
         });
         return true;
     }
+
+    /**
+     * Run {@code then} on the GUI thread after every {@link #show} already asked for has handed over its texture, so a
+     * change that must land in the same frame as some pictures (a filmstrip starting to slide) does. At once if there
+     * is no window, since nothing is coming.
+     */
+    void then(Runnable then) {
+        GuiApp window = app;
+        if (window == null) {
+            then.run();
+            return;
+        }
+        window.post(then);
+    }
 }

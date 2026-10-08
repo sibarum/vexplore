@@ -105,6 +105,8 @@ final class Viewer {
     private volatile AppWindow window;
     private volatile boolean open;
     private Picture shown;
+    /** The file {@link #shown} is of: where the next picture is coming from, for the side it slides in on. */
+    private Path shownPath;
 
     /** The bar's idle fade. Guarded by this, except the volatiles, which input reads on its own thread. */
     private volatile long stirred;
@@ -140,17 +142,13 @@ final class Viewer {
         gui.landmark(Landmarks.VIEWER_BACKGROUND, background.node());
         gui.landmark(Landmarks.VIEWER_KEEP, keep.node());
 
-        this.strip = new Filmstrip(gui, textures, this::thumbnail, this::pick);
+        this.strip = new Filmstrip(gui, krono, textures, this::thumbnail, this::pick);
 
         Node words = gui.column().width(TITLE_W).height(Length.AUTO).gap(Length.rem(0.375f))
                 .padding(Length.ZERO, Length.rem(0.375f)).clip(true).scroll(false, false)
                 .children(name, info, count);
         this.title = slab(gui.row()).alignItems(AlignItems.CENTER).children(close.node(), words);
-        Node browse = slab(gui.row()).alignItems(AlignItems.CENTER).children(prev.node());
-        for (Node n : strip.nodes()) {
-            browse.append(n);
-        }
-        browse.append(next.node());
+        Node browse = slab(gui.row()).alignItems(AlignItems.CENTER).children(prev.node(), strip.node(), next.node());
         this.tools = slab(gui.row()).alignItems(AlignItems.CENTER).children(background.node(), keep.node());
 
         Node left = gui.row().width(Length.grow(1f)).height(Length.AUTO).scroll(false, false).children(title);
@@ -266,6 +264,7 @@ final class Viewer {
                             idle = null;
                         }
                         shown = null;
+                        shownPath = null;
                         image.clear();
                     }
                 });
@@ -300,6 +299,7 @@ final class Viewer {
         }
         if (p.tier() != Preview.Tier.IMAGE) {
             shown = null;
+            shownPath = null;
             image.clear();
             info.text(p.identity() + " · not an image");
             return;
@@ -308,7 +308,8 @@ final class Viewer {
         info.text(p.identity());
         if (want != shown) {
             shown = want;
-            image.show(want);
+            image.show(want, direction(pictures, shownPath, at));
+            shownPath = at;
         }
     }
 
@@ -340,6 +341,16 @@ final class Viewer {
             Path target = target(Previewer.images(d.ordered()), d.single(), delta);
             return target == null || d.selected().equals(Set.of(target)) ? d : d.selecting(Set.of(target));
         });
+    }
+
+    /**
+     * Which side the picture of {@code to} comes in from, after the picture of {@code from}: 1 if it is later in the
+     * folder, -1 if earlier, 0 if it is the same file (a sharper copy arriving) or either is not among {@code pictures}.
+     */
+    static int direction(List<Path> pictures, Path from, Path to) {
+        int a = from == null ? -1 : pictures.indexOf(from);
+        int b = to == null ? -1 : pictures.indexOf(to);
+        return a < 0 || b < 0 ? 0 : Integer.signum(b - a);
     }
 
     /** Where a step of {@code delta} from {@code at} lands among {@code pictures}, or null when there are none. */

@@ -69,6 +69,29 @@ class ViewerStepTest {
     }
 
     @Test
+    void aPictureComesInFromTheSideItIsOn() {
+        assertEquals(1, Viewer.direction(PICTURES, A, C), "later in the folder: in from the right");
+        assertEquals(-1, Viewer.direction(PICTURES, C, B));
+        assertEquals(0, Viewer.direction(PICTURES, B, B), "a sharper copy of the same file does not slide");
+        assertEquals(0, Viewer.direction(PICTURES, null, A), "the first picture shown just appears");
+        assertEquals(0, Viewer.direction(PICTURES, Path.of("gone.png"), A));
+    }
+
+    @Test
+    void aPictureIsShownWholeAndNeverEnlarged() {
+        // 400 x 200 in a 1000 x 1000 stage: its own size, so 40% by 20%.
+        var small = new dev.sibarum.vexplore.files.Picture(null, new byte[0], 400, 200, 1, 1, new int[1], 400, 200,
+                false);
+        float[] f = ImageView.fraction(small, 1000f, 1000f);
+        assertEquals(0.4f, f[0], 1e-6f);
+        assertEquals(0.2f, f[1], 1e-6f);
+        // The same in a 200 x 200 stage: limited by its width, so all of it across and half down.
+        f = ImageView.fraction(small, 200f, 200f);
+        assertEquals(1f, f[0], 1e-6f);
+        assertEquals(0.5f, f[1], 1e-6f);
+    }
+
+    @Test
     void thumbnailsTakeWhatTheTwoSidesLeave() {
         // 72 px tiles and 8 px gaps, as drawn at the design's size: the middle slab is 16 + 72 + (n + 1) * 80.
         float tile = 72f;

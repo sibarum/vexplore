@@ -7,12 +7,15 @@ import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.input.CursorShape;
 import dev.vexelray.gui.core.input.InteractionState;
 import dev.vexelray.gui.core.layout.Length;
-import dev.vexelray.gui.core.style.Relief;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.krono.KronoGui;
+import sibarum.kronometer.Dur;
+import sibarum.kronometer.anim.Ease;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -24,9 +27,12 @@ import java.util.function.Function;
  * {@link Previewer} keeps for a neighbour, and an empty square until there is one. The previewer reads the neighbours
  * ahead while the viewer is open and says when each lands, and the viewer then calls {@link #show} again.
  *
- * <p><b>Squares never move.</b> A slot past either end of the folder stays in its place, empty and inert, so stepping to
- * the first or last image does not slide the strip under the pointer. How many slots show is decided by the width the
- * bar has ({@link #fit}), not by where in the folder the user is.
+ * <p><b>The squares stay; the pictures glide.</b> A step moves every picture one square along, eased over the same time
+ * as the viewer's own transition, so the strip reads as film being pulled through rather than a set of cards that
+ * changed. Only the drawing moves ({@code Node.translate}): each square is laid out, and clicked, where it always is,
+ * and the strip is clipped so nothing glides over Previous or Next. A slot past either end of the folder stays in its
+ * place, empty and inert. How many slots show is decided by the width the bar has ({@link #fit}), not by where in the
+ * folder the user is.
  */
 final class Filmstrip {
 
@@ -36,8 +42,17 @@ final class Filmstrip {
     private static final Length INSET = Length.rem(0.3125f);
     private static final Length INNER_CORNER = Length.rem(0.8125f);
 
+    /** One slot along, in root em: a tile and the gap after it. */
+    static final float SLOT_EM = 5f;
+    /** The furthest a glide starts from: the strip's half-width, past which nothing on it would be seen anyway. */
+    private static final float REACH_EM = SLOT_EM * (MOST / 2);
+
     private final Gui gui;
+    private final KronoGui krono;
     private final Textures textures;
+    private final Node track;
+    private final AtomicInteger glide = new AtomicInteger();
+    private volatile float offset;
     private final Function<Path, Picture> thumbnail;
     private final Consumer<Path> pick;
     private final Node[] slots = new Node[MOST];
@@ -56,8 +71,9 @@ final class Filmstrip {
      * @param thumbnail the picture already decoded for an image, or null; called off the GUI thread
      * @param pick      show this image
      */
-    Filmstrip(Gui gui, Textures textures, Function<Path, Picture> thumbnail, Consumer<Path> pick) {
+    Filmstrip(Gui gui, KronoGui krono, Textures textures, Function<Path, Picture> thumbnail, Consumer<Path> pick) {
         this.gui = gui;
+        this.krono = krono;
         this.textures = textures;
         this.thumbnail = thumbnail;
         this.pick = pick;
@@ -74,40 +90,86 @@ final class Filmstrip {
             });
             paint(i);
         }
+        // Clipped, so a square gliding in from beyond the ends is not drawn over Previous or Next.
+        this.track = gui.row().width(Length.AUTO).height(Length.AUTO).gap(Tile.GAP).clip(true).scroll(false, false)
+                .children(slots);
     }
 
-    /** The slots, in order, for the caller to put between its Previous and Next. */
-    Node[] nodes() {
-        return slots.clone();
+    /** The strip, for the caller to put between its Previous and Next. */
+    Node node() {
+        return track;
     }
 
-    /** Show {@code folder}'s images around the one at {@code at} (or nothing shown, at -1). */
+    /**
+     * Show {@code folder}'s images around the one at {@code at} (or nothing shown, at -1). A step within the same
+     * folder glides: every square takes its new picture and starts that many slots along, back where it was, then
+     * moves into place.
+     */
     synchronized void show(List<Path> folder, int at) {
+        int shift = this.at >= 0 && at >= 0 && folder.equals(this.folder) ? at - this.at : 0;
         this.folder = List.copyOf(folder);
         this.at = at;
+        boolean[] emptied = new boolean[MOST];
+        int[] expected = new int[MOST];
         for (int i = 0; i < MOST; i++) {
             Path p = pathAt(i);
             Picture pic = p == null ? null : thumbnail.apply(p);
+            expected[i] = generations[i];
             if (Objects.equals(p, paths[i]) && pic == pictures[i]) {
                 continue;
             }
             paths[i] = p;
             pictures[i] = pic;
             int g = ++generations[i];
+            expected[i] = g;
             Node plate = plates[i];
-            plate.image(null);
-            if (pic != null) {
-                ImageRegion crop = cover(pic);
-                int slot = i;
-                textures.show(pic, texture -> {
-                    synchronized (this) {
-                        if (generations[slot] == g) {
-                            plate.image(texture, crop);
-                        }
-                    }
-                });
+            if (pic == null) {
+                emptied[i] = true;
+                continue;
             }
-            paint(i);
+            // The old picture stays until the new one is handed over, so a square is never blank for a frame.
+            ImageRegion crop = cover(pic);
+            int slot = i;
+            textures.show(pic, texture -> {
+                synchronized (this) {
+                    if (generations[slot] == g) {
+                        plate.image(texture, crop);
+                    }
+                }
+            });
+        }
+        // Everything else lands in the frame the pictures do: an emptied square, the moved highlight, the glide.
+        textures.then(() -> {
+            synchronized (this) {
+                for (int i = 0; i < MOST; i++) {
+                    if (emptied[i] && generations[i] == expected[i]) {
+                        plates[i].image(null);
+                    }
+                    paint(i);
+                }
+            }
+            if (shift != 0) {
+                glide(shift);
+            }
+        });
+    }
+
+    /** Start {@code shift} slots along from wherever the strip is now, and ease back into place. */
+    private void glide(int shift) {
+        int g = glide.incrementAndGet();
+        float from = Math.max(-REACH_EM, Math.min(REACH_EM, offset + SLOT_EM * shift));
+        move(from);
+        krono.ramp(Dur.ms(ImageView.STEP_MS), Ease.LINEAR, p -> {
+            if (glide.get() == g) {
+                move(from * (1f - Ease.OUT_CUBIC.at((float) p)));
+            }
+        }, () -> { });
+    }
+
+    private void move(float em) {
+        offset = em;
+        for (Node n : slots) {
+            n.translate(em, 0f);
         }
     }
 
@@ -164,7 +226,7 @@ final class Filmstrip {
         }
         n.background(gui.theme().color(here ? Role.ACCENT : Role.RAISED, s))
                 .border(Length.dp(1), gui.theme().color(here ? Look.ENTROPY_HIGH : Look.LINE_STRONG))
-                .lit(true).elevation(gui.theme().elevation(Relief.RAISED, s));
+                .lit(true).elevation(Length.ZERO);
         plates[slot].background(gui.theme().color(Role.WELL));
     }
 
