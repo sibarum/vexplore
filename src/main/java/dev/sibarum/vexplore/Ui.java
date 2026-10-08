@@ -84,8 +84,15 @@ final class Ui {
     /** Which rows the rail would reach. Read by the list to paint them, replaced when the rail changes. */
     private volatile Set<Path> targeted = Set.of();
 
-    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Actor actor,
-       TitleBar titleBar) {
+    /**
+     * True on the thread pushing the document's selection into the list. The list announces a selection it was
+     * given exactly as one the user made, and that announcement can land after the document has moved on: a viewer
+     * stepping quickly would have each step undone by the list repeating the one before it.
+     */
+    private final ThreadLocal<Boolean> following = ThreadLocal.withInitial(() -> false);
+
+    Ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Viewer viewer,
+       Actor actor, TitleBar titleBar) {
         this.gui = gui;
         this.model = model;
         this.browser = browser;
@@ -114,7 +121,7 @@ final class Ui {
 
         Node treePane = gui.column().width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Look.CHROME)).padding(Length.rem(0.6f)).children(tree);
-        this.dock = new Dock(gui, krono, opener, textures);
+        this.dock = new Dock(gui, krono, opener, textures, viewer::open);
         gui.landmark(Landmarks.DOCK, dock.node());
         SplitPane listAndDock = new SplitPane(gui, SplitPane.Orientation.STACKED, table.node(), dock.node())
                 .sized(SplitPane.Pane.SECOND).size(Length.rem(15f))
@@ -209,7 +216,11 @@ final class Ui {
         t.node().width(Length.FILL).height(Length.FILL);
         t.headers(Type.MONO, Type.SMALL, Role.DIM);
         t.rows().looks(Look.SELECTED, Look.TARGETED).marked(e -> targeted.contains(e.path()));
-        t.selection().onChange(sel -> model.select(paths(sel)));
+        t.selection().onChange(sel -> {
+            if (!following.get()) {
+                model.select(paths(sel));
+            }
+        });
         t.rows().onActivate(e -> {
             if (e.folder()) {
                 browser.go(e.path());
@@ -287,7 +298,12 @@ final class Ui {
                 }
             }
             if (!table.selection().selection().equals(want)) {
-                table.selection().set(want);
+                following.set(true);
+                try {
+                    table.selection().set(want);
+                } finally {
+                    following.set(false);
+                }
                 // One file chosen from outside (another app's "show this file") may be far down a long folder.
                 if (want.size() == 1) {
                     table.rows().reveal(want.iterator().next());

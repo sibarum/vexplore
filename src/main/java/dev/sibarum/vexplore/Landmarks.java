@@ -30,6 +30,13 @@ final class Landmarks {
     static final String DESTINATION = "destination";
     /** The first suggested destination, which a script can await to know the suggestions have arrived. */
     static final String DEST_FIRST = "dest.1";
+    /** The dock's Pop out button: opens the viewer on an image. */
+    static final String POP_OUT = "popout";
+    /** In the viewer's own window: the file shown, and "3 / 17", written at once on every step, so scripts await it. */
+    static final String VIEWER_NAME = "viewer.name";
+    static final String VIEWER_COUNT = "viewer.count";
+    /** The viewer's backdrop chips, one per {@code ImageView.Backdrop}: "viewer.backdrop.checker" and so on. */
+    static final String VIEWER_BACKDROP = "viewer.backdrop.";
 
     private Landmarks() {
     }

@@ -63,17 +63,25 @@ public final class Previews {
 
     /** A preview of {@code path}: a folder is a folder, a file is text if it decodes as text and bytes if not. */
     public static Preview of(Path path) {
+        return of(path, false);
+    }
+
+    /**
+     * The same, and for an image also a {@link Preview#large} picture at the viewer's size when {@code large}: both
+     * from one decode, which is the expensive part.
+     */
+    public static Preview of(Path path, boolean large) {
         try {
             if (Files.isDirectory(path)) {
-                return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false, null);
+                return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false, null, null);
             }
             long size = Files.size(path);
             byte[] sample = read(path);
-            Preview image = image(path, sample, size);
+            Preview image = image(path, sample, size, large);
             return image != null ? image : of(path, sample, size > sample.length);
         } catch (IOException | RuntimeException e) {
             return new Preview(path, Tier.BYTES, "unreadable: " + e.getClass().getSimpleName(), List.of(), 0d,
-                    List.of(), false, null);
+                    List.of(), false, null, null);
         }
     }
 
@@ -93,10 +101,10 @@ public final class Previews {
             }
             String identity = sample.length == 0 ? "empty file" : "UTF-8 text";
             return new Preview(path, Tier.TEXT, identity, List.copyOf(lines), entropy(sample), List.of(), truncated,
-                    null);
+                    null, null);
         }
         return new Preview(path, Tier.BYTES, identify(sample), dump(sample), entropy(sample), strings(sample),
-                truncated, null);
+                truncated, null, null);
     }
 
     /** Whether {@code path} previews as text: the sample alone decides, so no image is decoded to answer it. */
@@ -116,7 +124,7 @@ public final class Previews {
      * The image tier, or null to fall through to the others. The sample's first bytes say whether imagelib wants the
      * file; only then is the whole of it read.
      */
-    static Preview image(Path path, byte[] sample, long size) {
+    static Preview image(Path path, byte[] sample, long size, boolean large) {
         Imagelib.Kind kind;
         try {
             kind = Imagelib.probe(sample);
@@ -131,20 +139,31 @@ public final class Previews {
             Stamp stamp = Stamp.of(path);
             byte[] bytes = Files.readAllBytes(path);
             Picture picture;
+            Picture big = null;
             String what;
             if (kind == Imagelib.Kind.VECTOR) {
                 Imagelib.Size intrinsic = Imagelib.svgSize(bytes);
-                int[] box = vectorBox(intrinsic.width(), intrinsic.height());
-                picture = Picture.of(stamp, Imagelib.rasterize(bytes, box[0], box[1]),
-                        Math.round(intrinsic.width()), Math.round(intrinsic.height()), true);
+                // Rasterised once, at the larger size asked for; the dock's picture is a shrink of it.
+                int[] box = vectorBox(intrinsic.width(), intrinsic.height(), large ? Picture.VIEW_SIDE : VECTOR_SIDE);
+                Frames frames = Imagelib.rasterize(bytes, box[0], box[1]);
+                int w = Math.round(intrinsic.width());
+                int h = Math.round(intrinsic.height());
+                picture = Picture.of(stamp, frames, w, h, true);
+                if (large) {
+                    big = Picture.of(stamp, frames, w, h, true, Picture.VIEW_SIDE);
+                }
                 what = "SVG image";
             } else {
                 Frames frames = Imagelib.decode(bytes);
                 picture = Picture.of(stamp, frames, frames.width(), frames.height(), false);
+                if (large) {
+                    big = Picture.of(stamp, frames, frames.width(), frames.height(), false, Picture.VIEW_SIDE);
+                }
                 String named = identify(sample);
                 what = named.endsWith(" image") ? named : "image";
             }
-            return new Preview(path, Tier.IMAGE, describe(what, picture), List.of(), 0d, List.of(), false, picture);
+            return new Preview(path, Tier.IMAGE, describe(what, picture), List.of(), 0d, List.of(), false, picture,
+                    big);
         } catch (OutOfMemoryError e) {
             // The one error worth catching: it is this file's pixels that did not fit, and the next file's will.
             LOG.warn("{} is too large to decode for a preview", path);
@@ -159,9 +178,14 @@ public final class Previews {
 
     /** A vector's raster size: its own aspect, with the long side at {@link #VECTOR_SIDE}, and never zero. */
     static int[] vectorBox(float width, float height) {
+        return vectorBox(width, height, VECTOR_SIDE);
+    }
+
+    /** The same, with the long side at {@code side}. */
+    static int[] vectorBox(float width, float height, int side) {
         float w = width > 0f ? width : 1f;
         float h = height > 0f ? height : 1f;
-        float scale = VECTOR_SIDE / Math.max(w, h);
+        float scale = side / Math.max(w, h);
         return new int[] {Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))};
     }
 

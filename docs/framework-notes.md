@@ -203,3 +203,35 @@ waits is worth checking in `vexelray-gui-automation`; a `wait <ms>` verb would r
 `Node.image(image, ImageRegion.cell(...))` and `GuiApp.release` did exactly what their Javadoc said, and the one
 thing `release` asks of an application (stop naming the texture first) is what the dock does anyway when it leaves the
 image tier. An animation as one sheet and a moving region needed no per-frame upload, as promised.
+
+## Milestone 4 (the image viewer)
+
+### FN-20 · A selection pushed into a list comes back as if the user had made it 🔬
+
+`SelectionModel.set` is documented as the application's way in ("following a change somewhere else in the model")
+and it notifies `onChange` exactly as a click does. Vexplore's list forwards `onChange` to the model, and the model
+pushes its selection into the list, so every outside change made a round trip. It was harmless until something
+changed the selection faster than the trip: the viewer, stepping on a held arrow key, had each step undone by the
+list repeating the one before it (20 presses moved 6 to 10 places). The fix is a thread-local guard around the push.
+A `set` that does not announce, or an `onChange` that is told whether the user made the change, would make the
+loop impossible to write rather than easy to guard.
+
+### FN-21 · A checkerboard needs either a repeating sampler or a few thousand marks 🔬
+
+Every texture is sampled linear-clamp, so a small checker texture cannot tile with a UV region past 1. The
+checkerboard is therefore a `Sketch` of fills on a box behind the picture, rebuilt when the box changes size
+(about 7,000 squares for a full-window picture). It draws correctly and costs one picture value per resize. A
+repeat-addressed sampler as a texture option, or a pattern fill in the draw lane, would make it one quad.
+
+### FN-22 · A window opened by a click is not in `windows` until a frame later 🔬
+
+`click popout` then `windows` lists only the main window: the open is posted and happens at the top of the next
+iteration. `settle` between them is enough. A script has no way to say "await window viewer"; with one, opening a
+window would be as easy to script as awaiting a landmark.
+
+### FN-23 · A second window was cheap
+
+The viewer is `Popout`'s recipe applied by hand: its own `Gui` on the host's lanes, the application's `Appearance`,
+a `TitleBar` composed onto the `WindowSpec` with `commands`, and `GuiApp.window(key, spec)`, which made opening it
+twice raise the one that exists. Textures uploaded for the main window drew in the viewer unchanged, the krono
+clock animated nodes in either tree, and `GuiApp.release` already looked in every window before closing anything.

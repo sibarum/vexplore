@@ -33,8 +33,11 @@ import java.util.Arrays;
 public record Picture(Stamp stamp, byte[] sheet, int frameWidth, int frameHeight, int columns, int rows,
                       int[] delays, int sourceWidth, int sourceHeight, boolean vector) {
 
-    /** The longest side a frame keeps. About twice what the dock shows at density 1, so a dense display stays sharp. */
+    /** The longest side a frame keeps in the dock: about twice what it shows, so a dense display stays sharp. */
     public static final int FRAME_SIDE = 1024;
+
+    /** The longest side a frame keeps in the viewer: a 1440p window, or a 4K one at its usual density of 1.5. */
+    public static final int VIEW_SIDE = 2560;
 
     /** The longest side of a sheet. Every Vulkan device samples at least 4096. */
     public static final int SHEET_SIDE = 4096;
@@ -64,8 +67,17 @@ public record Picture(Stamp stamp, byte[] sheet, int frameWidth, int frameHeight
         return sheet.length;
     }
 
-    /** Pack {@code frames} as {@link Picture}s are packed. {@code vector} only says where the pixels came from. */
+    /** Pack {@code frames} as {@link Picture}s are packed, at the dock's {@link #FRAME_SIDE}. */
     public static Picture of(Stamp stamp, Frames frames, int sourceWidth, int sourceHeight, boolean vector) {
+        return of(stamp, frames, sourceWidth, sourceHeight, vector, FRAME_SIDE);
+    }
+
+    /**
+     * Pack {@code frames} with each frame at most {@code side} on its long side. {@code vector} only says where the
+     * pixels came from. One decode can make several sizes, which is why the size is a parameter and not a decode.
+     */
+    public static Picture of(Stamp stamp, Frames frames, int sourceWidth, int sourceHeight, boolean vector,
+                             int side) {
         int[] keep = thin(frames.count());
         int n = keep.length;
         int[] delays = new int[n];
@@ -79,7 +91,7 @@ public record Picture(Stamp stamp, byte[] sheet, int frameWidth, int frameHeight
         int rows = (n + columns - 1) / columns;
         int w = frames.width();
         int h = frames.height();
-        double scale = Math.min(1d, Math.min((double) FRAME_SIDE / Math.max(w, h),
+        double scale = Math.min(1d, Math.min((double) side / Math.max(w, h),
                 Math.min((double) SHEET_SIDE / ((long) columns * w), (double) SHEET_SIDE / ((long) rows * h))));
         int fw = Math.max(1, (int) Math.round(w * scale));
         int fh = Math.max(1, (int) Math.round(h * scale));

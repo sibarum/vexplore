@@ -87,12 +87,20 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       (`imagelib.static.dir`, staged by imagelib-wrapper's `native/build.sh`), and the JVM run, the tests and a
       driven session all decode. Nobody has built `-Pnative` since, opened an image in it, and checked that the
       DLL was not extracted. `natives/.*` is still included as a resource, so the DLL rides along unused.
-- [ ] **A transparent image sits on the well colour, not a checkerboard.** Right for icons, which is most of what
-      a transparent file is; a designer checking an alpha edge would want the checks.
-- [ ] **A large decode runs to the end after the selection has moved on**, and its result is then dropped as stale.
-      Arrowing quickly through a folder of photographs pays for every one. Abandoning it needs imagelib to offer a
-      cancel, which it does not.
-- [ ] **Pop out** the dock (`Popout` exists).
+- [x] **A transparent image sits on the well colour, not a checkerboard.** The viewer has five backdrops (dark,
+      light, checker, magenta, green). The dock stays on dark.
+- [ ] **A large decode runs to the end after the selection has moved on.** The Previewer is now latest-wins, so
+      arrowing through a folder decodes only where the worker comes free, not every file passed; but the one decode
+      already running still finishes. Abandoning it needs imagelib to offer a cancel, which it does not.
+- [x] **Pop out** the dock: for an image, the **viewer**, a window of its own (`Viewer`). Not `Popout`, which is a
+      panel against a window's edge; the dock is in a `SplitPane`, and what was wanted was a different view, not the
+      same panel moved.
+- [ ] **The viewer forgets its backdrop and its size on close.** Both are per-run. A backdrop belongs in settings;
+      the window's place could go through `WindowMemory` as the main window's does.
+- [ ] **Pop out for the other tiers.** Text and bytes have the button greyed. A text pop-out is the editor (Vex),
+      which the dock already offers, so this may never be wanted.
+- [ ] **The viewer has no zoom or pan.** It fits the picture to the window and never enlarges a raster. 1:1 and a
+      drag to pan are the next thing an image viewer is asked for.
 - [ ] **Two Folders mode** (screen 05). Two tables, a status per row, suggestions from the comparison. **Open
       question from the design:** how "identical" is decided. Size and date are cheap; hashing is exact and slow for
       a multi-gigabyte video. Proposal: size + date first, hash only on demand and only when they disagree in a way

@@ -18,9 +18,16 @@ import java.util.List;
  * @param strings  printable runs found in the sample; meaningful for {@link Tier#BYTES}
  * @param truncated whether the file is longer than what was read
  * @param picture  the decoded image for {@link Tier#IMAGE}, and null for every other tier
+ * @param large    the same image at the viewer's size, made from the same decode while the viewer is open; null
+ *                 otherwise, and for every other tier
  */
 public record Preview(Path path, Tier tier, String identity, List<String> lines, double entropy,
-                      List<String> strings, boolean truncated, Picture picture) {
+                      List<String> strings, boolean truncated, Picture picture, Picture large) {
+
+    /** What this holds in decoded pixels: the weight a cache of previews is bounded by. */
+    public long bytes() {
+        return (picture == null ? 0 : picture.bytes()) + (large == null ? 0 : large.bytes());
+    }
 
     /**
      * The tiers of the design, from best to fallback. A type with no renderer falls to the next tier down, so no

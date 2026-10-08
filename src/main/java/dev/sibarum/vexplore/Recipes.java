@@ -69,13 +69,24 @@ final class Recipes {
      */
     @Provides
     @MainThread
-    AutoCloseable windowBinding(GuiApp app, Chooser chooser, Textures textures) {
+    AutoCloseable windowBinding(GuiApp app, Chooser chooser, Textures textures, Viewer viewer) {
         chooser.bind(app);
         textures.bind(app);
+        viewer.bind(app);
         return () -> {
+            viewer.bind(null);
             textures.bind(null);
             chooser.bind(null);
         };
+    }
+
+    /**
+     * The image viewer: its own tree, built with the main one and on the same theme, and a window that opens when the
+     * dock's Pop out is pressed. Given its window by {@link #windowBinding}.
+     */
+    @Provides
+    Viewer viewer(Gui gui, KronoGui krono, Model model, Previewer previewer, Textures textures, Appearance look) {
+        return new Viewer(gui, krono, model, previewer, textures, look);
     }
 
     /** Where deleted files wait. Not the system recycle bin, which Java reaches only through AWT. */
@@ -113,9 +124,9 @@ final class Recipes {
      * tree a capture gets should be the tree a user gets, already carrying a listing.
      */
     @Provides
-    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures,
+    Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Viewer viewer,
           Previewer previewer, Destinator destinator, Actor actor, TitleBar titleBar, Launch launch) {
-        Ui ui = new Ui(gui, krono, model, browser, opener, textures, actor, titleBar);
+        Ui ui = new Ui(gui, krono, model, browser, opener, textures, viewer, actor, titleBar);
         // Every change to the state redraws what is derived from it, on the committing thread -- which is a
         // worker, because every control's handler is. The GUI thread never reads the model.
         model.onChange(ui::show);

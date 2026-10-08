@@ -56,6 +56,31 @@ class ImagePreviewTest {
     }
 
     @Test
+    void theViewersSizeComesFromTheSameDecode(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("huge.png");
+        ImageIO.write(new BufferedImage(4000, 2000, BufferedImage.TYPE_INT_ARGB), "png", f.toFile());
+
+        Preview dock = Previews.of(f);
+        assertNull(dock.large(), "no viewer, no second size");
+
+        Preview both = Previews.of(f, true);
+        assertEquals(Picture.FRAME_SIDE, both.picture().frameWidth());
+        assertEquals(Picture.VIEW_SIDE, both.large().frameWidth());
+        assertEquals(Picture.VIEW_SIDE / 2, both.large().frameHeight());
+        assertEquals(both.picture().bytes() + both.large().bytes(), both.bytes());
+    }
+
+    @Test
+    void aVectorForTheViewerIsRasterisedOnceAtTheLargerSize(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("mark.svg");
+        Files.writeString(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"20\">"
+                + "<rect width=\"40\" height=\"20\" fill=\"#0a0\"/></svg>", StandardCharsets.UTF_8);
+        Preview p = Previews.of(f, true);
+        assertEquals(Picture.VIEW_SIDE, p.large().frameWidth());
+        assertEquals(Picture.FRAME_SIDE, p.picture().frameWidth(), "the dock's is a shrink of it");
+    }
+
+    @Test
     void anSvgIsRasterisedAtItsOwnAspect(@TempDir Path dir) throws IOException {
         Path f = dir.resolve("mark.svg");
         Files.writeString(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"20\">"

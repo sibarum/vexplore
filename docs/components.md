@@ -30,7 +30,7 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | Rail: summary card, primary action | `Button` (`PRIMARY`) | **added** | The one filled control on the screen. Violet, from the palette's `action` anchor, which `Look` sets to the accent. Its label says what pressing it does ("Move 9 files"), and it is disabled, with a reason, when it would do nothing. |
 | Rail: chips wrap to rows | wrapping row | **missing** | The layout engine has no wrap. The rail counts chips two to a row. See TODO. |
 | Preview Dock | `Dock` | app | A header, a tier tag, a body. Images, text and hex today. An image is `Node.image` on a box sized in percent of a well whose box `Gui.onResize` reports, since the layout has no aspect-ratio length; an animation is one sheet and `ImageRegion.cell` stepped on the krono clock. |
-| Dock: pop out | `Popout` | had | Not wired yet; the button is present and disabled. |
+| Dock: pop out | `AppWindow` + `TitleBar` | app | For an image, the `Viewer`: its own `Gui` and a named window, as `Popout` builds its away tree, but a different view rather than the same panel moved. Steps drive the selection; five backdrops. `Popout` itself does not fit: the dock is not edge-docked. |
 | Dock: hex dump | text lines | app | Sixteen bytes a row. A virtualised `ByteView` widget is worth extracting once a second application wants one. |
 | Dock: entropy bar | two `grow` boxes | app | `grow(e)` and `grow(8-e)`, the same trick `Toggle` and `Slider` use. |
 | Status bar | `StatusBar` | **added** | Declared slots on a left and a right side; a slot's place never changes, only what it says. |

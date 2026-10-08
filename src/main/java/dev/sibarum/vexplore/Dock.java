@@ -1,27 +1,18 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.vexplore.files.Picture;
 import dev.sibarum.vexplore.files.Preview;
 import dev.vexelray.gui.core.Gui;
-import dev.vexelray.gui.core.ImageRegion;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
-import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
-import dev.vexelray.gui.core.layout.NodeLayout;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.krono.KronoGui;
-import dev.vexelray.gui.krono.Scheduled;
 import dev.vexelray.gui.widget.Button;
-import dev.vexelray.vulkan.present.SampledImage;
-import sibarum.kronometer.Dur;
-import sibarum.kronometer.Time;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The Preview Dock: a dedicated place under the list that shows the selected file more fully than its row can.
@@ -35,59 +26,37 @@ import java.util.concurrent.atomic.AtomicInteger;
  * encoding) and bytes (a hex dump, the strings in the file, and how random it looks). Bytes is the floor of the
  * design's ladder — every file reaches it — which is why it was built first.
  *
- * <p><b>An image is shown whole, at its own aspect, never larger than it is.</b> The layout has no aspect-ratio
- * length, so the picture sits in a well that fills the dock and is sized in percent of it from the well's measured
- * box ({@link Gui#onResize}), which is recomputed whenever the dock is resized. A vector has no size of its own and
- * fills the well. The well and its picture are made once and shown or hidden, so the resize registration is made
- * once too; the picture is cleared when another tier takes the dock, so its texture is free to be given back.
+ * <p>An image is an {@link ImageView}, made once and shown or hidden in place of the body; it is cleared when another
+ * tier takes the dock, so its texture is free to be given back. <b>Pop out</b> opens it in the {@link Viewer}.
  */
 final class Dock {
 
-    /** GIF's degenerate delays (0 and 10 ms) mean "as fast as you like"; browsers show them at 100 ms, and so does this. */
-    private static final int FLOOR_MS = 20;
-    private static final int DEGENERATE_MS = 100;
-
     private final Gui gui;
-    private final KronoGui krono;
     private final Opener opener;
-    private final Textures textures;
+    private final Runnable popOut;
     private final Node frame;
     private final Node header;
     private final Node body;
-    private final Node well;
-    private final Node plate;
+    private final ImageView image;
     private final List<Node> headerKids = new ArrayList<>();
     private final List<Node> bodyKids = new ArrayList<>();
     private Preview shown;
     private Boolean empty;
 
-    /** Which picture is on show; bumped by every {@link #show}, so a late texture or a stale frame step is dropped. */
-    private final AtomicInteger generation = new AtomicInteger();
-    private volatile Picture picture;
-    private volatile NodeLayout wellBox = NodeLayout.ABSENT;
-    private Scheduled animation;
-
-    Dock(Gui gui, KronoGui krono, Opener opener, Textures textures) {
+    Dock(Gui gui, KronoGui krono, Opener opener, Textures textures, Runnable popOut) {
         this.gui = gui;
-        this.krono = krono;
         this.opener = opener;
-        this.textures = textures;
+        this.popOut = popOut;
         this.header = gui.row().width(Length.FILL).height(Length.rem(2.75f))
                 .alignItems(AlignItems.CENTER).padding(Length.ZERO, Length.rem(1.25f)).gap(Length.rem(0.75f))
                 .scroll(false, false);
         this.body = gui.column().width(Length.FILL).height(Length.grow(1f))
                 .padding(Length.rem(0.5f), Length.rem(1.25f)).gap(Length.rem(0.15f)).scroll(false, true);
-        this.plate = gui.box().size(Length.ZERO, Length.ZERO).corner(Length.rem(0.3f))
-                .background(gui.theme().color(Role.WELL));
-        this.well = gui.column().width(Length.FILL).height(Length.grow(1f))
-                .padding(Length.rem(0.5f), Length.rem(1.25f)).justify(Justify.CENTER).alignItems(AlignItems.CENTER)
-                .scroll(false, false).visible(false).children(plate);
+        this.image = new ImageView(gui, krono, textures, Length.rem(0.5f), Length.rem(1.25f));
+        image.node().visible(false);
         this.frame = gui.column().role("preview").width(Length.FILL).height(Length.FILL)
-                .background(gui.theme().color(Look.RAIL)).scroll(false, false).children(header, body, well);
-        gui.onResize(well, box -> {
-            wellBox = box;
-            fit();
-        });
+                .background(gui.theme().color(Look.RAIL)).scroll(false, false)
+                .children(header, body, image.node());
         show(null);
     }
 
@@ -104,7 +73,9 @@ final class Dock {
         empty = nothing;
         shown = preview;
         clear();
-        stopImage();
+        image.clear();
+        image.node().visible(false);
+        body.visible(true);
         if (nothing) {
             addHeader(text("Preview", Type.RAIL, Role.DIM, Type.UI));
             addBody(text("Select a file to see it here. The dock never covers the list.", Type.META, Role.FAINT,
@@ -127,7 +98,9 @@ final class Dock {
             addHeader(new Button(gui, editor ? "Open in Vex" : "Vex not installed").enabled(editor)
                     .onPress(() -> opener.edit(file)).node());
         }
-        addHeader(new Button(gui, "Pop out").enabled(false).node());
+        Node pop = new Button(gui, "Pop out").enabled(preview.tier() == Preview.Tier.IMAGE).onPress(popOut).node();
+        gui.landmark(Landmarks.POP_OUT, pop);
+        addHeader(pop);
 
         switch (preview.tier()) {
             case FOLDER -> addBody(text("A folder. Open it to see what is inside.", Type.META, Role.DIM, Type.UI));
@@ -137,93 +110,16 @@ final class Dock {
                 }
             }
             case BYTES -> bytes(preview);
-            case IMAGE -> image(preview.picture());
-        }
-    }
-
-    /**
-     * Show {@code p} in the well. The texture arrives later, on the GUI thread, and is dropped if another file has
-     * been chosen by then. With no window (a headless capture) there is nothing to upload into, and the dock says so.
-     */
-    private void image(Picture p) {
-        int g = generation.get();
-        picture = p;
-        fit();
-        boolean posted = textures.show(p, texture -> {
-            if (generation.get() != g) {
-                return;
-            }
-            if (!p.animated()) {
-                plate.image(texture);
-                return;
-            }
-            plate.image(texture, ImageRegion.cell(0, p.columns(), p.rows()));
-            animate(g, p, texture);
-        });
-        if (posted) {
-            body.visible(false);
-            well.visible(true);
-        } else {
-            addBody(text("An image. There is no window to draw it in.", Type.META, Role.DIM, Type.UI));
-        }
-    }
-
-    /** Step through the sheet's cells on the clock, each for its own delay, until another file is shown. */
-    private synchronized void animate(int g, Picture p, SampledImage texture) {
-        if (generation.get() != g) {
-            return;
-        }
-        animation = krono.spork("dock-animation", () -> {
-            int i = 0;
-            while (generation.get() == g) {
-                int d = p.delays()[i];
-                Time.advance(Dur.ms(d < FLOOR_MS ? DEGENERATE_MS : d));
-                if (generation.get() != g) {
-                    return;
+            case IMAGE -> {
+                // With no window (a headless capture) there is nothing to upload into, and the dock says so.
+                if (image.show(preview.picture())) {
+                    body.visible(false);
+                    image.node().visible(true);
+                } else {
+                    addBody(text("An image. There is no window to draw it in.", Type.META, Role.DIM, Type.UI));
                 }
-                i = (i + 1) % p.count();
-                plate.image(texture, ImageRegion.cell(i, p.columns(), p.rows()));
             }
-        });
-    }
-
-    /** Leave the image tier: stop the animation and let go of the texture, so the cache may give it back. */
-    private void stopImage() {
-        generation.incrementAndGet();
-        if (animation != null) {
-            animation.cancel();
-            animation = null;
         }
-        if (picture != null) {
-            picture = null;
-            plate.image(null);
-            well.visible(false);
-            body.visible(true);
-        }
-    }
-
-    /**
-     * Size the picture to the well: whole, at its own aspect, and a raster no larger than its own pixels. In percent
-     * of the well's content box, which is the one unit that needs neither the density nor a pixel length.
-     */
-    private void fit() {
-        Picture p = picture;
-        NodeLayout box = wellBox;
-        if (p == null || !box.present()) {
-            return;
-        }
-        float cw = box.content().w();
-        float ch = box.content().h();
-        if (cw <= 0f || ch <= 0f) {
-            return;
-        }
-        float w = Math.max(1, p.sourceWidth());
-        float h = Math.max(1, p.sourceHeight());
-        float scale = Math.min(cw / w, ch / h);
-        if (!p.vector()) {
-            scale = Math.min(scale, 1f);
-        }
-        plate.size(Length.percent(100f * w * scale / cw), Length.percent(100f * h * scale / ch));
     }
 
     private void bytes(Preview p) {

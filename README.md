@@ -32,7 +32,8 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
 | Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2, Two Folders |
 | Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
-| 72 tests, none of which needs a window (the image ones decode for real, through imagelib) | |
+| **Viewer**: Pop out on an image opens it in its own window. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
+| 80 tests, none of which needs a window (the image ones decode for real, through imagelib) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
@@ -100,9 +101,12 @@ ops/       Plan (what an action would do, a value the card can draw) and Operati
 Model      the one state (Doc: input + work + the rest), the only way to change it, and an onChange that never
            delivers an older document after a newer one.
 Browser    navigate + list off the frame loop; a listing for a folder you have left is dropped.
-Previewer  keeps the dock matching the selection, same rule, and keeps recent decoded images (an LRU by bytes).
+Previewer  keeps the dock matching the selection, same rule: one worker, latest request wins, recent decoded images
+           kept (an LRU by bytes), and while the viewer is open a second size and the neighbours read ahead.
            Destinator does the same for destinations.
 Textures   pictures on the GPU: uploaded once, recent ones kept, the rest handed to GuiApp.release. Late-bound.
+ImageView  one picture, fitted, animated, over a backdrop. The dock has one; so does the viewer.
+Viewer     the image viewer: its own tree and window. Steps change the selection, so everything else follows.
 Actor      the one place a button becomes a change to the disk: run, undo, mark, choose a destination.
 Chooser    the native folder dialog, built with the tree and given its window later (Recipes.windowBinding).
 Ui, RailView, Dock   the tree. Hold no application state, only a cache of what they last drew.
@@ -120,7 +124,8 @@ overlay anywhere in `Ui`. A change to the rail rewrites the rail's column and to
    and having watched a person use the folder dialog.
 3. **Milestone 3 — the drag fallback and fresh files.** Drag a row, the *Carrying* card, destinations with reasons;
    a five-second-old file highlighted amber.
-4. **Milestone 4 — previews up the ladder.** Inline row previews, CSV/JSON/archive, images, PDF, pop-out.
+4. **Milestone 4 — previews up the ladder.** Inline row previews, CSV/JSON/archive, images (*done*), PDF, pop-out
+   (*done for images: the viewer*).
 5. **Milestone 5 — Two Folders.** The comparison engine and its open question about "identical".
 
 Priorities are the author's to move. The design is a set of principles, and where a mockup and a principle

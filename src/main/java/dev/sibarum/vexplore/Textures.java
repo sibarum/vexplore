@@ -28,7 +28,14 @@ final class Textures {
     static final long BUDGET = 192L * 1024 * 1024;
 
     private volatile GuiApp app;
-    private Lru<Stamp, Uploaded> cache;
+    private Lru<Key, Uploaded> cache;
+
+    /** One file at one size: the dock's picture and the viewer's of the same file are two textures. */
+    private record Key(Stamp stamp, int width, int height) {
+        static Key of(Picture p) {
+            return new Key(p.stamp(), p.sheetWidth(), p.sheetHeight());
+        }
+    }
 
     /** A texture and what it costs, which the texture itself does not say. */
     private record Uploaded(AtlasTexture texture, long bytes) {
@@ -50,15 +57,16 @@ final class Textures {
             return false;
         }
         window.post(() -> {
-            Lru<Stamp, Uploaded> textures = cache;
+            Lru<Key, Uploaded> textures = cache;
             if (textures == null || app != window) {
                 return;
             }
-            Uploaded u = textures.get(picture.stamp());
+            Key key = Key.of(picture);
+            Uploaded u = textures.get(key);
             if (u == null || u.texture().isClosed()) {
                 u = new Uploaded(window.texture(picture.sheet(), picture.sheetWidth(), picture.sheetHeight()),
                         picture.bytes());
-                textures.put(picture.stamp(), u);
+                textures.put(key, u);
             }
             then.accept(u.texture());
         });
