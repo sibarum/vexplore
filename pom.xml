@@ -148,14 +148,9 @@
                         <imageName>${native.imageName}</imageName>
                         <mainClass>${app.mainClass}</mainClass>
                         <buildArgs>
+                            <!-- The FFM flags, the shaders, the font atlas and nfd.dll come from the libraries' own
+                                 META-INF/native-image metadata; only what is this program's is set here. -->
                             <buildArg>--no-fallback</buildArg>
-                            <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
-                            <buildArg>-H:+ForeignAPISupport</buildArg>
-                            <!-- Raw input and the clipboard open an Arena.ofShared; without this the app runs and then throws on the way out. -->
-                            <buildArg>-H:+SharedArenaSupport</buildArg>
-                            <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
-                            <buildArg>-H:IncludeResources=META-INF/supirvast/shaders/.*</buildArg>
-                            <buildArg>-H:IncludeResources=natives/.*</buildArg>
                             <!-- WINDOWS needs /ENTRY:mainCRTStartup as well: the linker would otherwise look for
                                  WinMain, and the image's entry is the C main. CONSOLE is the linker's default,
                                  spelled out so both editions pass the same two options. -->
