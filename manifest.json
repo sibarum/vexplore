@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "vexplore",
+  "name": "Vexplore",
+  "publisher": "sibarum",
+  "description": "A file explorer that suggests instead of asking.",
+  "repo": "sibarum/vexplore",
+  "latest": "0.1.0",
+  "tools": {
+    "install.ps1": {
+      "url": "https://raw.githubusercontent.com/sibarum/vexplore/main/install.ps1",
+      "sha256": "75e06748d8d96e7c8282b47568452671ed0e68ccf707946fcbf5219c3a30f83f"
+    },
+    "uninstall.ps1": {
+      "url": "https://raw.githubusercontent.com/sibarum/vexplore/main/uninstall.ps1",
+      "sha256": "1b99c8094305369ba6ff328f17e82abc87cabdeb9bdf6b804edf8d07ab7cb9be"
+    },
+    "update.ps1": {
+      "url": "https://raw.githubusercontent.com/sibarum/vexplore/main/update.ps1",
+      "sha256": "151878c0198c2076becdc0c206a04371c3a94c68aab95d4109f2bec4eeea1012"
+    }
+  },
+  "versions": [
+    {
+      "version": "0.1.0",
+      "publishedAt": "2026-10-08T18:26:42Z",
+      "notes": "",
+      "installer": {
+        "install.ps1": "75e06748d8d96e7c8282b47568452671ed0e68ccf707946fcbf5219c3a30f83f",
+        "uninstall.ps1": "1b99c8094305369ba6ff328f17e82abc87cabdeb9bdf6b804edf8d07ab7cb9be",
+        "update.ps1": "151878c0198c2076becdc0c206a04371c3a94c68aab95d4109f2bec4eeea1012"
+      },
+      "platforms": {
+        "windows": {
+          "installDir": "%LOCALAPPDATA%\\Programs\\Vexplore",
+          "binaries": [
+            {
+              "name": "vexplore",
+              "version": "0.1.0",
+              "kind": "native",
+              "file": "vexplore.exe",
+              "url": "https://github.com/sibarum/vexplore/releases/download/v0.1.0/vexplore.exe",
+              "sha256": "40e7b1533413dc8a875c902174037168ecc39bfca26111dab8ca366f6bceea03",
+              "size": 45330432,
+              "installPath": "{installDir}\\vexplore.exe",
+              "executable": true,
+              "addToPath": true,
+              "icon": {
+                "file": "vexplore.ico",
+                "url": "https://github.com/sibarum/vexplore/releases/download/v0.1.0/vexplore.ico",
+                "sha256": "ea04f590a5776441a66713d78447f3408eb9012edc8015b2857fcdcef6f3660d",
+                "size": 11167,
+                "installPath": "{installDir}\\vexplore.ico"
+              },
+              "shortcuts": {
+                "desktop": true,
+                "startMenu": true,
+                "label": "Vexplore",
+                "gui": false
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
