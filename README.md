@@ -32,8 +32,8 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
 | Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2, Two Folders |
 | Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
-| **Viewer**: Pop out on an image opens it in its own window. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
-| 80 tests, none of which needs a window (the image ones decode for real, through imagelib) | |
+| **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, *View in Pix* in the dock and the row menu); without Pix, Pop out opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
+| 67 tests here and 31 in `vex-suite-common`, none of which needs a window (the image ones decode for real, through imagelib) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
@@ -60,11 +60,13 @@ folder it is in with that file selected. That is how the suite's other apps say 
 ## Opening a file, and the suite
 
 Enter or a double-click on a file opens it. Text and source (whatever the Preview Dock shows as text) go to the
-suite's text editor, started as `text-editor <file>` in a new window; everything else, and text when the editor is
-not installed, goes to the shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text
-file, and says *Vex not installed* instead when it is not. The editor is found through its install record
-(`vexelray-installer`, read by the framework's `Apps`), so it has to be installed; a run from the checkout still
-finds an installed editor.
+suite's text editor, started as `text-editor <file>` in a new window, and pictures (named like what imagelib
+decodes) to Pix, as `pix <file>`; everything else, and anything whose application is not installed, goes to the
+shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text file, and says *Vex not installed*
+instead when it is not; for a picture it has *View in Pix*, or *Pop out* into Vexplore's own viewer without Pix.
+Both are found through their install records (`vexelray-installer`, read by the framework's `Apps`), so they have
+to be installed; a run from the checkout still finds installed ones, and `INSTALL_REGISTRY_DIR` points the lookup
+somewhere else for a test.
 
 
 ### Looking at it without a person
@@ -90,8 +92,8 @@ puts the model as though that key were down, which `ottermate` cannot do.
 ## How it is put together
 
 ```
-files/     the file system, and nothing else. Entry, Kind, Folders (the only reader), Preview, Previews, Picture
-           (a decoded image packed into one sheet), Stamp (which version of a file), Destinations. No GUI.
+files/     the file system, and nothing else. Entry, Kind, Folders (the only reader), Preview, Previews (whose
+           first tier is the suite's Pictures), Destinations. No GUI.
            Blocking: callers run these on Gui.offload().
 suggest/   the rail's brain, as pure functions: Suggestions (Select/Condition/Action), Intents (what Shift and
            Control are announcing), Order (the sort, shared with the table). Tested against a folder that is a
@@ -104,15 +106,19 @@ Browser    navigate + list off the frame loop; a listing for a folder you have l
 Previewer  keeps the dock matching the selection, same rule: one worker, latest request wins, recent decoded images
            kept (an LRU by bytes), and while the viewer is open a second size and the neighbours read ahead.
            Destinator does the same for destinations.
-Textures   pictures on the GPU: uploaded once, recent ones kept, the rest handed to GuiApp.release. Late-bound.
-ImageView  one picture, fitted, animated, over a backdrop. The dock has one; so does the viewer.
-Viewer     the image viewer: its own tree and window. Steps change the selection, so everything else follows.
+Viewer     the image viewer: the suite's PictureViewer in a window of its own. Steps change the selection, so
+           everything else follows.
 Actor      the one place a button becomes a change to the disk: run, undo, mark, choose a destination.
 Chooser    the native folder dialog, built with the tree and given its window later (Recipes.windowBinding).
 Ui, RailView, Dock   the tree. Hold no application state, only a cache of what they last drew.
-Look       colour: the design's hex values as palette anchors, and the roles the palette has no name for.
+Look       colour: the suite's palette (SuiteLook), and the explorer's own tokens beside it.
 Recipes    what is built; the wiring is generated from it.
 ```
+
+The image parts are in [`vex-suite-common`](../vex-suite-common), shared with Pix: `Pictures` and `Picture`
+(decoding and packing), `Textures`, `ImageView`, `Filmstrip`, `Tile`, `Icons`, `PictureViewer` (the whole viewer
+tree), `Lru`, and the palette. It is a sibling checkout installed to the local Maven repository (`mvn install`)
+before this one builds.
 
 The rule the layout keeps is the design's: **nothing is drawn over anything else.** There is no popup, tooltip or
 overlay anywhere in `Ui`. A change to the rail rewrites the rail's column and touches nothing else.

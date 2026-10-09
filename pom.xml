@@ -21,6 +21,7 @@
         <vexelray-gui.version>0.1.0-SNAPSHOT</vexelray-gui.version>
         <vexelray.version>0.1.0-SNAPSHOT</vexelray.version>
         <tactroller.version>1.0-SNAPSHOT</tactroller.version>
+        <vex-suite-common.version>0.1.0-SNAPSHOT</vex-suite-common.version>
         <imagelib.version>0.1.0-SNAPSHOT</imagelib.version>
         <!-- imagelib's static library and the linker arguments beside it, staged by imagelib-wrapper's
              native/build.sh. Only the native image reads them; a JVM run extracts the DLL from the jar. -->
@@ -113,6 +114,13 @@
             <groupId>sibarum.tactroller</groupId>
             <artifactId>tactroller-clipboard</artifactId>
             <version>${tactroller.version}</version>
+        </dependency>
+        <!-- What Vexplore shares with Pix: pictures decoded and packed for the GPU, the viewer's tree and its
+             parts, and the palette. A sibling checkout, installed to the local repository first. -->
+        <dependency>
+            <groupId>dev.sibarum</groupId>
+            <artifactId>vex-suite-common</artifactId>
+            <version>${vex-suite-common.version}</version>
         </dependency>
         <!-- Pixels from any image file (PNG, JPEG, GIF, WebP, SVG and the rest) as RGBA8 ready to upload: the
              Preview Dock's first tier. The GUI decodes nothing itself, by design. -->

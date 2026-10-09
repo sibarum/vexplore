@@ -1,5 +1,7 @@
 package dev.sibarum.vexplore.files;
 
+import dev.sibarum.suite.pictures.Picture;
+
 import java.nio.file.Path;
 import java.util.List;
 

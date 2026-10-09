@@ -1,6 +1,8 @@
 package dev.sibarum.vexplore.files;
 
 import dev.sibarum.vexplore.files.Preview.Tier;
+import dev.sibarum.suite.pictures.Picture;
+import dev.sibarum.suite.pictures.Stamp;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -107,20 +109,5 @@ class ImagePreviewTest {
         Preview p = Previews.of(f);
         assertEquals(Tier.BYTES, p.tier());
         assertNull(p.picture());
-    }
-
-    @Test
-    void anAnimationIsDescribedByItsFramesAndLength() {
-        Picture p = new Picture(new Stamp(Path.of("a.gif"), 1, 1), new byte[4 * 4 * 4], 2, 2, 2, 2,
-                new int[] {500, 500, 500}, 2, 2, false);
-        assertEquals("GIF image · 2 × 2 · 3 frames, 1.5 s", Previews.describe("GIF image", p));
-    }
-
-    @Test
-    void aVectorBoxKeepsItsAspectAndIsNeverEmpty() {
-        assertEquals(Previews.VECTOR_SIDE, Previews.vectorBox(10, 40)[1]);
-        assertEquals(Previews.VECTOR_SIDE / 4, Previews.vectorBox(10, 40)[0]);
-        assertEquals(1, Previews.vectorBox(1, 100000)[0]);
-        assertEquals(Previews.VECTOR_SIDE, Previews.vectorBox(0, 0)[0]);
     }
 }

@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.view.Textures;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Folders;
@@ -125,7 +126,7 @@ final class Ui {
 
         Node treePane = gui.column().width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Look.CHROME)).padding(Length.rem(0.6f)).children(tree);
-        this.dock = new Dock(gui, krono, opener, textures, viewer::open);
+        this.dock = new Dock(gui, krono, opener, textures, this::view);
         gui.landmark(Landmarks.DOCK, dock.node());
         SplitPane listAndDock = new SplitPane(gui, SplitPane.Orientation.STACKED, table.node(), dock.node())
                 .sized(SplitPane.Pane.SECOND).size(Length.rem(15f))
@@ -151,6 +152,17 @@ final class Ui {
         gui.root().direction(Direction.COLUMN)
                 .background(gui.theme().color(Role.PAGE))
                 .children(titleBar.node(), topBar, main, status.node());
+    }
+
+    /**
+     * View the picture {@code file}: in Pix when it is installed, otherwise in Vexplore's own viewer, which shows the
+     * selection and so selects the file first.
+     */
+    private void view(Path file) {
+        opener.view(file, () -> {
+            model.select(Set.of(file));
+            viewer.open();
+        });
     }
 
     // ------------------------------------------------------------------ the tree
@@ -273,10 +285,7 @@ final class Ui {
         } else if (one) {
             menu.item("Open", () -> opener.open(clicked.path()));
             if (clicked.kind() == Kind.IMAGE) {
-                menu.item("View", () -> {
-                    model.select(paths);
-                    viewer.open();
-                });
+                menu.item(opener.pixInstalled() ? "View in Pix" : "View", () -> view(clicked.path()));
             }
             menu.item("Open in Vex", opener.editorInstalled(), () -> opener.edit(clicked.path()));
             menu.separator();

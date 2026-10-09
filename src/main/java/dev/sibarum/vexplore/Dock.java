@@ -1,5 +1,7 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.view.ImageView;
+import dev.sibarum.suite.view.Textures;
 import dev.sibarum.vexplore.files.Preview;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
@@ -13,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * The Preview Dock: a dedicated place under the list that shows the selected file more fully than its row can.
@@ -27,13 +30,14 @@ import java.util.Locale;
  * design's ladder — every file reaches it — which is why it was built first.
  *
  * <p>An image is an {@link ImageView}, made once and shown or hidden in place of the body; it is cleared when another
- * tier takes the dock, so its texture is free to be given back. <b>Pop out</b> opens it in the {@link Viewer}.
+ * tier takes the dock, so its texture is free to be given back. <b>View in Pix</b> opens it in Pix when Pix is
+ * installed, and <b>Pop out</b> in Vexplore's own {@link Viewer} when it is not.
  */
 final class Dock {
 
     private final Gui gui;
     private final Opener opener;
-    private final Runnable popOut;
+    private final Consumer<Path> popOut;
     private final Node frame;
     private final Node header;
     private final Node body;
@@ -43,7 +47,7 @@ final class Dock {
     private Preview shown;
     private Boolean empty;
 
-    Dock(Gui gui, KronoGui krono, Opener opener, Textures textures, Runnable popOut) {
+    Dock(Gui gui, KronoGui krono, Opener opener, Textures textures, Consumer<Path> popOut) {
         this.gui = gui;
         this.opener = opener;
         this.popOut = popOut;
@@ -98,7 +102,10 @@ final class Dock {
             addHeader(new Button(gui, editor ? "Open in Vex" : "Vex not installed").enabled(editor)
                     .onPress(() -> opener.edit(file)).node());
         }
-        Node pop = new Button(gui, "Pop out").enabled(preview.tier() == Preview.Tier.IMAGE).onPress(popOut).node();
+        boolean picture = preview.tier() == Preview.Tier.IMAGE;
+        Path at = preview.path();
+        Node pop = new Button(gui, picture && opener.pixInstalled() ? "View in Pix" : "Pop out").enabled(picture)
+                .onPress(() -> popOut.accept(at)).node();
         gui.landmark(Landmarks.POP_OUT, pop);
         addHeader(pop);
 

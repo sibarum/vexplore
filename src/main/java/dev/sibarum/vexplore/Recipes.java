@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.view.Textures;
 import dev.vexelray.framework.api.Configuration;
 import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;

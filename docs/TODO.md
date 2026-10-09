@@ -96,6 +96,12 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 - [x] **Pop out** the dock: for an image, the **viewer**, a window of its own (`Viewer`). Not `Popout`, which is a
       panel against a window's edge; the dock is in a `SplitPane`, and what was wanted was a different view, not the
       same panel moved.
+- [x] **Pictures go to Pix** when it is installed: Enter, double-click, and *View in Pix* in the dock and the row
+      menu start `pix <file>`. Without Pix the viewer above is kept. Its tree is `vex-suite-common`'s `PictureViewer`,
+      the same as Pix's, so the two cannot drift.
+- [ ] **Pix steps by name, the list by its sort.** A picture handed to Pix is stepped through in Pix's order, not the
+      order the list was sorted in. Saying the order needs a command-line argument both agree on.
+- [ ] **One Pix per picture.** Each hand-off starts a new Pix; a second picture could go to the Pix already open.
 - [ ] **The viewer forgets its backdrop and its size on close.** Both are per-run. A backdrop belongs in settings;
       the window's place could go through `WindowMemory` as the main window's does.
 - [ ] **Pop out for the other tiers.** Text and bytes have the button greyed. A text pop-out is the editor (Vex),

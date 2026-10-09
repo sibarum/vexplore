@@ -3,7 +3,8 @@ package dev.sibarum.vexplore;
 /**
  * The names an automation script is allowed to depend on. A landmark is a promise: it is what
  * {@code Gui.navigate} and the driving socket's {@code click} and {@code shot} take, so renaming one is an edit
- * to every script that uses it, and adding one is free.
+ * to every script that uses it, and adding one is free. The viewer's own are {@code PictureViewer}'s, with
+ * {@code "viewer."} in front: {@code viewer.name}, {@code viewer.count}, {@code viewer.next} and the rest.
  */
 final class Landmarks {
 
@@ -32,21 +33,6 @@ final class Landmarks {
     static final String DEST_FIRST = "dest.1";
     /** The dock's Pop out button: opens the viewer on an image. */
     static final String POP_OUT = "popout";
-    /**
-     * In the viewer's own window: the file shown, and "Image 3 of 17", written at once on every step, so scripts await
-     * it.
-     */
-    static final String VIEWER_NAME = "viewer.name";
-    static final String VIEWER_COUNT = "viewer.count";
-    /** The viewer's controls, each a tile in its bar. */
-    static final String VIEWER_CLOSE = "viewer.close";
-    static final String VIEWER_PREVIOUS = "viewer.previous";
-    static final String VIEWER_NEXT = "viewer.next";
-    /** The Background tile, which opens the backdrop menu, and Keep shown, which stops the bar hiding. */
-    static final String VIEWER_BACKGROUND = "viewer.background";
-    static final String VIEWER_KEEP = "viewer.keep";
-    /** The backdrop menu's swatches, one per {@code ImageView.Backdrop}: "viewer.backdrop.checker" and so on. */
-    static final String VIEWER_BACKDROP = "viewer.backdrop.";
 
     private Landmarks() {
     }

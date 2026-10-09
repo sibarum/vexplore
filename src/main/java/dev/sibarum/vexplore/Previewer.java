@@ -4,7 +4,8 @@ import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Preview;
 import dev.sibarum.vexplore.files.Previews;
-import dev.sibarum.vexplore.files.Stamp;
+import dev.sibarum.suite.Lru;
+import dev.sibarum.suite.pictures.Stamp;
 import dev.vexelray.gui.core.Gui;
 
 import java.io.IOException;
