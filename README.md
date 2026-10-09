@@ -161,4 +161,6 @@ mvn -Pnative package -DskipTests           # target/vexplore-debug.exe  for otte
 
 The plain JVM build, tests and `exec:exec` are the debug edition. The linker options are
 `/SUBSYSTEM:WINDOWS|CONSOLE` and `/ENTRY:mainCRTStartup` (pom, `pluginManagement`). Both profiles also link
-`src/main/rc/vexplore.rc`, the executable's icon (the `vexplore` mark from `vexelray-icons`), compiled by `rc.exe`.
+`src/main/rc/vexplore.rc`, the executable's icon, compiled by `rc.exe`. The icon is the suite icon canvas's Vexplore
+(`src/main/rc/vexplore.svg`, with its window, file and light variants beside it), rendered to `vexplore.ico` by
+`vex-suite-common`'s `tools/Ico.java`.
