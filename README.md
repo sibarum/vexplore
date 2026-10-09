@@ -121,7 +121,9 @@ tree), `Lru`, and the palette. It is a sibling checkout installed to the local M
 before this one builds.
 
 The rule the layout keeps is the design's: **nothing is drawn over anything else.** There is no popup, tooltip or
-overlay anywhere in `Ui`. A change to the rail rewrites the rail's column and touches nothing else.
+overlay anywhere in `Ui`, with one exception: a file name too long for its column is shown whole while it is hovered,
+over the columns beside it. It was already covered by them, so hovering only chooses which of the two is covered. A
+change to the rail rewrites the rail's column and touches nothing else.
 
 ## Plan
 

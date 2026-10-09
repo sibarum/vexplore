@@ -13,11 +13,17 @@ import dev.sibarum.vexplore.suggest.Suggestions.Option;
 import dev.sibarum.vexplore.suggest.Suggestions.Rail;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
+import dev.vexelray.gui.core.input.InteractionState;
 import dev.vexelray.gui.core.input.MenuSink;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
+import dev.vexelray.gui.core.layout.LayoutSnapshot;
 import dev.vexelray.gui.core.layout.Length;
+import dev.vexelray.gui.core.layout.NodeLayout;
+import dev.vexelray.gui.core.text.TextMetrics;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.draw.Picture;
+import dev.vexelray.gui.draw.Sketch;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.Breadcrumb;
 import dev.vexelray.gui.widget.Button;
@@ -44,7 +50,9 @@ import java.util.function.Consumer;
  * <h2>The layout is the design's, and its rules are the design's</h2>
  * Tree, list and rail are three fixed places, and nothing is ever drawn over another. That is a property of this
  * file rather than of any widget: there is no popup, no tooltip and no overlay here, because the Suggestion Rail
- * exists so that none is needed. A suggestion that arrives, changes or leaves rewrites the contents of the rail's
+ * exists so that none is needed. The one exception is a clipped file name, shown whole while it is hovered (see
+ * {@link #reveal}): it is already covered by the columns beside it, and hovering only swaps which one is covered.
+ * A suggestion that arrives, changes or leaves rewrites the contents of the rail's
  * column and touches nothing else, so no row of the list ever moves because Vexplore had something to say.
  *
  * <h2>It holds no state of the application's</h2>
@@ -59,6 +67,12 @@ final class Ui {
 
     private static final Length ROW = Length.rem(2.125f);
     private static final float ROW_REM = 2.125f;
+
+    /** A type icon in the list: 16 px, the grid {@link FileIcon} is drawn on. */
+    private static final Length ICON = Length.rem(1f);
+
+    /** The UI face's ascent as a fraction of its size: where a revealed name's baseline sits below its line's top. */
+    private static final float ASCENT = 1.07f;
 
     /** A place the tree can show: a folder, and the name to give it (a drive is {@code D:}, not empty). */
     record Place(Path path, String label) {
@@ -220,8 +234,7 @@ final class Ui {
     private Table<Entry> table() {
         Comparator<Entry> byName = Comparator.comparing(e -> e.name().toLowerCase(java.util.Locale.ROOT));
         Table<Entry> t = new Table<>(gui, ROW_REM, List.of(
-                Table.Column.of("NAME", Length.grow(1), (g, e) -> cell(g, e.name(), Type.UI, Type.BODY, Role.INK,
-                        HAlign.LEFT), byName),
+                Table.Column.of("NAME", Length.grow(1), this::nameCell, byName),
                 Table.Column.of("TYPE", Length.rem(5f), (g, e) -> cell(g, e.typeLabel(), Type.MONO, Type.SMALL,
                         Role.DIM, HAlign.LEFT), Comparator.comparing(Entry::typeLabel)),
                 Table.Column.of("SIZE", Length.rem(6.5f), (g, e) -> cell(g, e.folder() ? "" : Bytes.format(e.size()),
@@ -316,6 +329,77 @@ final class Ui {
             out.append(out.isEmpty() ? "" : System.lineSeparator()).append(line.apply(e));
         }
         return out.toString();
+    }
+
+    /**
+     * The name, after its type icon. The icon is drawn at once at the size one rem resolves to now, so a row
+     * scrolled into view is never blank for a frame, and again whenever its box changes (a zoom, a DPI change).
+     */
+    private Node nameCell(Gui g, Entry e) {
+        FileIcon icon = FileIcon.of(e);
+        Node glyph = g.box().size(ICON, ICON).hitInert(true);
+        glyph.picture(icon.sketch(g.rootEmPx() * g.zoom().value() * g.dpi().value()).picture());
+        g.onResize(glyph, box -> glyph.picture(snapped(icon.sketch(box.rect().w()), box.rect().x(), box.rect().y())));
+        Node name = g.text(e.name()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
+                .height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
+        // Not a scroller, as the table's own cells are not: a name wider than its column is clipped, not scrolled.
+        Node cell = g.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
+                .alignItems(AlignItems.CENTER).gap(Type.GAP)
+                .padding(Length.ZERO, Length.dp(10)).children(glyph, name);
+        g.onState(cell, s -> reveal(e, name, s != InteractionState.NORMAL));
+        return cell;
+    }
+
+    /**
+     * Show the whole of a clipped name while its cell is hovered, drawn over the columns to its right.
+     *
+     * <p><b>The one thing in this file drawn over something else</b>, and the exception is narrow on purpose. A name
+     * longer than its column is already covered, by the columns beside it; hovering it only chooses which of the two
+     * is covered for as long as the pointer is there. It covers nothing the user did not point at, appears only for
+     * a name that is actually cut off, and leaves with the pointer. It is the row's overlay, not a node, so nothing
+     * moves and nothing can be clicked on it.
+     */
+    private void reveal(Entry e, Node name, boolean on) {
+        Node row = table.rows().rowNode(e);
+        Node clip = table.cell(e, 0);
+        if (row == null || clip == null) {
+            return;
+        }
+        if (!on) {
+            row.overlay(null);
+            return;
+        }
+        LayoutSnapshot snap = gui.layoutSnapshot();
+        NodeLayout r = snap.node(row.id());
+        NodeLayout c = snap.node(clip.id());
+        NodeLayout t = snap.node(name.id());
+        if (!r.present() || !c.present() || !t.present() || t.text() == null || t.text().lines().isEmpty()) {
+            return;
+        }
+        float textRight = t.rect().x() + t.rect().w();
+        if (textRight <= c.rect().x() + c.rect().w()) {
+            return;   // it fits: there is nothing to reveal
+        }
+        TextMetrics.VisualLine line = t.text().lines().get(0);
+        float size = t.textSizePx();
+        float pad = size * 0.5f;
+        float x = line.xs()[0] - r.rect().x();
+        float top = c.rect().y() - r.rect().y() + 3f;
+        float w = Math.min(textRight - r.rect().x() + pad, r.rect().w()) - (x - pad);
+        float h = c.rect().h() - 6f;
+        Sketch s = new Sketch().tag("name.reveal")
+                .fill(x - pad, top, w, h, 4, gui.theme().color(Role.RAISED))
+                .outline(x - pad, top, w, h, 4, 1, gui.theme().color(Look.LINE_STRONG))
+                .text(e.name(), x, line.top() - r.rect().y() + size * ASCENT, size, gui.theme().color(Role.INK));
+        row.overlay(s.picture());
+    }
+
+    /**
+     * {@code s} moved by however far its box's corner is from a whole pixel. The icon is drawn in whole grid units,
+     * and a box laid out at x = 270.4 would blur every one of its edges across two pixels.
+     */
+    private static Picture snapped(Sketch s, float x, float y) {
+        return new Sketch().place(s.picture(), Math.round(x) - x, Math.round(y) - y).picture();
     }
 
     private Node cell(Gui g, String text, int face, Length size, Role ink, HAlign align) {
