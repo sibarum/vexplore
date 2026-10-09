@@ -32,7 +32,7 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
 | Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2, Two Folders |
 | Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
-| **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, *View in Pix* in the dock and the row menu); without Pix, Pop out opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
+| **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, a click on the dock's picture, *View in Pix* in the row menu); without Pix, the same opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
 | 67 tests here and 31 in `vex-suite-common`, none of which needs a window (the image ones decode for real, through imagelib) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
@@ -63,7 +63,9 @@ Enter or a double-click on a file opens it. Text and source (whatever the Previe
 suite's text editor, started as `text-editor <file>` in a new window, and pictures (named like what imagelib
 decodes) to Pix, as `pix <file>`; everything else, and anything whose application is not installed, goes to the
 shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text file, and says *Vex not installed*
-instead when it is not; for a picture it has *View in Pix*, or *Pop out* into Vexplore's own viewer without Pix.
+instead when it is not; for a picture the picture itself is the control: a click on it, or Enter while it has the
+focus, views it in Pix, or in Vexplore's own viewer without Pix. Its mat and the arrow out of its corner say so, and
+answer the pointer with the words for where it goes.
 Both are found through their install records (`vexelray-installer`, read by the framework's `Apps`), so they have
 to be installed; a run from the checkout still finds installed ones, and `INSTALL_REGISTRY_DIR` points the lookup
 somewhere else for a test.

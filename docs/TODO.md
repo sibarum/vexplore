@@ -104,8 +104,10 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 - [ ] **One Pix per picture.** Each hand-off starts a new Pix; a second picture could go to the Pix already open.
 - [ ] **The viewer forgets its backdrop and its size on close.** Both are per-run. A backdrop belongs in settings;
       the window's place could go through `WindowMemory` as the main window's does.
-- [ ] **Pop out for the other tiers.** Text and bytes have the button greyed. A text pop-out is the editor (Vex),
-      which the dock already offers, so this may never be wanted.
+- [x] **The dock's picture is the control, not a Pop out button.** `Lens` draws a mat and an arrow around it,
+      never over it, that ease to the accent with the words for where it goes on hover or focus.
+- [ ] **Viewing the other tiers from the dock.** Only a picture is a control. Viewing text is the editor (Vex), which
+      the dock already offers, so this may never be wanted.
 - [ ] **The viewer has no zoom or pan.** It fits the picture to the window and never enlarges a raster. 1:1 and a
       drag to pan are the next thing an image viewer is asked for. The lit redesign (the *Vexplore Viewer, lit* row
       of the design canvas) draws them as a Size menu (Fit, Fill, Width, Height, 1:1), Zoom in, Zoom out and Rotate,
@@ -129,6 +131,21 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 - [ ] **Back / forward / up.** Alt+Left, Alt+Right, Alt+Up, Backspace. History belongs in the model.
 
 ## Details found while building
+
+- [ ] **A long file name in the rail's header puts a horizontal scrollbar on the rail.** The `based on <name>`
+      label beside *Suggestions* (`RailView`, `Landmarks.BASIS`) is `wordWrap(false)` and has no
+      limit, so a long name widens the row past the rail. It should be cut short to the space left (ellipsis in the
+      middle, so the extension stays), never widen the rail, and never wrap under the heading.
+- [ ] **Step 4, Destination, for *Copy to* and *Move to*.** The rail has Select, Condition and Action; an action
+      that needs a place gets a fourth section, and only then. The guess comes from what the first three steps
+      already say:
+      - images: `~/Pictures`
+      - videos: `~/Videos`
+      - a mixed bunch of files in Desktop, Downloads or Documents: *To compressed archive*, a new archive rather
+        than a folder.
+
+      `Destinator` already suggests neighbouring folders that hold the kind; those and the destination history
+      (above) sit in this section alongside the guess.
 
 - [ ] **`Suggestions` offers "Videos over 1 GB · 2" by picking the largest round number below the selected file.**
       Good for one file; for several selected files it uses the *smallest* one. Both are guesses; worth a look once

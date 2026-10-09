@@ -30,14 +30,14 @@ import java.util.function.Consumer;
  * design's ladder — every file reaches it — which is why it was built first.
  *
  * <p>An image is an {@link ImageView}, made once and shown or hidden in place of the body; it is cleared when another
- * tier takes the dock, so its texture is free to be given back. <b>View in Pix</b> opens it in Pix when Pix is
- * installed, and <b>Pop out</b> in Vexplore's own {@link Viewer} when it is not.
+ * tier takes the dock, so its texture is free to be given back. The picture is itself the control that views it, in
+ * Pix when Pix is installed and in Vexplore's own {@link Viewer} when it is not; {@link Lens} is what says so.
  */
 final class Dock {
 
     private final Gui gui;
     private final Opener opener;
-    private final Consumer<Path> popOut;
+    private final Lens lens;
     private final Node frame;
     private final Node header;
     private final Node body;
@@ -47,10 +47,9 @@ final class Dock {
     private Preview shown;
     private Boolean empty;
 
-    Dock(Gui gui, KronoGui krono, Opener opener, Textures textures, Consumer<Path> popOut) {
+    Dock(Gui gui, KronoGui krono, Opener opener, Textures textures, Consumer<Path> view) {
         this.gui = gui;
         this.opener = opener;
-        this.popOut = popOut;
         this.header = gui.row().width(Length.FILL).height(Length.rem(2.75f))
                 .alignItems(AlignItems.CENTER).padding(Length.ZERO, Length.rem(1.25f)).gap(Length.rem(0.75f))
                 .scroll(false, false);
@@ -58,6 +57,8 @@ final class Dock {
                 .padding(Length.rem(0.5f), Length.rem(1.25f)).gap(Length.rem(0.15f)).scroll(false, true);
         this.image = new ImageView(gui, krono, textures, Length.rem(0.5f), Length.rem(1.25f));
         image.node().visible(false);
+        this.lens = new Lens(gui, krono, image.node(), view);
+        gui.landmark(Landmarks.POP_OUT, image.node());
         this.frame = gui.column().role("preview").width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Look.RAIL)).scroll(false, false)
                 .children(header, body, image.node());
@@ -78,6 +79,7 @@ final class Dock {
         shown = preview;
         clear();
         image.clear();
+        lens.show(null, null, "");
         image.node().visible(false);
         body.visible(true);
         if (nothing) {
@@ -102,13 +104,6 @@ final class Dock {
             addHeader(new Button(gui, editor ? "Open in Vex" : "Vex not installed").enabled(editor)
                     .onPress(() -> opener.edit(file)).node());
         }
-        boolean picture = preview.tier() == Preview.Tier.IMAGE;
-        Path at = preview.path();
-        Node pop = new Button(gui, picture && opener.pixInstalled() ? "View in Pix" : "Pop out").enabled(picture)
-                .onPress(() -> popOut.accept(at)).node();
-        gui.landmark(Landmarks.POP_OUT, pop);
-        addHeader(pop);
-
         switch (preview.tier()) {
             case FOLDER -> addBody(text("A folder. Open it to see what is inside.", Type.META, Role.DIM, Type.UI));
             case TEXT -> {
@@ -122,6 +117,8 @@ final class Dock {
                 if (image.show(preview.picture())) {
                     body.visible(false);
                     image.node().visible(true);
+                    lens.show(preview.path(), preview.picture(),
+                            opener.pixInstalled() ? "View in Pix" : "Open viewer");
                 } else {
                     addBody(text("An image. There is no window to draw it in.", Type.META, Role.DIM, Type.UI));
                 }
