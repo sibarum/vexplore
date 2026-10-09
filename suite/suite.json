@@ -1,12 +1,13 @@
 {
   "id": "vex-suite",
-  "name": "Vex and Vexplore",
-  "description": "A text editor and a file explorer on the VexelRay stack, each able to open what the other shows.",
+  "name": "Vex, Vexplore and Pix",
+  "description": "A text editor, a file explorer and an image viewer on the VexelRay stack, each able to open what the others show.",
   "repo": "sibarum/vexplore",
   "branch": "main",
   "repoPath": "suite",
   "members": [
     { "config": "../installer.json", "page": "https://github.com/sibarum/vexplore" },
-    { "config": "../../text-editor-vexel-demo/installer.json", "page": "https://github.com/sibarum/text-editor-vexel-demo" }
+    { "config": "../../text-editor-vexel-demo/installer.json", "page": "https://github.com/sibarum/text-editor-vexel-demo" },
+    { "config": "../../Pix/installer.json", "page": "https://github.com/sibarum/Pix" }
   ]
 }
