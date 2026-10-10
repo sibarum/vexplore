@@ -9,7 +9,8 @@ import dev.vexelray.framework.api.VexelApp;
  * nothing). The debug edition is {@code src/edition-debug}; keep the two annotations identical apart from
  * {@code starters}.
  */
-@VexelApp(name = Vexplore.APP, title = Vexplore.TITLE, width = Vexplore.W, height = Vexplore.H)
+@VexelApp(name = Vexplore.APP, title = Vexplore.TITLE, width = Vexplore.W, height = Vexplore.H,
+        icon = "/vexplore.ico")
 final class VexploreApp {
 
     private VexploreApp() {

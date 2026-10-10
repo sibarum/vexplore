@@ -14,7 +14,7 @@ import dev.vexelray.framework.automation.AutomationStarter;
  * (property {@code edition.src}); keep the two annotations identical apart from {@code starters}.
  */
 @VexelApp(name = Vexplore.APP, title = Vexplore.TITLE, width = Vexplore.W, height = Vexplore.H,
-        starters = AutomationStarter.class)
+        icon = "/vexplore.ico", starters = AutomationStarter.class)
 final class VexploreApp {
 
     private VexploreApp() {
