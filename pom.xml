@@ -149,6 +149,7 @@
                 <directory>src/main/rc</directory>
                 <includes>
                     <include>vexplore.ico</include>
+                    <include>vexplore-window.ico</include>
                 </includes>
             </resource>
         </resources>

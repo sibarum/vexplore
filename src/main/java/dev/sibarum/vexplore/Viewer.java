@@ -14,6 +14,7 @@ import dev.vexelray.gui.core.app.WindowSpec;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.TitleBar;
 import dev.vexelray.os.Decorations;
+import dev.vexelray.os.Icon;
 import dev.vexelray.os.WindowConfig;
 import sibarum.atchung.Atchung;
 
@@ -54,6 +55,7 @@ final class Viewer {
     private final PictureViewer view;
 
     private volatile GuiApp app;
+    private volatile Icon mark;
     private volatile AppWindow window;
     private volatile boolean open;
 
@@ -87,11 +89,17 @@ final class Viewer {
         });
     }
 
-    /** Main thread. Null on the way out. */
-    void bind(GuiApp app) {
+    /**
+     * Main thread. Null on the way out. {@code mark} is the suite's window icon, Vexplore's band over its glyph, worn
+     * on the taskbar and in the bar so the viewer reads as Vexplore's and not as Vexplore.
+     */
+    void bind(GuiApp app, Icon mark) {
         this.app = app;
+        this.mark = mark;
         if (app == null) {
             window = null;
+        } else {
+            bar.icon(app, mark);
         }
     }
 
@@ -118,7 +126,8 @@ final class Viewer {
     }
 
     private WindowSpec spec() {
-        WindowConfig config = WindowConfig.of("Vexplore viewer", 1100, 760).decorations(Decorations.CLIENT);
+        WindowConfig config = WindowConfig.of("Vexplore viewer", 1100, 760).decorations(Decorations.CLIENT)
+                .icon(mark);
         return bar.commands(WindowSpec.of(config, gui))
                 .onCreated(w -> {
                     open = true;

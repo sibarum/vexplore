@@ -6,6 +6,7 @@ import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;
 import dev.vexelray.framework.core.Launch;
 import dev.vexelray.framework.shell.Appearance;
+import dev.vexelray.framework.shell.Shell;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.app.GuiApp;
 import dev.vexelray.gui.core.layout.Length;
@@ -70,12 +71,12 @@ final class Recipes {
      */
     @Provides
     @MainThread
-    AutoCloseable windowBinding(GuiApp app, Chooser chooser, Textures textures, Viewer viewer) {
+    AutoCloseable windowBinding(GuiApp app, Shell shell, Chooser chooser, Textures textures, Viewer viewer) {
         chooser.bind(app);
         textures.bind(app);
-        viewer.bind(app);
+        viewer.bind(app, shell.windowMark());
         return () -> {
-            viewer.bind(null);
+            viewer.bind(null, null);
             textures.bind(null);
             chooser.bind(null);
         };
