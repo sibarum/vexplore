@@ -2,8 +2,10 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.Doc.Mark;
 import dev.sibarum.vexplore.Doc.Work;
+import dev.sibarum.vexplore.files.Destinations;
 import dev.sibarum.vexplore.files.Destinations.Dest;
 import dev.sibarum.vexplore.files.Entry;
+import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.ops.Plan;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.sibarum.vexplore.suggest.Intents.Candidate;
@@ -14,6 +16,7 @@ import dev.sibarum.vexplore.suggest.Suggestions.Rail;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
+import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.widget.Button;
@@ -25,7 +28,8 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * The Suggestion Rail's contents: Select, Condition, Action, and the card that states the effect first.
+ * The Suggestion Rail's contents: Select, Condition, Action, Destination for a move or copy, and the card that
+ * states the effect first.
  *
  * <p>The rail is a fixed column and this rewrites <em>only its contents</em>. A suggestion that arrives, changes or
  * leaves therefore moves no row of the list and covers nothing; at worst it moves another part of the rail, which
@@ -46,6 +50,9 @@ final class RailView {
     private record Key(Rail rail, Suggestions.Pick pick, List<Candidate> intent, boolean shift, boolean control,
                        Work work, Plan plan, Set<Path> selected) {
     }
+
+    /** How much of a file name the header's "based on" shows before cutting it in the middle. */
+    private static final int BASIS_CHARS = 28;
 
     private final Gui gui;
     private final Model model;
@@ -87,13 +94,16 @@ final class RailView {
         kids.clear();
         Rail rail = key.rail();
 
-        Node basis = gui.text(rail.basis().isEmpty() ? "" : "based on " + rail.basis()).font(Type.MONO)
-                .textSize(Type.SMALL).textColor(gui.theme().color(Look.ANCHOR)).wordWrap(false);
+        // A long name is shortened by count, keeping its extension, and whatever still does not fit is clipped by
+        // its box: the header never widens the rail.
+        Node basis = gui.text(rail.basis().isEmpty() ? "" : "based on " + shorten(rail.basis(), BASIS_CHARS))
+                .font(Type.MONO).textSize(Type.SMALL).textColor(gui.theme().color(Look.ANCHOR)).wordWrap(false);
         gui.landmark(Landmarks.BASIS, basis);
-        add(gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).children(
+        Node basisBox = gui.row().width(Length.grow(1f)).alignItems(AlignItems.CENTER)
+                .justify(Justify.END).scroll(false, false).clip(true).children(basis);
+        add(gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).gap(Length.rem(0.6f)).children(
                 gui.text("Suggestions").font(Type.UI).textSize(Type.HEADING).textColor(gui.theme().color(Role.INK)),
-                gui.box().width(Length.grow(1f)).height(Length.rem(1f)),
-                basis));
+                basisBox));
 
         Work work = doc.work();
         if (!work.busy().isEmpty() || !work.notice().isEmpty()) {
@@ -114,6 +124,10 @@ final class RailView {
         add(section(2, "Condition", chips(rail.conditions(), effectiveCondition(doc, rail),
                 c -> model.pick(p -> p.with(c)))));
         add(section(3, "Action", actions(rail, doc.pick().act())));
+        Act act = doc.pick().act();
+        if (act == Act.MOVE || act == Act.COPY) {
+            add(section(4, "Destination", places(doc, rail, work)));
+        }
         if (!work.marks().isEmpty()) {
             add(marks(work));
         }
@@ -259,17 +273,25 @@ final class RailView {
     }
 
 
+    /** The card's line saying where a move or copy goes; the places to choose from are step 4. */
     private Node destination(Work work) {
-        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.4f));
         Node where = gui.text(work.destination() == null ? "to … (pick a place)" : "to " + work.destination())
                 .font(Type.MONO).textSize(Type.SMALL).textColor(gui.theme().color(Role.INK)).wordWrap(true)
                 .width(Length.FILL);
         gui.landmark(Landmarks.DESTINATION, where);
-        column.append(where);
-        Node row = gui.row().gap(Length.rem(0.4f)).scroll(false, false);
+        return where;
+    }
+
+    /**
+     * Step 4, for a move or a copy: where to, guessed from the first three steps. The person's own folder for the
+     * kind comes first, then the neighbours that already hold it; a mixed bunch in Desktop, Downloads or Documents
+     * is also offered a new archive, which is the Archive action. The folder dialog is last, for everything else.
+     */
+    private Node places(Doc doc, Rail rail, Work work) {
+        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
         int shownCount = 0;
         for (Dest d : work.suggested()) {
-            if (shownCount++ >= 2) {
+            if (shownCount++ >= 3) {
                 break;
             }
             String name = d.path().getFileName() == null ? d.path().toString() : d.path().getFileName().toString();
@@ -279,13 +301,34 @@ final class RailView {
             if (shownCount == 1) {
                 gui.landmark(Landmarks.DEST_FIRST, chip.node());
             }
-            row.append(chip.node());
+            column.append(chip.node());
+        }
+        List<Kind> kinds = rail.effect().targets().stream().map(Entry::kind).toList();
+        if (rail.acts().contains(Act.ARCHIVE) && Destinations.archives(doc.folder(), Startup.home(), kinds)) {
+            Button archive = new Button(gui, "To compressed archive")
+                    .onPress(() -> model.pick(p -> p.with(Act.ARCHIVE)));
+            gui.landmark(Landmarks.DEST_ARCHIVE, archive.node());
+            column.append(archive.node());
         }
         Button choose = new Button(gui, "Choose folder…").onPress(actor::choose);
         gui.landmark(Landmarks.CHOOSE, choose.node());
-        row.append(choose.node());
-        column.append(row);
+        column.append(choose.node());
         return column;
+    }
+
+    /**
+     * {@code name} in at most {@code max} characters, cut in the middle so the start and the extension both stay.
+     * By count rather than by measuring, as the breadcrumb does, so the header does not re-decide itself as the
+     * rail is resized.
+     */
+    static String shorten(String name, int max) {
+        if (name.length() <= max) {
+            return name;
+        }
+        int dot = name.lastIndexOf('.');
+        int tail = dot > 0 && name.length() - dot <= max / 3 ? name.length() - dot + 3 : max / 3;
+        int head = max - 1 - tail;
+        return name.substring(0, head) + "…" + name.substring(name.length() - tail);
     }
 
     private static String hint(Act act, Plan plan) {

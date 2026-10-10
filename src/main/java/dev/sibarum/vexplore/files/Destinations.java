@@ -32,6 +32,8 @@ public final class Destinations {
         if (here == null || kind == null || kind == Kind.FOLDER) {
             return List.of();
         }
+        here = absolute(here);
+        exclude = exclude.stream().map(Destinations::absolute).collect(java.util.stream.Collectors.toSet());
         Set<Path> candidates = new HashSet<>(Folders.subfolders(here));
         Path parent = here.getParent();
         if (parent != null) {
@@ -54,6 +56,46 @@ public final class Destinations {
         }
         out.sort(Comparator.comparingInt(Dest::count).reversed().thenComparing(d -> d.path().toString()));
         return out.size() > MAX ? List.copyOf(out.subList(0, MAX)) : List.copyOf(out);
+    }
+
+    /**
+     * The person's own folder for a kind, the guess that goes before the neighbours: images to Pictures and videos
+     * to Videos under {@code home}. Null when the kind has no such folder, the folder does not exist, or the files
+     * are already in it.
+     */
+    public static Dest home(Path here, Path home, Kind kind) {
+        String name = kind == Kind.IMAGE ? "Pictures" : kind == Kind.VIDEO ? "Videos" : null;
+        if (name == null || home == null) {
+            return null;
+        }
+        Path p = absolute(home).resolve(name);
+        if (!java.nio.file.Files.isDirectory(p) || (here != null && p.equals(absolute(here)))) {
+            return null;
+        }
+        return new Dest(p, "your " + name + " folder", 0);
+    }
+
+    /**
+     * Whether what is being moved is a mixed bunch sitting in one of the folders things pile up in — Desktop,
+     * Downloads or Documents directly under {@code home} — for which the better place is a new archive rather than
+     * any one folder. Mixed means more than one kind.
+     */
+    public static boolean archives(Path here, Path home, java.util.Collection<Kind> kinds) {
+        if (here == null || home == null) {
+            return false;
+        }
+        here = absolute(here);
+        if (!absolute(home).equals(here.getParent()) || here.getFileName() == null) {
+            return false;
+        }
+        String name = here.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+        boolean pile = name.equals("desktop") || name.equals("downloads") || name.equals("documents");
+        return pile && Set.copyOf(kinds).size() > 1;
+    }
+
+    /** The folder being shown may be given relative (a scene's {@code vexplore.folder}) and home absolute. */
+    private static Path absolute(Path p) {
+        return p.toAbsolutePath().normalize();
     }
 
     /** The names directly in {@code dir}: what a plan is checked against for collisions. */

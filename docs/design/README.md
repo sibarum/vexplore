@@ -16,6 +16,8 @@ Simple filesystem operations should be simple. Common everyday tasks like "move 
 4. Mark: If you're not ready to perform an action yet, simply mark them. Marked filegroups can be referenced later, combined, compared, etc.
 5. Compare/Analyze: compares and contrasts two or more folders, filegroups, or subtrees.
 
+Copy (to folder) and Move (to folder) need one more answer: the Destination. Vexplore guesses it from what Select, Condition and Action already say. Images go to `~/Pictures`, videos to `~/Videos`, and a mixed bunch of files sitting in Desktop, Downloads or Documents goes to a new compressed archive.
+
 If a folder contains a recent file that dropped 5 seconds ago, highlight it, it's most likely important.
 
 There's always something worth highlighting.

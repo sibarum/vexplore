@@ -132,21 +132,12 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 
 ## Details found while building
 
-- [ ] **A long file name in the rail's header puts a horizontal scrollbar on the rail.** The `based on <name>`
-      label beside *Suggestions* (`RailView`, `Landmarks.BASIS`) is `wordWrap(false)` and has no
-      limit, so a long name widens the row past the rail. It should be cut short to the space left (ellipsis in the
-      middle, so the extension stays), never widen the rail, and never wrap under the heading.
-- [ ] **Step 4, Destination, for *Copy to* and *Move to*.** The rail has Select, Condition and Action; an action
-      that needs a place gets a fourth section, and only then. The guess comes from what the first three steps
-      already say:
-      - images: `~/Pictures`
-      - videos: `~/Videos`
-      - a mixed bunch of files in Desktop, Downloads or Documents: *To compressed archive*, a new archive rather
-        than a folder.
-
-      `Destinator` already suggests neighbouring folders that hold the kind; those and the destination history
-      (above) sit in this section alongside the guess.
-
+- [ ] ***To compressed archive* from a move keeps the originals.** Step 4 offers it for a mixed bunch in Desktop,
+      Downloads or Documents, and pressing it switches the action to Archive, which writes a zip beside them and
+      leaves them where they were. A move means they should go: archive, then the originals to the trash, undone as
+      one. That is a new `Plan.Kind`. "Mixed" is currently *more than one kind*, which a pair of files meets.
+- [ ] **Step 4 guesses `Pictures` and `Videos` by name under the home folder.** A folder Windows has relocated (to
+      OneDrive, or another drive) is not where its name says; the known-folder API (`SHGetKnownFolderPath`) is.
 - [ ] **`Suggestions` offers "Videos over 1 GB · 2" by picking the largest round number below the selected file.**
       Good for one file; for several selected files it uses the *smallest* one. Both are guesses; worth a look once
       there is real use to look at.

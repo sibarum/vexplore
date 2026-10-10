@@ -7,6 +7,7 @@ import dev.sibarum.vexplore.suggest.Suggestions.Act;
 import dev.vexelray.gui.core.Gui;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -53,13 +54,20 @@ final class Destinator {
         }
         Question mine = q;
         Runnable work = () -> {
-            var found = Destinations.suggest(mine.folder(), mine.kind(), Set.of());
+            Destinations.Dest guess = Destinations.home(mine.folder(), Startup.home(), mine.kind());
+            var near = Destinations.suggest(mine.folder(), mine.kind(),
+                    guess == null ? Set.of() : Set.of(guess.path()));
+            var found = new java.util.ArrayList<Destinations.Dest>();
+            if (guess != null) {
+                found.add(guess);
+            }
+            found.addAll(near);
             synchronized (this) {
                 if (!Objects.equals(mine, asked)) {
                     return;
                 }
             }
-            model.work(w -> w.suggesting(found));
+            model.work(w -> w.suggesting(List.copyOf(found)));
         };
         if (Startup.synchronous()) {
             work.run();

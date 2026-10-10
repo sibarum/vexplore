@@ -3,7 +3,7 @@
 #   docs/scenes/fixture.sh
 #   java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
 #        --script docs/scenes/02-move.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
-#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash"
+#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash -Dvexplore.home=target/fixture"
 #
 # Landmarks, not coordinates, wherever the layout moves: rail controls are named act.move, act.delete, go, undo...
 await items 18 items

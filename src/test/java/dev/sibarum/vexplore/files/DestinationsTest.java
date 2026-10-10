@@ -65,4 +65,35 @@ class DestinationsTest {
         touch(root, "a.txt", "b.txt");
         assertEquals(Set.of("a.txt", "b.txt"), Destinations.names(root));
     }
+
+    @Test
+    void imagesGuessPicturesAndVideosGuessVideos(@TempDir Path home) throws IOException {
+        Path here = home.resolve("Downloads");
+        touch(here);
+        touch(home.resolve("Pictures"));
+        touch(home.resolve("Videos"));
+        assertEquals(home.resolve("Pictures"), Destinations.home(here, home, Kind.IMAGE).path());
+        assertEquals(home.resolve("Videos"), Destinations.home(here, home, Kind.VIDEO).path());
+        assertEquals(null, Destinations.home(here, home, Kind.DOCUMENT));
+    }
+
+    @Test
+    void noGuessForAMissingFolderOrTheOneTheFilesAreIn(@TempDir Path home) throws IOException {
+        assertEquals(null, Destinations.home(home.resolve("Downloads"), home, Kind.IMAGE), "no Pictures here");
+        touch(home.resolve("Pictures"));
+        assertEquals(null, Destinations.home(home.resolve("Pictures"), home, Kind.IMAGE));
+    }
+
+    @Test
+    void aMixedBunchInAPileFolderIsOfferedAnArchive(@TempDir Path home) {
+        List<Kind> mixed = List.of(Kind.IMAGE, Kind.DOCUMENT, Kind.ARCHIVE);
+        assertTrue(Destinations.archives(home.resolve("Downloads"), home, mixed));
+        assertTrue(Destinations.archives(home.resolve("Desktop"), home, mixed));
+        assertTrue(Destinations.archives(home.resolve("documents"), home, mixed));
+        assertTrue(!Destinations.archives(home.resolve("Downloads"), home, List.of(Kind.IMAGE, Kind.IMAGE)),
+                "one kind is not a mixed bunch");
+        assertTrue(!Destinations.archives(home.resolve("Projects"), home, mixed), "not a pile folder");
+        assertTrue(!Destinations.archives(home.resolve("Downloads").resolve("old"), home, mixed),
+                "only the pile folder itself");
+    }
 }

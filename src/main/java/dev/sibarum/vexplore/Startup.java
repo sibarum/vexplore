@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
  *   <li>{@code vexplore.scope}, {@code vexplore.act} — a {@link Scope} and an {@link Act} to have picked;</li>
 
  *   <li>{@code vexplore.hold} — {@code shift} or {@code control}: act as though that key is down;</li>
+ *   <li>{@code vexplore.home} — the home folder step 4 guesses destinations under; the user's when absent;</li>
  *   <li>{@code vexplore.sync} — list on the calling thread, so a capture is not taken before the folder is read.</li>
  * </ul>
  */
@@ -42,6 +43,15 @@ final class Startup {
         Path home = Path.of(System.getProperty("user.home"));
         Path downloads = home.resolve("Downloads");
         return Files.isDirectory(downloads) ? downloads : home;
+    }
+
+    /**
+     * The home folder destinations are guessed under (its Pictures, Videos, Desktop, Downloads, Documents):
+     * {@code vexplore.home}, else the user's. A scene sets it to its fixture so nothing it does reaches the real ones.
+     */
+    static Path home() {
+        String given = System.getProperty("vexplore.home");
+        return Path.of(given != null && !given.isBlank() ? given : System.getProperty("user.home"));
     }
 
     static boolean synchronous() {

@@ -3,7 +3,7 @@
 #   docs/scenes/fixture.sh
 #   java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
 #        --script docs/scenes/03-delete-and-mark.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
-#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash"
+#        "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash -Dvexplore.home=target/fixture"
 await items 18 items
 # invoice-sept.pdf, then Delete (recoverable).
 click 600,199

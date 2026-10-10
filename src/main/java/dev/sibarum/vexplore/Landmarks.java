@@ -31,6 +31,8 @@ final class Landmarks {
     static final String DESTINATION = "destination";
     /** The first suggested destination, which a script can await to know the suggestions have arrived. */
     static final String DEST_FIRST = "dest.1";
+    /** Step 4's "To compressed archive", offered for a mixed bunch in Desktop, Downloads or Documents. */
+    static final String DEST_ARCHIVE = "dest.archive";
     /** The dock's picture, which is its own control: a click views it in Pix, or in the viewer without Pix. */
     static final String POP_OUT = "popout";
 

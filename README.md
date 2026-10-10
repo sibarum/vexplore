@@ -52,7 +52,8 @@ Needs the stack installed to the local Maven repository first, in the order in
 enabled for Panama.
 
 Startup properties, for a known state (see `Startup`): `vexplore.folder`, `vexplore.select` (comma-separated
-names), `vexplore.scope`, `vexplore.act`, `vexplore.hold`, `vexplore.trash`, and `vexplore.sync=true` to list on the calling thread.
+names), `vexplore.scope`, `vexplore.act`, `vexplore.hold`, `vexplore.trash`, `vexplore.home` (where step 4 looks for
+Pictures, Videos and the pile folders; the scenes point it at the fixture), and `vexplore.sync=true` to list on the calling thread.
 
 A path on the command line wins over `vexplore.folder`: `vexplore <folder>` opens it, and `vexplore <file>` opens the
 folder it is in with that file selected. That is how the suite's other apps say "show this here".
@@ -81,7 +82,7 @@ scene does not depend on where anything is drawn:
 sh docs/scenes/fixture.sh
 java -jar ../vexelray-gui/vexelray-gui-automation-cli/target/vexelray-gui-automation-cli-0.1.0-SNAPSHOT.jar \
      --script docs/scenes/02-move.txt --launch mvn.cmd -q exec:exec -Dautomation=0 \
-     "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash"
+     "-Dapp.jvmArgs=-Dvexplore.folder=target/fixture/Downloads -Dvexplore.trash=target/fixture/trash -Dvexplore.home=target/fixture"
 ```
 
 `01-select` is the first mockup; `02-move` moves nine videos to the folder that already holds videos and then undoes

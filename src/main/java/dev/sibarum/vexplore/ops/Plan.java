@@ -57,11 +57,14 @@ public record Plan(Kind kind, List<Step> steps, List<Skip> skipped, long bytes, 
                 skipped.add(new Skip(from, "no destination chosen"));
                 continue;
             }
-            if (destination.startsWith(from)) {
+            // Compared absolute: a suggested destination is, and the folder being shown may not be.
+            Path to = destination.toAbsolutePath().normalize();
+            Path whole = from.toAbsolutePath().normalize();
+            if (to.startsWith(whole)) {
                 skipped.add(new Skip(from, "the destination is inside it"));
                 continue;
             }
-            if (from.getParent() != null && from.getParent().equals(destination)) {
+            if (whole.getParent() != null && whole.getParent().equals(to)) {
                 skipped.add(new Skip(from, "already in that folder"));
                 continue;
             }
