@@ -40,7 +40,7 @@ Set these in the same PowerShell window *before* the install command:
 
 | File | Kind | Version | Size | Installed to |
 | --- | --- | --- | --- | --- |
-| `vexplore.exe` | native executable | 0.1.0 | 43.2 MB | `%LOCALAPPDATA%\Programs\Vexplore\vexplore.exe` |
+| `vexplore.exe` | native executable | 0.1.0 | 41.5 MB | `%LOCALAPPDATA%\Programs\Vexplore\vexplore.exe` |
 
 Everything installed is recorded in `%LOCALAPPDATA%\Programs\Vexplore\install-manifest.json`, and a copy
 in `%LOCALAPPDATA%\vexelray-installer\installs\vexplore.json`.

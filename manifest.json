@@ -40,16 +40,16 @@
               "kind": "native",
               "file": "vexplore.exe",
               "url": "https://github.com/sibarum/vexplore/releases/download/v0.1.0/vexplore.exe",
-              "sha256": "40e7b1533413dc8a875c902174037168ecc39bfca26111dab8ca366f6bceea03",
-              "size": 45330432,
+              "sha256": "2a6c54b88c5ffec2b7b53626d4ca898678fd47acd564670d6ff9ae3086216144",
+              "size": 43544576,
               "installPath": "{installDir}\\vexplore.exe",
               "executable": true,
               "addToPath": true,
               "icon": {
                 "file": "vexplore.ico",
                 "url": "https://github.com/sibarum/vexplore/releases/download/v0.1.0/vexplore.ico",
-                "sha256": "ea04f590a5776441a66713d78447f3408eb9012edc8015b2857fcdcef6f3660d",
-                "size": 11167,
+                "sha256": "a24f59cc8fb21271cfbdfa87b35b9c45ed461bef5f7603584942fd046fb5f806",
+                "size": 22384,
                 "installPath": "{installDir}\\vexplore.ico"
               },
               "shortcuts": {
@@ -61,7 +61,8 @@
             }
           ]
         }
-      }
+      },
+      "updatedAt": "2026-10-10T04:14:23Z"
     }
   ]
 }
