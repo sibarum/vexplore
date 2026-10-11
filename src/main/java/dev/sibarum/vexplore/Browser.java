@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.git.Git;
 import dev.sibarum.vexplore.files.Folders;
 import dev.vexelray.gui.core.Gui;
 
@@ -13,11 +14,16 @@ import java.util.Set;
  * <p>The listing is disk work, so it runs on {@link Gui#offload()} and lands through {@link Model#listed}, which
  * drops it if the user has already gone somewhere else. That last check is the whole reason this is a class and not
  * a lambda in {@code Ui}: two quick navigations produce two listings, and only the later one may be drawn.
+ *
+ * <p><b>Git is asked after the listing, as a task of its own.</b> The rows are drawn when the listing lands, and the
+ * Git column fills in when git answers, through {@link Model#gitted} and the same stale-folder check. Status on a
+ * large repository is the slow call, and it must never be what keeps a folder's rows from appearing.
  */
 final class Browser {
 
     private final Gui gui;
     private final Model model;
+    private final Git git = Git.onPath();
 
     Browser(Gui gui, Model model) {
         this.gui = gui;
@@ -29,12 +35,8 @@ final class Browser {
         if (!model.navigate(folder)) {
             return;
         }
-        Runnable listing = () -> model.listed(folder, Folders.list(folder));
-        if (Startup.synchronous()) {
-            listing.run();
-        } else {
-            gui.offload().execute(listing);
-        }
+        list(folder, () -> {
+        });
     }
 
     /**
@@ -44,17 +46,11 @@ final class Browser {
     void reveal(Path file) {
         Path folder = file.getParent();
         model.navigate(folder);
-        Runnable listing = () -> {
-            model.listed(folder, Folders.list(folder));
+        list(folder, () -> {
             if (Objects.equals(model.doc().folder(), folder)) {
                 model.select(Set.of(file));
             }
-        };
-        if (Startup.synchronous()) {
-            listing.run();
-        } else {
-            gui.offload().execute(listing);
-        }
+        });
     }
 
     /** List the folder again, as after something changed it. Selection and picks start over: they described a folder that is gone. */
@@ -63,11 +59,23 @@ final class Browser {
         if (folder == null) {
             return;
         }
-        Runnable listing = () -> model.listed(folder, Folders.list(folder));
+        list(folder, () -> {
+        });
+    }
+
+    /** List {@code folder}, run {@code then}, and ask git about it afterwards, each off the frame loop. */
+    private void list(Path folder, Runnable then) {
+        Runnable listing = () -> {
+            model.listed(folder, Folders.list(folder));
+            then.run();
+        };
+        Runnable status = () -> model.gitted(folder, git.status(folder).orElse(null));
         if (Startup.synchronous()) {
             listing.run();
+            status.run();
         } else {
             gui.offload().execute(listing);
+            gui.offload().execute(status);
         }
     }
 }

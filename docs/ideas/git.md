@@ -1,7 +1,8 @@
 # Git, as a primary feature
 
-Status: **idea**, 2026-10-11. Nothing is built, and nothing in the suite talks to git yet. Vex's survey only
-notices that a folder is a repository and shows a *git* chip.
+Status: **started**, 2026-10-11. The first half of *Status in the file view* is built: the GIT column and the branch
+in the status line, from `dev.sibarum.suite.git` in `vex-suite-common`. What is left is in [TODO.md](../TODO.md),
+*Git, and browsing more than the disk*.
 
 Git is not a plugin. In a repository, whether a file is changed, staged, untracked or ignored is as much a fact
 about the row as its size and date, and a file explorer that hides it is hiding the most important thing about

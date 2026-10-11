@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.git.Status;
 import dev.sibarum.vexplore.files.Destinations.Dest;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Preview;
@@ -30,9 +31,10 @@ import java.util.Set;
  * @param now      the instant the listing was taken at: what "today" means for everything derived from it
  * @param input    the modifier keys held and the order the list is showing — what the user is in the middle of
  * @param work     destinations, what has been done and can be undone, and the marks kept for later
+ * @param git      what git says about {@code folder}: null outside a repository, without git, or until it answers
  */
 record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected, Pick pick, Preview preview,
-           Instant now, Input input, Work work) {
+           Instant now, Input input, Work work, Status git) {
 
     /** The keys held, and the order shown. */
     record Input(boolean shift, boolean control, Order order) {
@@ -106,20 +108,20 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
     }
 
     static Doc initial() {
-        return new Doc(null, List.of(), false, Set.of(), Pick.NONE, null, Instant.now(), Input.NONE, Work.NONE);
+        return new Doc(null, List.of(), false, Set.of(), Pick.NONE, null, Instant.now(), Input.NONE, Work.NONE, null);
     }
 
     private Doc with(Path folder, List<Entry> entries, boolean loading, Set<Path> selected, Pick pick,
-                     Preview preview, Instant now, Input input, Work work) {
-        return new Doc(folder, entries, loading, selected, pick, preview, now, input, work);
+                     Preview preview, Instant now, Input input, Work work, Status git) {
+        return new Doc(folder, entries, loading, selected, pick, preview, now, input, work, git);
     }
 
     Doc navigating(Path to) {
-        return with(to, List.of(), true, Set.of(), Pick.NONE, null, now, input, work.noting(""));
+        return with(to, List.of(), true, Set.of(), Pick.NONE, null, now, input, work.noting(""), null);
     }
 
     Doc listed(List<Entry> listing, Instant at) {
-        return with(folder, listing, false, Set.of(), Pick.NONE, null, at, input, work);
+        return with(folder, listing, false, Set.of(), Pick.NONE, null, at, input, work, git);
     }
 
     Doc selecting(Set<Path> paths) {
@@ -127,23 +129,27 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
         // preview of another file is not a preview of this one. The preview of the same single file stays,
         // because re-selecting it must not make the dock blink.
         Preview keep = preview != null && paths.size() == 1 && paths.contains(preview.path()) ? preview : null;
-        return with(folder, entries, loading, paths, Pick.NONE, keep, now, input, work);
+        return with(folder, entries, loading, paths, Pick.NONE, keep, now, input, work, git);
     }
 
     Doc picking(Pick p) {
-        return with(folder, entries, loading, selected, p, preview, now, input, work);
+        return with(folder, entries, loading, selected, p, preview, now, input, work, git);
     }
 
     Doc previewing(Preview p) {
-        return with(folder, entries, loading, selected, pick, p, now, input, work);
+        return with(folder, entries, loading, selected, pick, p, now, input, work, git);
     }
 
     Doc inputting(Input i) {
-        return with(folder, entries, loading, selected, pick, preview, now, i, work);
+        return with(folder, entries, loading, selected, pick, preview, now, i, work, git);
     }
 
     Doc working(Work w) {
-        return with(folder, entries, loading, selected, pick, preview, now, input, w);
+        return with(folder, entries, loading, selected, pick, preview, now, input, w, git);
+    }
+
+    Doc gitting(Status s) {
+        return with(folder, entries, loading, selected, pick, preview, now, input, work, s);
     }
 
     /** The one selected path, or null if there are none or several: the only case the dock speaks to. */

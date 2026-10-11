@@ -130,6 +130,35 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       same values as the chain's.
 - [ ] **Back / forward / up.** Alt+Left, Alt+Right, Alt+Up, Backspace. History belongs in the model.
 
+## Git, and browsing more than the disk
+
+From [ideas/git.md](ideas/git.md) and [ideas/providers.md](ideas/providers.md). Git status is in the file list:
+`dev.sibarum.suite.git` in `vex-suite-common` runs the `git` executable, `Browser` asks it after each listing, and
+the list's GIT column and the status line's branch show the answer. What is left:
+
+- [ ] **The Git column shows outside a repository too, blank.** The design says it should not be there at all, and
+      it takes its width from NAME, the only column that grows. `Table` cannot hide a column or change one's width
+      after it is built: a framework change, to go in the framework's TODO.
+- [ ] **The Git column does not sort.** `Order` shares each column's comparator with the suggestion engine and
+      sees only entries; the status sits beside them in the `Doc`. "Changed first" is the sort this column is for.
+- [ ] **Status is read when a folder is listed, and only then.** A `git add` at a prompt, or an edit in Vex, shows
+      at the next navigation. The `WatchService` the *fresh file* item above needs is the same one; the watcher
+      should also look at `.git/index` and `HEAD`, which change without any file in the folder changing.
+- [ ] **The rail does not know about git yet.** *Select*: unstaged, staged, untracked, conflicted, changed in the
+      last commit, changed on this branch. *Condition*: tracked / untracked / not ignored (the design's
+      *gitignore*). The last two need `git diff --name-only` against a commit, beside `status`.
+- [ ] **Stage, unstage, and a Discard that can be undone.** Discard copies the working file to Vexplore's trash and
+      then restores, so Ctrl+Z puts it back. Through a plan, like every other action.
+- [ ] **A console showing what git ran.** `Git.Result` keeps the command, output and exit code for it. Waits on
+      the terminal emulator becoming a library (`mainframe/docs/terminal-library.md`).
+- [ ] **Git in the native `.exe` is unexercised.** It is a `ProcessBuilder`, which needs no metadata, but nothing
+      has been run there.
+- [ ] **Vex opens at a line.** The references explorer and *Open diff in Vex* both need `text-editor <file>:<line>`
+      (or `--line`), agreed between the two apps the way `pix <file>` was. The change is in the text editor.
+- [ ] **The Java references explorer** ([ideas/java-references.md](ideas/java-references.md)), and the provider
+      contract built by writing it: `Entry`, `Folders` and `Routes` moved from `Path` to a node only as far as it
+      needs. Then its filter chips, and the git filters that are a join of `SourceRef` with `status` and `diff`.
+
 ## Details found while building
 
 - [ ] ***To compressed archive* from a move keeps the originals.** Step 4 offers it for a mixed bunch in Desktop,

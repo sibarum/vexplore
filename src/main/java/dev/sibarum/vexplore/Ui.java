@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.git.Status;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Folders;
@@ -109,6 +110,9 @@ final class Ui {
     /** The last document drawn, so each region redraws only when its own inputs changed. */
     private Doc shown;
 
+    /** What git said about the folder shown, or null. Read by the list's Git cells as they are built. */
+    private volatile Status gitShown;
+
     /** Which rows the rail would reach. Read by the list to paint them, replaced when the rail changes. */
     private volatile Set<Path> targeted = Set.of();
 
@@ -139,8 +143,10 @@ final class Ui {
         this.status = new StatusBar(gui).font(Type.MONO)
                 .slot("items", StatusBar.Side.LEFT, "")
                 .slot("selected", StatusBar.Side.LEFT, "")
+                .slot("branch", StatusBar.Side.RIGHT, "")
                 .slot("path", StatusBar.Side.RIGHT, "");
         gui.landmark(Landmarks.ITEMS, status.slot("items"));
+        gui.landmark(Landmarks.BRANCH, status.slot("branch"));
         gui.landmark(Landmarks.SELECTED, status.slot("selected"));
         this.rail = new RailView(gui, model, actor);
 
@@ -255,7 +261,10 @@ final class Ui {
                         Type.UI, Type.BODY, Role.INK, HAlign.RIGHT), Comparator.comparingLong(Entry::size)),
                 Table.Column.of("MODIFIED", Length.rem(9.5f), (g, e) -> cell(g,
                         Dates.column(e.modified(), Instant.now(), ZoneId.systemDefault()), Type.UI, Type.BODY,
-                        Role.DIM, HAlign.LEFT), Comparator.comparing(Entry::modified))));
+                        Role.DIM, HAlign.LEFT), Comparator.comparing(Entry::modified)),
+                // Not sortable yet: Order shares each column's comparator with the suggestion engine, and this one
+                // reads the git status beside the entries rather than the entries themselves.
+                Table.Column.of("GIT", Length.rem(6.25f), this::gitCell)));
         t.node().width(Length.FILL).height(Length.FILL);
         t.headers(Type.MONO, Type.SMALL, Role.DIM);
         t.rows().looks(Look.SELECTED, Look.TARGETED).marked(e -> targeted.contains(e.path()));
@@ -378,6 +387,22 @@ final class Ui {
         return new Sketch().place(s.picture(), Math.round(x) - x, Math.round(y) - y).picture();
     }
 
+    /**
+     * What git says about the row. Read from {@link #gitShown} as the row is built, so only rows on screen ever ask,
+     * and the rows are rebuilt when git answers (see {@link #show}).
+     */
+    private Node gitCell(Gui g, Entry e) {
+        GitColumn.Mark m = GitColumn.of(gitShown, e);
+        Role ink = switch (m.tone()) {
+            case ALARM -> Look.ANCHOR;
+            case CHANGED -> Role.INK;
+            case STAGED -> Role.ACCENT;
+            case QUIET -> Role.DIM;
+            case FAINT -> Role.FAINT;
+        };
+        return cell(g, m.words(), Type.MONO, Type.SMALL, ink, HAlign.LEFT);
+    }
+
     private Node cell(Gui g, String text, int face, Length size, Role ink, HAlign align) {
         return g.text(text).font(face).textSize(size).textColor(g.theme().color(ink)).wordWrap(false)
                 .height(Length.FILL).padding(Length.ZERO, Length.dp(10)).align(align, VAlign.MIDDLE);
@@ -422,8 +447,12 @@ final class Ui {
                 status.text("path", doc.folder().toString());
             }
         }
-        if (before == null || before.entries() != doc.entries()) {
+        // Git answers after the listing, so its arrival rebuilds the rows on screen with the same entries: the
+        // selection survives (the entries are the same objects) and nothing moves, since the column's width is fixed.
+        if (before == null || before.entries() != doc.entries() || before.git() != doc.git()) {
+            gitShown = doc.git();
             table.items(doc.entries());
+            status.text("branch", doc.git() == null ? "" : doc.git().branch().label());
         }
 
         // The document is the truth about what is selected, and a selection can arrive from elsewhere (a session

@@ -22,6 +22,8 @@ final class Landmarks {
     static final String SELECTED = "selected";
     /** The status line's item count: "reading..." until a listing lands, so scripts await it before touching rows. */
     static final String ITEMS = "items";
+    /** The status line's branch, empty outside a repository. Written when git answers, after the listing. */
+    static final String BRANCH = "branch";
     /** The rail's one-line account of the last action, or of what is running. Scripts await it. */
     static final String NOTICE = "notice";
     static final String UNDO = "undo";

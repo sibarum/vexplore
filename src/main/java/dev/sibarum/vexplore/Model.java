@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.git.Status;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Preview;
 import dev.sibarum.vexplore.suggest.Suggestions.Pick;
@@ -59,6 +60,14 @@ final class Model {
     void listed(Path folder, List<Entry> entries) {
         Instant at = Instant.now();
         change(d -> Objects.equals(d.folder(), folder) ? d.listed(entries, at) : d);
+    }
+
+    /**
+     * Git answered about a folder: its status, or null when it is not in a repository. Dropped unless {@code folder}
+     * is still the one being shown, exactly as a listing is.
+     */
+    void gitted(Path folder, Status status) {
+        change(d -> Objects.equals(d.folder(), folder) ? d.gitting(status) : d);
     }
 
     void select(Set<Path> paths) {
