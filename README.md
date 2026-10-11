@@ -9,6 +9,10 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 - **What is needed** — [docs/components.md](docs/components.md): which GUI components the interface needs, which
   existed, which were added, which are still missing.
 - **What is not done** — [docs/TODO.md](docs/TODO.md).
+- **What it might become** — [docs/ideas/](docs/ideas/): [git](docs/ideas/git.md) as a primary feature,
+  [a web page as a folder](docs/ideas/web-page-as-folder.md),
+  the [providers](docs/ideas/providers.md) contract it points to, and the first provider,
+  [a Java references explorer](docs/ideas/java-references.md).
 - **What the framework did to us** — [docs/framework-notes.md](docs/framework-notes.md), and the framework-side
   account in `vexelray-framework/docs/TODO.md`, *Found by Vexplore*.
 
