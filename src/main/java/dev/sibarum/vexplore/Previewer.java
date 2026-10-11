@@ -4,8 +4,8 @@ import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Preview;
 import dev.sibarum.vexplore.files.Previews;
-import dev.sibarum.suite.Lru;
-import dev.sibarum.suite.pictures.Stamp;
+import dev.vexelray.codec.image.Lru;
+import dev.vexelray.codec.image.Stamp;
 import dev.vexelray.gui.core.Gui;
 
 import java.io.IOException;
@@ -46,7 +46,7 @@ final class Previewer {
 
     private final Gui gui;
     private final Model model;
-    private final Lru<Stamp, Preview> images = new Lru<>(BUDGET, Preview::bytes, p -> { });
+    private final Lru<Object, Preview> images = new Lru<>(BUDGET, Preview::bytes, p -> { });
 
     // Guarded by this.
     private Path last;
@@ -187,7 +187,7 @@ final class Previewer {
         }
         Preview fresh = Previews.of(path, big);
         if (fresh.picture() != null) {
-            images.put(fresh.picture().stamp(), fresh);
+            images.put(fresh.picture().key(), fresh);
         }
         return fresh;
     }

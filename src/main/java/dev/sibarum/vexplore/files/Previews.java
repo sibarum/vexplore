@@ -1,8 +1,9 @@
 package dev.sibarum.vexplore.files;
 
+import dev.sibarum.suite.pictures.Sizes;
 import dev.sibarum.vexplore.files.Preview.Tier;
-import dev.sibarum.suite.pictures.Decoded;
-import dev.sibarum.suite.pictures.Pictures;
+import dev.vexelray.codec.image.Decoded;
+import dev.vexelray.codec.image.Pictures;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -114,9 +115,9 @@ public final class Previews {
      * reason, falls a tier.
      */
     static Preview image(Path path, byte[] sample, long size, boolean large) {
-        Decoded d = Pictures.decode(path, sample, size, large);
+        Decoded d = Pictures.decode(path, sample, size, Sizes.of(large));
         return d.image() ? new Preview(path, Tier.IMAGE, d.identity(), List.of(), 0d, List.of(), false, d.picture(),
-                d.large()) : null;
+                d.picture(1)) : null;
     }
 
     private static byte[] read(Path path) throws IOException {

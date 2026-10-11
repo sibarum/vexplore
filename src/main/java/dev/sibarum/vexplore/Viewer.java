@@ -1,10 +1,10 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.suite.pictures.Picture;
 import dev.sibarum.suite.view.PictureViewer;
 import dev.sibarum.suite.view.PictureViewer.Showing;
-import dev.sibarum.suite.view.Textures;
 import dev.sibarum.vexplore.files.Preview;
+import dev.vexelray.codec.image.Picture;
+import dev.vexelray.codec.image.gui.Textures;
 import dev.vexelray.framework.shell.NamedWindow;
 import dev.vexelray.framework.shell.Window;
 import dev.vexelray.gui.krono.KronoGui;

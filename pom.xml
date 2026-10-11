@@ -22,7 +22,7 @@
         <vexelray.version>0.1.0-SNAPSHOT</vexelray.version>
         <tactroller.version>1.0-SNAPSHOT</tactroller.version>
         <vex-suite-common.version>0.1.0-SNAPSHOT</vex-suite-common.version>
-        <imagelib.version>0.1.0-SNAPSHOT</imagelib.version>
+        <vexelray-codec.version>0.1.0-SNAPSHOT</vexelray-codec.version>
         <!-- imagelib's static library and the linker arguments beside it, staged by imagelib-wrapper's
              native/build.sh. Only the native image reads them; a JVM run extracts the DLL from the jar. -->
         <imagelib.static.dir>${project.basedir}/../imagelib-wrapper/native/dist/static/windows-x86_64</imagelib.static.dir>
@@ -115,19 +115,20 @@
             <artifactId>tactroller-clipboard</artifactId>
             <version>${tactroller.version}</version>
         </dependency>
-        <!-- What Vexplore shares with Pix: pictures decoded and packed for the GPU, the viewer's tree and its
-             parts, and the palette. A sibling checkout, installed to the local repository first. -->
+        <!-- What Vexplore shares with Pix: the sizes pictures are decoded at, the viewer's tree and its parts, the
+             palette, and git's view of a folder. A sibling checkout, installed to the local repository first. -->
         <dependency>
             <groupId>dev.sibarum</groupId>
             <artifactId>vex-suite-common</artifactId>
             <version>${vex-suite-common.version}</version>
         </dependency>
-        <!-- Pixels from any image file (PNG, JPEG, GIF, WebP, SVG and the rest) as RGBA8 ready to upload: the
-             Preview Dock's first tier. The GUI decodes nothing itself, by design. -->
+        <!-- Pictures from any image file (PNG, JPEG, GIF, WebP, SVG and the rest), decoded through imagelib, packed
+             for the GPU and shown on a node: the Preview Dock's first tier and the viewer. ImageStarter, named in
+             VexploreApp, builds the textures and binds them to the window. The GUI decodes nothing itself, by design. -->
         <dependency>
-            <groupId>sibarum.imagelib</groupId>
-            <artifactId>imagelib-wrapper</artifactId>
-            <version>${imagelib.version}</version>
+            <groupId>dev.vexelray.codec</groupId>
+            <artifactId>vexelray-codec-image</artifactId>
+            <version>${vexelray-codec.version}</version>
         </dependency>
 
         <dependency>

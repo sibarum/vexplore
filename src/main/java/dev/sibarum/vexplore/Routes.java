@@ -1,8 +1,8 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.suite.pictures.Pictures;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Previews;
+import dev.vexelray.codec.image.Pictures;
 
 import java.nio.file.Path;
 import java.util.List;

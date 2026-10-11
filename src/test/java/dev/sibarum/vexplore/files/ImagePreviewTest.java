@@ -1,8 +1,9 @@
 package dev.sibarum.vexplore.files;
 
+import dev.sibarum.suite.pictures.Sizes;
 import dev.sibarum.vexplore.files.Preview.Tier;
-import dev.sibarum.suite.pictures.Picture;
-import dev.sibarum.suite.pictures.Stamp;
+import dev.vexelray.codec.image.Picture;
+import dev.vexelray.codec.image.Stamp;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -43,7 +44,7 @@ class ImagePreviewTest {
         assertEquals(255, pic.sheet()[0] & 0xFF, "the first pixel is red");
         assertEquals(255, pic.sheet()[3] & 0xFF, "and opaque");
         assertEquals(0, pic.sheet()[7] & 0xFF, "the second is transparent");
-        assertEquals(Stamp.of(f), pic.stamp());
+        assertEquals(Stamp.of(f), pic.key());
     }
 
     @Test
@@ -52,8 +53,8 @@ class ImagePreviewTest {
         ImageIO.write(new BufferedImage(2400, 1200, BufferedImage.TYPE_INT_RGB), "jpg", f.toFile());
 
         Picture pic = Previews.of(f).picture();
-        assertEquals(Picture.FRAME_SIDE, pic.frameWidth());
-        assertEquals(Picture.FRAME_SIDE / 2, pic.frameHeight());
+        assertEquals(Sizes.THUMBNAIL, pic.frameWidth());
+        assertEquals(Sizes.THUMBNAIL / 2, pic.frameHeight());
         assertEquals(2400, pic.sourceWidth(), "the header still says what the file is");
     }
 
@@ -66,9 +67,9 @@ class ImagePreviewTest {
         assertNull(dock.large(), "no viewer, no second size");
 
         Preview both = Previews.of(f, true);
-        assertEquals(Picture.FRAME_SIDE, both.picture().frameWidth());
-        assertEquals(Picture.VIEW_SIDE, both.large().frameWidth());
-        assertEquals(Picture.VIEW_SIDE / 2, both.large().frameHeight());
+        assertEquals(Sizes.THUMBNAIL, both.picture().frameWidth());
+        assertEquals(Sizes.VIEW, both.large().frameWidth());
+        assertEquals(Sizes.VIEW / 2, both.large().frameHeight());
         assertEquals(both.picture().bytes() + both.large().bytes(), both.bytes());
     }
 
@@ -78,8 +79,8 @@ class ImagePreviewTest {
         Files.writeString(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"20\">"
                 + "<rect width=\"40\" height=\"20\" fill=\"#0a0\"/></svg>", StandardCharsets.UTF_8);
         Preview p = Previews.of(f, true);
-        assertEquals(Picture.VIEW_SIDE, p.large().frameWidth());
-        assertEquals(Picture.FRAME_SIDE, p.picture().frameWidth(), "the dock's is a shrink of it");
+        assertEquals(Sizes.VIEW, p.large().frameWidth());
+        assertEquals(Sizes.THUMBNAIL, p.picture().frameWidth(), "the dock's is a shrink of it");
     }
 
     @Test
@@ -92,8 +93,8 @@ class ImagePreviewTest {
         assertEquals(Tier.IMAGE, p.tier(), "an SVG is text too, and the picture outranks it");
         assertEquals("SVG image · 40 × 20", p.identity());
         assertTrue(p.picture().vector());
-        assertEquals(Picture.FRAME_SIDE, p.picture().frameWidth());
-        assertEquals(Picture.FRAME_SIDE / 2, p.picture().frameHeight());
+        assertEquals(Sizes.THUMBNAIL, p.picture().frameWidth());
+        assertEquals(Sizes.THUMBNAIL / 2, p.picture().frameHeight());
         assertTrue(Previews.isText(f), "the editor still opens it as the text it is");
         assertFalse(Previews.isText(dir.resolve("missing.svg")));
     }

@@ -122,10 +122,11 @@ Look       colour: the suite's palette (SuiteLook), and the explorer's own token
 Recipes    what is built; the wiring is generated from it.
 ```
 
-The image parts are in [`vex-suite-common`](../vex-suite-common), shared with Pix: `Pictures` and `Picture`
-(decoding and packing), `Textures`, `ImageView`, `Filmstrip`, `Tile`, `Icons`, `PictureViewer` (the whole viewer
-tree), `Lru`, and the palette. It is a sibling checkout installed to the local Maven repository (`mvn install`)
-before this one builds.
+The image parts are shared. [`vexelray-codec`](../vexelray-codec)'s image module has the pictures: `Pictures` and
+`Picture` (decoding and packing), `Textures`, `ImageView` and `Lru`, and `ImageStarter`, which `VexploreApp` names so
+the textures are built and bound to the window. [`vex-suite-common`](../vex-suite-common), shared with Pix, has the
+sizes they are decoded at, `Filmstrip`, `Tile`, `Icons`, `PictureViewer` (the whole viewer tree) and the palette.
+Both are sibling checkouts installed to the local Maven repository (`mvn install`) before this one builds.
 
 The rule the layout keeps is the design's: **nothing is drawn over anything else.** There is no popup, tooltip or
 overlay anywhere in `Ui`, with one exception: a file name too long for its column is shown whole while it is hovered,

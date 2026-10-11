@@ -196,6 +196,11 @@ FN-12's "give this a window later" provider again, with a second witness.
 **Update, 2026-10-11:** `windowBinding` binds only `Textures` now (and, since the viewer became a named `Window`, no
 longer the viewer either): the folder dialog is the framework's `Dialogs`. Pix's binding still holds two parts.
 
+**Update, 2026-10-11, later:** `windowBinding` is gone. `Textures` moved to `vexelray-codec`, whose `ImageStarter`
+provides it (a `@Default`) and binds it in a provider of its own type, `Textures.Binding`, so it takes no
+`AutoCloseable` slot. That is the shape this note asked for: a late-bound part declaring its own binding beside
+itself. Pix's binding now only switches its viewer on, and takes `Textures.Binding` to be ordered after it.
+
 ### FN-18 · A scene cannot photograph an animation 🔬
 
 `settle` errors after 10 s while an animation runs, which its message says and which is right. What it leaves is no

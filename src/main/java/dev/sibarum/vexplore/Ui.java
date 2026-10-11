@@ -1,6 +1,5 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.suite.view.Textures;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Folders;
@@ -11,6 +10,7 @@ import dev.sibarum.vexplore.suggest.Suggestions;
 import dev.sibarum.vexplore.suggest.Suggestions.Act;
 import dev.sibarum.vexplore.suggest.Suggestions.Option;
 import dev.sibarum.vexplore.suggest.Suggestions.Rail;
+import dev.vexelray.codec.image.gui.Textures;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.input.MenuSink;

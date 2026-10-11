@@ -1,7 +1,7 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.suite.pictures.Picture;
 import dev.vexelray.canvas.Color;
+import dev.vexelray.codec.image.Picture;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.input.ClaimScope;

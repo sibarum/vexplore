@@ -1,8 +1,8 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.suite.view.ImageView;
-import dev.sibarum.suite.view.Textures;
 import dev.sibarum.vexplore.files.Preview;
+import dev.vexelray.codec.image.gui.ImageView;
+import dev.vexelray.codec.image.gui.Textures;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;

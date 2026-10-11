@@ -1,15 +1,13 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.suite.view.Textures;
+import dev.vexelray.codec.image.gui.Textures;
 import dev.vexelray.framework.api.Configuration;
-import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;
 import dev.vexelray.framework.core.Launch;
 import dev.vexelray.framework.shell.Appearance;
 import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.framework.shell.Windows;
 import dev.vexelray.gui.core.Gui;
-import dev.vexelray.gui.core.app.GuiApp;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.TitleBar;
@@ -26,8 +24,9 @@ import sibarum.tactroller.api.Modifier;
  * {@code Gui} does; {@link Browser} needs the {@code Gui} for its executors and no window; and the tree waits for
  * the {@code Gui} and its title bar.
  *
- * <p>The driving socket is not here either: it comes from {@code AutomationStarter}, which {@link VexploreApp} names
- * in its {@code @VexelApp} (debug edition only).
+ * <p>Two things are not here, because a starter that {@link VexploreApp} names in its {@code @VexelApp} provides them:
+ * the {@code Textures} the dock and the viewer show pictures through, built with the tree and bound to the window,
+ * from {@code ImageStarter}; and the driving socket, from {@code AutomationStarter} (debug edition only).
  */
 @Configuration
 final class Recipes {
@@ -48,27 +47,6 @@ final class Recipes {
     @Provides
     Browser browser(Gui gui, Model model) {
         return new Browser(gui, model);
-    }
-
-
-    /** Pictures on the GPU, built with the tree and given its window by {@link #windowBinding}. */
-    @Provides
-    Textures textures() {
-        return new Textures();
-    }
-
-    /**
-     * Gives the textures the device, and takes it back on close. A part of its own in the window's phase, so that
-     * {@code Ui} stays out of it and a headless capture can still build the tree; nothing takes it, and the wiring
-     * builds it all the same. It returns an {@code AutoCloseable} because the container wants an interface and closes
-     * what it can, and because un-binding on the way out is true to what the part does. The folder dialog used to be
-     * bound here too; it is the framework's {@code Dialogs} now, which need no window to be handed out.
-     */
-    @Provides
-    @MainThread
-    AutoCloseable windowBinding(GuiApp app, Textures textures) {
-        textures.bind(app);
-        return () -> textures.bind(null);
     }
 
     /**
