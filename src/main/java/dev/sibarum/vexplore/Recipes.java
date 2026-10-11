@@ -6,7 +6,7 @@ import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;
 import dev.vexelray.framework.core.Launch;
 import dev.vexelray.framework.shell.Appearance;
-import dev.vexelray.framework.shell.Shell;
+import dev.vexelray.framework.shell.Windows;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.app.GuiApp;
 import dev.vexelray.gui.core.layout.Length;
@@ -71,24 +71,22 @@ final class Recipes {
      */
     @Provides
     @MainThread
-    AutoCloseable windowBinding(GuiApp app, Shell shell, Chooser chooser, Textures textures, Viewer viewer) {
+    AutoCloseable windowBinding(GuiApp app, Chooser chooser, Textures textures) {
         chooser.bind(app);
         textures.bind(app);
-        viewer.bind(app, shell.windowMark());
         return () -> {
-            viewer.bind(null, null);
             textures.bind(null);
             chooser.bind(null);
         };
     }
 
     /**
-     * The image viewer: its own tree, built with the main one and on the same theme, and a window that opens when the
-     * dock's Pop out is pressed. Given its window by {@link #windowBinding}.
+     * The image viewer: a named window whose tree the framework builds beside the main one, in the same look, and
+     * whose window it claims once there is a device. It opens when the dock's Pop out is pressed.
      */
     @Provides
-    Viewer viewer(Gui gui, KronoGui krono, Model model, Previewer previewer, Textures textures, Appearance look) {
-        return new Viewer(gui, krono, model, previewer, textures, look);
+    Viewer viewer(Windows windows, KronoGui krono, Model model, Previewer previewer, Textures textures) {
+        return new Viewer(windows.named(Viewer.DECLARED), krono, model, previewer, textures);
     }
 
     /** Where deleted files wait. Not the system recycle bin, which Java reaches only through AWT. */

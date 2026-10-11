@@ -5,18 +5,9 @@ import dev.sibarum.suite.view.PictureViewer;
 import dev.sibarum.suite.view.PictureViewer.Showing;
 import dev.sibarum.suite.view.Textures;
 import dev.sibarum.vexplore.files.Preview;
-import dev.vexelray.framework.shell.Appearance;
-import dev.vexelray.gui.core.Gui;
-import dev.vexelray.gui.core.WindowControls;
-import dev.vexelray.gui.core.app.AppWindow;
-import dev.vexelray.gui.core.app.GuiApp;
-import dev.vexelray.gui.core.app.WindowSpec;
+import dev.vexelray.framework.shell.NamedWindow;
+import dev.vexelray.framework.shell.Window;
 import dev.vexelray.gui.krono.KronoGui;
-import dev.vexelray.gui.widget.TitleBar;
-import dev.vexelray.os.Decorations;
-import dev.vexelray.os.Icon;
-import dev.vexelray.os.WindowConfig;
-import sibarum.atchung.Atchung;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -36,36 +27,33 @@ import java.util.Set;
  * and {@link Previewer} reads only the newest request and reads ahead of it. Until the new picture lands the old one
  * stays up, under the new name and count, so holding an arrow key moves the counter at once and never blanks.
  *
- * <p><b>Its own tree, not a reparented dock.</b> A node cannot move between trees, so the viewer is built once, on its
- * own {@link Gui} the way {@code Popout} builds its away tree, and shown in a named {@link AppWindow} that the
- * framework re-creates around the same tree each time it opens. Its landmarks are the viewer's with {@code "viewer."}
- * in front: {@code viewer.name}, {@code viewer.count}, {@code viewer.next} and the rest.
+ * <p><b>Its own tree, not a reparented dock.</b> A node cannot move between trees, so the viewer is built once, into
+ * the tree of a named {@link Window} that the framework re-creates around it each time it opens. Its landmarks are
+ * the viewer's with {@code "viewer."} in front: {@code viewer.name}, {@code viewer.count}, {@code viewer.next} and
+ * the rest.
  *
- * <p>Late-bound like {@link Chooser}: a window needs the {@code GuiApp}, which {@link Recipes#windowBinding} hands
- * it. Until then {@link #open} does nothing.
+ * <p>The window is the framework's: its tree on a bus of its own, the look, the mark, the placement remembered under
+ * {@code "viewer"} and the controls in the bar. So unlike {@link Chooser}, which still needs the {@code GuiApp} for a
+ * native dialog, the viewer is not late-bound: {@link #open} before the window can exist is held and carried out.
  */
 final class Viewer {
 
-    static final String KEY = "viewer";
+    /** The window, as {@link Recipes} declares it. A peer: a picture is something to put on another screen. */
+    static final NamedWindow DECLARED = NamedWindow.of("viewer", "Vexplore viewer", 1100, 760);
 
-    private final Gui gui;
+    private final Window window;
     private final Model model;
     private final Previewer previewer;
-    private final TitleBar bar;
     private final PictureViewer view;
 
-    private volatile GuiApp app;
-    private volatile Icon mark;
-    private volatile AppWindow window;
     private volatile boolean open;
 
-    Viewer(Gui host, KronoGui krono, Model model, Previewer previewer, Textures textures, Appearance look) {
+    Viewer(Window window, KronoGui krono, Model model, Previewer previewer, Textures textures) {
+        this.window = window;
         this.model = model;
         this.previewer = previewer;
-        this.gui = new Gui(Atchung.create(), host.handlers(), host.offload());
-        look.applyTo(gui);
-        this.bar = new TitleBar(gui, WindowControls.NONE, "Viewer");
-        this.view = new PictureViewer(gui, krono, textures, bar, this::thumbnail, new PictureViewer.Host() {
+        this.view = new PictureViewer(window.gui(), krono, textures, window.titleBar(), this::thumbnail,
+                new PictureViewer.Host() {
             @Override
             public void step(int delta) {
                 Viewer.this.step(delta);
@@ -87,59 +75,31 @@ final class Viewer {
                 view.film();
             }
         });
+        // Full-size reads only while there is a window to show them in.
+        window.onOpened(() -> {
+            open = true;
+            previewer.large(true);
+            view.show(showing(model.doc()));
+            view.active(true);
+        });
+        window.onClosed(() -> {
+            open = false;
+            previewer.large(false);
+            view.active(false);
+        });
     }
 
-    /**
-     * Main thread. Null on the way out. {@code mark} is the suite's window icon, Vexplore's band over its glyph, worn
-     * on the taskbar and in the bar so the viewer reads as Vexplore's and not as Vexplore.
-     */
-    void bind(GuiApp app, Icon mark) {
-        this.app = app;
-        this.mark = mark;
-        if (app == null) {
-            window = null;
-        } else {
-            bar.icon(app, mark);
-        }
-    }
-
-    /** Open the viewer on the current selection, or raise it if it is open. Nothing without a window to open from. */
+    /** Open the viewer on the current selection, or raise it if it is open. From any thread. */
     void open() {
-        GuiApp a = app;
-        if (a == null) {
-            return;
-        }
-        AppWindow w = a.window(KEY, this::spec);
-        window = w;
-        w.show();
+        window.show();
     }
 
     void close() {
-        AppWindow w = window;
-        if (w != null) {
-            w.close();
-        }
+        window.close();
     }
 
     boolean isOpen() {
         return open;
-    }
-
-    private WindowSpec spec() {
-        WindowConfig config = WindowConfig.of("Vexplore viewer", 1100, 760).decorations(Decorations.CLIENT)
-                .icon(mark);
-        return bar.commands(WindowSpec.of(config, gui))
-                .onCreated(w -> {
-                    open = true;
-                    previewer.large(true);
-                    view.show(showing(model.doc()));
-                    view.active(true);
-                })
-                .onClosed(() -> {
-                    open = false;
-                    previewer.large(false);
-                    view.active(false);
-                });
     }
 
     private void follow(Doc doc) {
