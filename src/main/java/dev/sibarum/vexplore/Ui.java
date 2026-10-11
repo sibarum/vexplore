@@ -13,14 +13,10 @@ import dev.sibarum.vexplore.suggest.Suggestions.Option;
 import dev.sibarum.vexplore.suggest.Suggestions.Rail;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
-import dev.vexelray.gui.core.input.InteractionState;
 import dev.vexelray.gui.core.input.MenuSink;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
-import dev.vexelray.gui.core.layout.LayoutSnapshot;
 import dev.vexelray.gui.core.layout.Length;
-import dev.vexelray.gui.core.layout.NodeLayout;
-import dev.vexelray.gui.core.text.TextMetrics;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.draw.Picture;
 import dev.vexelray.gui.draw.Sketch;
@@ -32,8 +28,12 @@ import dev.vexelray.gui.widget.StatusBar;
 import dev.vexelray.gui.widget.Table;
 import dev.vexelray.gui.widget.TitleBar;
 import dev.vexelray.gui.widget.TreeView;
+import dev.vexelray.gui.widget.Unclip;
 import dev.vexelray.text.TextLayout.HAlign;
 import dev.vexelray.text.TextLayout.VAlign;
+
+import sibarum.kronometer.Dur;
+import sibarum.kronometer.anim.Ease;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -50,8 +50,9 @@ import java.util.function.Consumer;
  * <h2>The layout is the design's, and its rules are the design's</h2>
  * Tree, list and rail are three fixed places, and nothing is ever drawn over another. That is a property of this
  * file rather than of any widget: there is no popup, no tooltip and no overlay here, because the Suggestion Rail
- * exists so that none is needed. The one exception is a clipped file name, shown whole while it is hovered (see
- * {@link #reveal}): it is already covered by the columns beside it, and hovering only swaps which one is covered.
+ * exists so that none is needed. The one exception is a clipped name, in the list or the tree, shown whole in place
+ * while it is hovered ({@link Unclip}): it is already covered by whatever is beside it, and hovering only swaps which
+ * one is covered. Nothing is ever hit there, so nothing under it stops being reachable.
  * A suggestion that arrives, changes or leaves rewrites the contents of the rail's
  * column and touches nothing else, so no row of the list ever moves because Vexplore had something to say.
  *
@@ -71,8 +72,11 @@ final class Ui {
     /** A type icon in the list: 16 px, the grid {@link FileIcon} is drawn on. */
     private static final Length ICON = Length.rem(1f);
 
-    /** The UI face's ascent as a fraction of its size: where a revealed name's baseline sits below its line's top. */
-    private static final float ASCENT = 1.07f;
+    /**
+     * How fast a cut-off name comes out from under its column and goes back. Quick, because it is the name itself
+     * and not help arriving: anything slower reads as a popup.
+     */
+    private static final long UNCLIP_MS = 90;
 
     /** A place the tree can show: a folder, and the name to give it (a drive is {@code D:}, not empty). */
     record Place(Path path, String label) {
@@ -95,6 +99,10 @@ final class Ui {
     private final Node sortNote;
     private final Dock dock;
     private final RailView rail;
+    /** Shows a list row's cut-off name whole while it is hovered; built before the table whose rows attach to it. */
+    private final Unclip names;
+    /** The fade both it and the tree's own use. */
+    private final dev.vexelray.gui.widget.Ramp unclipFade;
 
     /** The last document drawn, so each region redraws only when its own inputs changed. */
     private Doc shown;
@@ -117,6 +125,8 @@ final class Ui {
         this.opener = opener;
         this.titleBar = titleBar;
         this.viewer = viewer;
+        this.unclipFade = (progress, done) -> krono.ramp(Dur.ms(UNCLIP_MS), Ease.OUT_CUBIC, progress, done);
+        this.names = new Unclip(gui).motion(unclipFade);
 
         Node tree = tree();
         this.crumbs = new Breadcrumb<Path>(gui, Ui::crumbLabel).font(Type.UI).onNavigate(browser::go);
@@ -209,6 +219,7 @@ final class Ui {
             }
         });
         tree.node().width(Length.FILL).height(Length.FILL);
+        tree.unclip().motion(unclipFade);   // a folder name the pane cuts off is shown whole over the list
         gui.landmark(Landmarks.TREE, tree.node());
         return tree.node();
     }
@@ -346,52 +357,11 @@ final class Ui {
         Node cell = g.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
                 .alignItems(AlignItems.CENTER).gap(Type.GAP)
                 .padding(Length.ZERO, Length.dp(10)).children(glyph, name);
-        g.onState(cell, s -> reveal(e, name, s != InteractionState.NORMAL));
+        // The cut-off name, shown whole while its cell is hovered — the one thing in this file drawn over something
+        // else (see the class comment). Attached here because the name is inside the cell's content rather than
+        // being it, which is the one shape the table cannot attach for itself.
+        names.attach(cell, name);
         return cell;
-    }
-
-    /**
-     * Show the whole of a clipped name while its cell is hovered, drawn over the columns to its right.
-     *
-     * <p><b>The one thing in this file drawn over something else</b>, and the exception is narrow on purpose. A name
-     * longer than its column is already covered, by the columns beside it; hovering it only chooses which of the two
-     * is covered for as long as the pointer is there. It covers nothing the user did not point at, appears only for
-     * a name that is actually cut off, and leaves with the pointer. It is the row's overlay, not a node, so nothing
-     * moves and nothing can be clicked on it.
-     */
-    private void reveal(Entry e, Node name, boolean on) {
-        Node row = table.rows().rowNode(e);
-        Node clip = table.cell(e, 0);
-        if (row == null || clip == null) {
-            return;
-        }
-        if (!on) {
-            row.overlay(null);
-            return;
-        }
-        LayoutSnapshot snap = gui.layoutSnapshot();
-        NodeLayout r = snap.node(row.id());
-        NodeLayout c = snap.node(clip.id());
-        NodeLayout t = snap.node(name.id());
-        if (!r.present() || !c.present() || !t.present() || t.text() == null || t.text().lines().isEmpty()) {
-            return;
-        }
-        float textRight = t.rect().x() + t.rect().w();
-        if (textRight <= c.rect().x() + c.rect().w()) {
-            return;   // it fits: there is nothing to reveal
-        }
-        TextMetrics.VisualLine line = t.text().lines().get(0);
-        float size = t.textSizePx();
-        float pad = size * 0.5f;
-        float x = line.xs()[0] - r.rect().x();
-        float top = c.rect().y() - r.rect().y() + 3f;
-        float w = Math.min(textRight - r.rect().x() + pad, r.rect().w()) - (x - pad);
-        float h = c.rect().h() - 6f;
-        Sketch s = new Sketch().tag("name.reveal")
-                .fill(x - pad, top, w, h, 4, gui.theme().color(Role.RAISED))
-                .outline(x - pad, top, w, h, 4, 1, gui.theme().color(Look.LINE_STRONG))
-                .text(e.name(), x, line.top() - r.rect().y() + size * ASCENT, size, gui.theme().color(Role.INK));
-        row.overlay(s.picture());
     }
 
     /**
