@@ -27,6 +27,9 @@ final class Opener {
     /** Pix's install id, which is also its command. */
     static final String PIX = "pix";
 
+    /** MainFrame's install id, which is also its command. */
+    static final String MAINFRAME = "mainframe";
+
     private static final Log LOG = Log.of("vexplore.open");
 
     private final Gui gui;
@@ -72,6 +75,40 @@ final class Opener {
         gui.offload().execute(() -> {
             if (!spawn(PIX, file)) {
                 fallback.run();
+            }
+        });
+    }
+
+    /** Whether MainFrame is installed, which is what enables Open MainFrame Here. Reads one small file. */
+    boolean mainframeInstalled() {
+        return Apps.find(MAINFRAME).isPresent();
+    }
+
+    /**
+     * Open MainFrame in {@code at}'s folder: in {@code at} itself if it is one, and otherwise in the folder holding it,
+     * with its name on the input line.
+     *
+     * <p><b>Vexplore passes a path and never console text.</b> Quoting belongs to MainFrame, which alone knows which
+     * shell the tab runs and refuses a name it cannot prove inert there ({@code --insert-path}). Each argument is one
+     * argv entry with no shell between, nothing is positional (MainFrame would run that as its shell), and both
+     * paths are absolute.
+     */
+    void mainframe(Path at, boolean folder) {
+        gui.offload().execute(() -> {
+            Path abs = at.toAbsolutePath().normalize();
+            Path dir = folder ? abs : abs.getParent();
+            if (dir == null) {
+                return;
+            }
+            try {
+                boolean started = folder
+                        ? Apps.spawn(MAINFRAME, "--dir=" + dir).isPresent()
+                        : Apps.spawn(MAINFRAME, "--dir=" + dir, "--insert-path=" + abs).isPresent();
+                if (!started) {
+                    LOG.warn("MainFrame is not installed; it was not opened at {}", abs);
+                }
+            } catch (IOException e) {
+                LOG.warn("could not start MainFrame at {}", abs, e);
             }
         });
     }

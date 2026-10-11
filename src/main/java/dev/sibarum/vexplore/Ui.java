@@ -316,6 +316,8 @@ final class Ui {
                     menu.item("Open with default app", () -> routes.openByDefault(clicked));
                 }
             }
+            menu.item("Open MainFrame Here", opener.mainframeInstalled(),
+                    () -> opener.mainframe(clicked.path(), clicked.folder()));
             menu.separator();
         }
         menu.item("Move to…", () -> stage(paths, Act.MOVE));
