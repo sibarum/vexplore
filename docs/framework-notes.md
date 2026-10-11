@@ -146,6 +146,10 @@ build the tree. What worked is the shape the framework README shows for a clipbo
 close. It is the right shape and a little roundabout for something every dialog-using application will need; a
 `GuiApp`-phase `@Provides` that returns "a thing to call when the window exists" would say it directly.
 
+**Update, 2026-10-11: the dialog half is fixed upstream.** The folder dialog is the framework's `Dialogs`, which a
+recipe takes in any phase and which hold a question until there is a window, so `Chooser` and its binding are gone and
+`Actor` asks `dialogs.openFolder(...)`. The late binding is left only for `Textures`, which needs the device.
+
 ### FN-13 · A held modifier cannot be driven from outside 🔬
 
 The design's centre is Shift and Control as intent signals, and `ottermate key` is press-and-release, so the
@@ -188,6 +192,9 @@ and a `@MainThread @Provides AutoCloseable` that binds it. The processor then re
 providers of `AutoCloseable` is an ambiguity. The fix was one `windowBinding` that binds both. Fine for two; it means
 every future late-bound part edits one shared method rather than declaring its own binding beside itself. This is
 FN-12's "give this a window later" provider again, with a second witness.
+
+**Update, 2026-10-11:** `windowBinding` binds only `Textures` now (and, since the viewer became a named `Window`, no
+longer the viewer either): the folder dialog is the framework's `Dialogs`. Pix's binding still holds two parts.
 
 ### FN-18 · A scene cannot photograph an animation 🔬
 
@@ -235,6 +242,10 @@ The viewer is `Popout`'s recipe applied by hand: its own `Gui` on the host's lan
 a `TitleBar` composed onto the `WindowSpec` with `commands`, and `GuiApp.window(key, spec)`, which made opening it
 twice raise the one that exists. Textures uploaded for the main window drew in the viewer unchanged, the krono
 clock animated nodes in either tree, and `GuiApp.release` already looked in every window before closing anything.
+
+**Update, 2026-10-11:** it is not by hand any more. The viewer is `windows.named(Viewer.DECLARED)`: the framework
+builds its tree and claims the window, with the mark, the bar's controls and its placement remembered under
+`"viewer"`, and its open and close work hangs off the window's `onOpened` and `onClosed`.
 
 ## The viewer, redesigned
 

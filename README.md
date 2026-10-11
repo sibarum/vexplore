@@ -115,8 +115,8 @@ Previewer  keeps the dock matching the selection, same rule: one worker, latest 
            Destinator does the same for destinations.
 Viewer     the image viewer: the suite's PictureViewer in a window of its own. Steps change the selection, so
            everything else follows.
-Actor      the one place a button becomes a change to the disk: run, undo, mark, choose a destination.
-Chooser    the native folder dialog, built with the tree and given its window later (Recipes.windowBinding).
+Actor      the one place a button becomes a change to the disk: run, undo, mark, choose a destination (the
+           framework's Dialogs pick the folder).
 Ui, RailView, Dock   the tree. Hold no application state, only a cache of what they last drew.
 Look       colour: the suite's palette (SuiteLook), and the explorer's own tokens beside it.
 Recipes    what is built; the wiring is generated from it.
