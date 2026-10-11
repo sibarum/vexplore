@@ -33,8 +33,8 @@ import java.util.Set;
  * the rest.
  *
  * <p>The window is the framework's: its tree on a bus of its own, the look, the mark, the placement remembered under
- * {@code "viewer"} and the controls in the bar. So unlike {@link Chooser}, which still needs the {@code GuiApp} for a
- * native dialog, the viewer is not late-bound: {@link #open} before the window can exist is held and carried out.
+ * {@code "viewer"} and the controls in the bar. So the viewer is not late-bound: {@link #open} before the window can
+ * exist is held and carried out.
  */
 final class Viewer {
 

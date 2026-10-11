@@ -6,6 +6,7 @@ import dev.vexelray.framework.api.MainThread;
 import dev.vexelray.framework.api.Provides;
 import dev.vexelray.framework.core.Launch;
 import dev.vexelray.framework.shell.Appearance;
+import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.framework.shell.Windows;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.app.GuiApp;
@@ -50,12 +51,6 @@ final class Recipes {
     }
 
 
-    /** The folder dialog, built with the tree and given its window by {@link #windowBinding}. */
-    @Provides
-    Chooser chooser() {
-        return new Chooser();
-    }
-
     /** Pictures on the GPU, built with the tree and given its window by {@link #windowBinding}. */
     @Provides
     Textures textures() {
@@ -63,21 +58,17 @@ final class Recipes {
     }
 
     /**
-     * Gives the parts that need the window their window, and takes it back on close. A part of its own in the
-     * window's phase, so that {@code Ui} stays out of it and a headless capture can still build the tree; nothing
-     * takes it, and the wiring builds it all the same. It returns an {@code AutoCloseable} because the container
-     * wants an interface and closes what it can, and because un-binding on the way out is true to what the part
-     * does. One binding for every late-bound part, not one each: the container holds one provider per type.
+     * Gives the textures the device, and takes it back on close. A part of its own in the window's phase, so that
+     * {@code Ui} stays out of it and a headless capture can still build the tree; nothing takes it, and the wiring
+     * builds it all the same. It returns an {@code AutoCloseable} because the container wants an interface and closes
+     * what it can, and because un-binding on the way out is true to what the part does. The folder dialog used to be
+     * bound here too; it is the framework's {@code Dialogs} now, which need no window to be handed out.
      */
     @Provides
     @MainThread
-    AutoCloseable windowBinding(GuiApp app, Chooser chooser, Textures textures) {
-        chooser.bind(app);
+    AutoCloseable windowBinding(GuiApp app, Textures textures) {
         textures.bind(app);
-        return () -> {
-            textures.bind(null);
-            chooser.bind(null);
-        };
+        return () -> textures.bind(null);
     }
 
     /**
@@ -91,10 +82,10 @@ final class Recipes {
 
     /** Where deleted files wait. Not the system recycle bin, which Java reaches only through AWT. */
     @Provides
-    Actor actor(Gui gui, Model model, Browser browser, Chooser chooser) {
+    Actor actor(Gui gui, Model model, Browser browser, Dialogs dialogs) {
         Path trash = Path.of(System.getProperty("vexplore.trash",
                 Path.of(System.getProperty("user.home"), ".vexplore", "trash").toString()));
-        return new Actor(gui, model, browser, chooser, trash);
+        return new Actor(gui, model, browser, dialogs, trash);
     }
 
     /** Opening a file: the suite's text editor for text, the shell's open for the rest. */

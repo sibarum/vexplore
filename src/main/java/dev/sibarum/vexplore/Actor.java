@@ -6,6 +6,7 @@ import dev.sibarum.vexplore.ops.Operations;
 import dev.sibarum.vexplore.ops.Operations.Done;
 import dev.sibarum.vexplore.ops.Plan;
 import dev.sibarum.vexplore.suggest.Bytes;
+import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.gui.core.Gui;
 
 import java.nio.file.Path;
@@ -28,14 +29,14 @@ final class Actor {
     private final Gui gui;
     private final Model model;
     private final Browser browser;
-    private final Chooser chooser;
+    private final Dialogs dialogs;
     private final Path trash;
 
-    Actor(Gui gui, Model model, Browser browser, Chooser chooser, Path trash) {
+    Actor(Gui gui, Model model, Browser browser, Dialogs dialogs, Path trash) {
         this.gui = gui;
         this.model = model;
         this.browser = browser;
-        this.chooser = chooser;
+        this.dialogs = dialogs;
         this.trash = trash;
     }
 
@@ -126,7 +127,8 @@ final class Actor {
     void choose() {
         Path start = model.doc().work().destination() != null ? model.doc().work().destination()
                 : model.doc().folder();
-        offload(() -> chooser.pick(start).ifPresent(this::destination));
+        // The answer arrives on the handler lane, and destination puts its own disk work on the offload lane.
+        dialogs.openFolder(start, this::destination, () -> { });
     }
 
     // ------------------------------------------------------------------ helpers
