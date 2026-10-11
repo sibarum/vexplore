@@ -90,6 +90,8 @@ final class Ui {
     private final Model model;
     private final Browser browser;
     private final Opener opener;
+    /** What opening a row means, for a double-click and the menu alike. */
+    private final Routes routes;
     private final TitleBar titleBar;
     private final Viewer viewer;
 
@@ -123,6 +125,7 @@ final class Ui {
         this.model = model;
         this.browser = browser;
         this.opener = opener;
+        this.routes = Routes.standard(gui.offload(), opener, browser::go);
         this.titleBar = titleBar;
         this.viewer = viewer;
         this.unclipFade = (progress, done) -> krono.ramp(Dur.ms(UNCLIP_MS), Ease.OUT_CUBIC, progress, done);
@@ -262,13 +265,7 @@ final class Ui {
             }
         });
         t.rows().onContextMenu(this::rowMenu);
-        t.rows().onActivate(e -> {
-            if (e.folder()) {
-                browser.go(e.path());
-            } else {
-                opener.open(e.path());
-            }
-        });
+        t.rows().onActivate(routes::open);
         t.onSort((column, direction) -> {
             sortNote.text(sortWords(column, direction));
             model.sorted(column < 0 || direction == Table.Sort.NONE ? Order.LISTED
@@ -283,7 +280,8 @@ final class Ui {
      * A row's right-click menu. The list has already selected the row, unless it was part of a selection, in which
      * case the menu is about every selected row, in the order shown.
      *
-     * <p><b>Opening is immediate; acting is staged.</b> Open, View and Open in Vex do what they say. Move, Copy,
+     * <p><b>Opening is immediate; acting is staged.</b> Open does what a double-click does ({@link Routes}), named for
+     * where it goes; View, Open in Vex and Open with default app are the other ways in. Move, Copy,
      * Archive, Delete and Mark put the files and the action on the Suggestion Rail, exactly as choosing the Action chip
      * would, so the summary card says what will happen ("9 files, 6.5 GB, nothing has moved yet") and its button does
      * it: an action shows its effect before it runs, whichever door it came in by. Hence the ellipsis on each.
@@ -303,15 +301,21 @@ final class Ui {
         }
         Set<Path> paths = paths(Set.copyOf(on));
         boolean one = on.size() == 1;
-        if (one && clicked.folder()) {
-            menu.item("Open", () -> browser.go(clicked.path()));
-            menu.separator();
-        } else if (one) {
-            menu.item("Open", () -> opener.open(clicked.path()));
-            if (clicked.kind() == Kind.IMAGE) {
-                menu.item(opener.pixInstalled() ? "View in Pix" : "View", () -> view(clicked.path()));
+        if (one) {
+            // Open is the route a double-click takes, named for where it goes; the rest are the other doors.
+            Routes.Route way = routes.pick(clicked);
+            menu.item(way.label(), () -> routes.open(clicked));
+            if (!clicked.folder()) {
+                if (clicked.kind() == Kind.IMAGE && !way.label().equals(Routes.IN_PIX)) {
+                    menu.item("View", () -> view(clicked.path()));
+                }
+                if (!way.label().equals(Routes.IN_VEX)) {
+                    menu.item(Routes.IN_VEX, opener.editorInstalled(), () -> opener.edit(clicked.path()));
+                }
+                if (way != routes.fallback()) {
+                    menu.item("Open with default app", () -> routes.openByDefault(clicked));
+                }
             }
-            menu.item("Open in Vex", opener.editorInstalled(), () -> opener.edit(clicked.path()));
             menu.separator();
         }
         menu.item("Move to…", () -> stage(paths, Act.MOVE));
