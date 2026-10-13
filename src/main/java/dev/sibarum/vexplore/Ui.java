@@ -33,9 +33,6 @@ import dev.vexelray.gui.widget.Unclip;
 import dev.vexelray.text.TextLayout.HAlign;
 import dev.vexelray.text.TextLayout.VAlign;
 
-import sibarum.kronometer.Dur;
-import sibarum.kronometer.anim.Ease;
-
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -73,12 +70,6 @@ final class Ui {
     /** A type icon in the list: 16 px, the grid {@link FileIcon} is drawn on. */
     private static final Length ICON = Length.rem(1f);
 
-    /**
-     * How fast a cut-off name comes out from under its column and goes back. Quick, because it is the name itself
-     * and not help arriving: anything slower reads as a popup.
-     */
-    private static final long UNCLIP_MS = 90;
-
     /** A place the tree can show: a folder, and the name to give it (a drive is {@code D:}, not empty). */
     record Place(Path path, String label) {
         static Place of(Path p) {
@@ -102,10 +93,8 @@ final class Ui {
     private final Node sortNote;
     private final Dock dock;
     private final RailView rail;
-    /** Shows a list row's cut-off name whole while it is hovered; built before the table whose rows attach to it. */
+    /** Shows a list row's cut-off name whole while it is hovered: the window's reveal, which the tree's is too. */
     private final Unclip names;
-    /** The fade both it and the tree's own use. */
-    private final dev.vexelray.gui.widget.Ramp unclipFade;
 
     /** The last document drawn, so each region redraws only when its own inputs changed. */
     private Doc shown;
@@ -132,8 +121,7 @@ final class Ui {
         this.routes = Routes.standard(gui.offload(), opener, browser::go);
         this.titleBar = titleBar;
         this.viewer = viewer;
-        this.unclipFade = (progress, done) -> krono.ramp(Dur.ms(UNCLIP_MS), Ease.OUT_CUBIC, progress, done);
-        this.names = new Unclip(gui).motion(unclipFade);
+        this.names = Unclip.of(gui);   // the window's reveal: it fades as the framework says every reveal does
 
         Node tree = tree();
         this.crumbs = new Breadcrumb<Path>(gui, Ui::crumbLabel).font(Type.UI).onNavigate(browser::go);
@@ -228,7 +216,7 @@ final class Ui {
             }
         });
         tree.node().width(Length.FILL).height(Length.FILL);
-        tree.unclip().motion(unclipFade);   // a folder name the pane cuts off is shown whole over the list
+        tree.searchable(true);   // Ctrl+F walks the filesystem from the top
         gui.landmark(Landmarks.TREE, tree.node());
         return tree.node();
     }
