@@ -5,10 +5,11 @@
   "description": "A file explorer that suggests instead of asking.",
   "version": "0.1.0",
 
-  "repo": "sibarum/vexplore",
+  "repo": "sibarum/vexelray-dist",
   "branch": "main",
-  "releasesRepo": "sibarum/vexplore",
-  "tagFormat": "v{version}",
+  "repoPath": "apps/vexplore",
+  "releasesRepo": "sibarum/vexelray-dist",
+  "tagFormat": "vexplore-v{version}",
 
   "windows": {
     "binaries": [
