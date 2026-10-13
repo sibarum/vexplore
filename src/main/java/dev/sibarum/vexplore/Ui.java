@@ -19,8 +19,6 @@ import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
-import dev.vexelray.gui.draw.Picture;
-import dev.vexelray.gui.draw.Sketch;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.Breadcrumb;
 import dev.vexelray.gui.widget.Button;
@@ -345,15 +343,9 @@ final class Ui {
         return out.toString();
     }
 
-    /**
-     * The name, after its type icon. The icon is drawn at once at the size one rem resolves to now, so a row
-     * scrolled into view is never blank for a frame, and again whenever its box changes (a zoom, a DPI change).
-     */
+    /** The name, after its type icon: two cells of the file-icon atlas, so a zoom or a resize redraws nothing. */
     private Node nameCell(Gui g, Entry e) {
-        FileIcon icon = FileIcon.of(e);
-        Node glyph = g.box().size(ICON, ICON).hitInert(true);
-        glyph.picture(icon.sketch(g.rootEmPx() * g.zoom().value() * g.dpi().value()).picture());
-        g.onResize(glyph, box -> glyph.picture(snapped(icon.sketch(box.rect().w()), box.rect().x(), box.rect().y())));
+        Node glyph = FileIcon.of(e).node(g, ICON);
         Node name = g.text(e.name()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
                 .height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
         // Not a scroller, as the table's own cells are not: a name wider than its column is clipped, not scrolled.
@@ -365,14 +357,6 @@ final class Ui {
         // being it, which is the one shape the table cannot attach for itself.
         names.attach(cell, name);
         return cell;
-    }
-
-    /**
-     * {@code s} moved by however far its box's corner is from a whole pixel. The icon is drawn in whole grid units,
-     * and a box laid out at x = 270.4 would blur every one of its edges across two pixels.
-     */
-    private static Picture snapped(Sketch s, float x, float y) {
-        return new Sketch().place(s.picture(), Math.round(x) - x, Math.round(y) - y).picture();
     }
 
     /**

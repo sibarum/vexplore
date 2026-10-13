@@ -70,7 +70,7 @@ suite's text editor, started as `text-editor <file>` in a new window, and pictur
 decodes) to Pix, as `pix <file>`; everything else, and anything whose application is not installed, goes to the
 shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text file, and says *Vex not installed*
 instead when it is not; for a picture the picture itself is the control: a click on it, or Enter while it has the
-focus, views it in Pix, or in Vexplore's own viewer without Pix. Its mat and the arrow out of its corner say so, and
+focus, views it in Pix, or in Vexplore's own viewer without Pix. Its mat and the pop-out icon off its corner say so, and
 answer the pointer with the words for where it goes.
 Both are found through their install records (`vexelray-installer`, read by the framework's `Apps`), so they have
 to be installed; a run from the checkout still finds installed ones, and `INSTALL_REGISTRY_DIR` points the lookup

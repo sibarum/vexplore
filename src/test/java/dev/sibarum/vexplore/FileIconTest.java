@@ -2,17 +2,22 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
-import dev.vexelray.gui.draw.Picture;
+import dev.sibarum.suite.view.SuiteLook;
+import dev.vexelray.gui.core.style.Theme;
+import dev.vexelray.gui.fileicons.FileFamily;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The list's type icons: which family a file gets, and that every icon stays inside its square. */
+/** The list's type icons: which family a file gets, and the colours each family is drawn in. */
 class FileIconTest {
 
     @Test
@@ -44,16 +49,20 @@ class FileIconTest {
     }
 
     @Test
-    void everyIconStaysInsideItsSquare() {
-        for (FileIcon icon : FileIcon.values()) {
-            Picture p = icon.sketch(16).picture();
-            assertTrue(p.marks().size() > 0, icon + " draws something");
-            for (Picture.Mark m : p.marks()) {
-                if (m instanceof Picture.Fill f) {
-                    assertTrue(f.x() >= 0 && f.y() >= 0 && f.x() + f.w() <= 16 && f.y() + f.h() <= 16,
-                            icon + " has a mark outside 16 px: " + f);
-                }
-            }
+    void everyFamilyIsDrawnAndOnlyOnce() {
+        for (FileFamily f : FileFamily.values()) {
+            long n = java.util.Arrays.stream(FileIcon.values()).filter(i -> i.family == f).count();
+            assertEquals(1, n, f + " is drawn by one icon");
         }
+        assertNull(FileIcon.FOLDER.family.emblem(), "a folder is its sheet alone");
+        assertNotNull(FileIcon.PDF.family.emblem());
+    }
+
+    @Test
+    void theSuiteThemeTakesTheDarkRowAndALightThemeTheLight() {
+        assertTrue(FileIcon.dark(SuiteLook.THEME));
+        assertFalse(FileIcon.dark(Theme.LIGHT));
+        assertNotEquals(FileIcon.PDF.hue(SuiteLook.THEME), FileIcon.PDF.hue(Theme.LIGHT));
+        assertNotEquals(FileIcon.PDF.hue(SuiteLook.THEME), FileIcon.PDF.ink(SuiteLook.THEME), "the emblem shows");
     }
 }

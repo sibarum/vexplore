@@ -8,10 +8,13 @@ import dev.vexelray.gui.core.input.ClaimScope;
 import dev.vexelray.gui.core.input.CursorShape;
 import dev.vexelray.gui.core.input.InteractionState;
 import dev.vexelray.gui.core.input.Shortcut;
+import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.layout.NodeLayout;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.core.style.Theme;
 import dev.vexelray.gui.draw.Sketch;
+import dev.vexelray.gui.icons.Icon;
+import dev.vexelray.gui.icons.IconView;
 import dev.vexelray.gui.krono.KronoGui;
 import sibarum.kronometer.Dur;
 import sibarum.kronometer.anim.Ease;
@@ -26,14 +29,14 @@ import java.util.function.Consumer;
  * Vexplore's own viewer). It replaced a <i>Pop out</i> button, so it has to say what it does without one.
  *
  * <h2>What says so</h2>
- * At rest the picture sits on a faint mat, a few pixels larger than the picture, with an arrow out of its top right
- * corner: an object that can be lifted, and which way it goes. Hovered or focused, the mat eases outwards, takes the
- * accent's edge and a wash of it, the arrow takes the accent, and the words beside it say where it opens ("View in
+ * At rest the picture sits on a faint mat, a few pixels larger than the picture, with the suite's pop-out icon off its
+ * top right corner: an object that can be lifted, and which way it goes. Hovered or focused, the mat eases outwards,
+ * takes the accent's edge and a wash of it, the icon takes the accent, and the words beside it say where it opens ("View in
  * Pix"). Pressed, the mat draws in a little. The pointer is a hand over the whole of it.
  *
  * <h2>Around the picture, never over it</h2>
- * Every mark is the image well's own drawing, which is painted under the picture, and is placed outside the picture's
- * edge, so nothing covers any of it. The well's layout says where the picture is: the same fit {@code ImageView} makes
+ * The mat and the words are the image well's own drawing, painted under the picture, and the icon is a node floated
+ * in the well; all of it is placed outside the picture's edge, so nothing covers any of it. The well's layout says where the picture is: the same fit {@code ImageView} makes
  * (whole, centred, a raster never above its own size), worked out here from the well's content box, which is the
  * stage it fits to.
  */
@@ -45,9 +48,13 @@ final class Lens {
     /** How long the mat takes to answer the pointer. */
     private static final int EASE_MS = 160;
 
+    /** The pop-out icon's side, in sixteenths of a rem. */
+    private static final float ARROW_UNITS = 11f;
+
     private final Gui gui;
     private final KronoGui krono;
     private final Node well;
+    private final IconView arrow;
     private final Consumer<Path> view;
 
     private volatile Path file;
@@ -66,6 +73,9 @@ final class Lens {
         this.krono = krono;
         this.well = well;
         this.view = view;
+        this.arrow = IconView.of(gui, Icon.POP_OUT).size(Length.rem(ARROW_UNITS / 16f));
+        arrow.node().floatAt(Length.ZERO, Length.ZERO).hitInert(true).visible(false);
+        well.append(arrow.node());
         well.role("button");
         gui.onResize(well, b -> {
             box = b;
@@ -137,12 +147,14 @@ final class Lens {
         NodeLayout b = box;
         if (p == null || !b.present()) {
             well.picture(null);
+            arrow.node().visible(false);
             return;
         }
         float cw = b.content().w();
         float ch = b.content().h();
         if (cw <= 0f || ch <= 0f) {
             well.picture(null);
+            arrow.node().visible(false);
             return;
         }
         float[] r = fit(p, cw, ch);
@@ -165,22 +177,24 @@ final class Lens {
                 .fill(x - grow, y - grow, w + 2 * grow, h + 2 * grow, corner, mat)
                 .outline(x - grow, y - grow, w + 2 * grow, h + 2 * grow, corner, Math.max(1f, u), edge);
 
-        // The arrow, out of the mat's top right corner, where there is room for it beside the picture.
-        float size = 11f * u;
+        // The pop-out icon, off the mat's top right corner, where there is room for it beside the picture. A cell of
+        // the icon atlas floated in the well, so only its place and its tint change as the mat eases.
+        float size = ARROW_UNITS * u;
         float ax = x + w + grow + 6f * u;
         float ay = y - grow;
         float room = cw - (ax - (b.content().x() - b.rect().x()));
-        if (room >= size + u) {
-            float k = Math.max(1.2f, 1.6f * u);
-            s.line(ax, ay + size, ax + size, ay, k, ink)
-                    .line(ax + size * 0.4f, ay, ax + size, ay, k, ink)
-                    .line(ax + size, ay, ax + size, ay + size * 0.6f, k, ink);
+        boolean fits = room >= size + u;
+        if (fits) {
+            float rem = 16f * u;
+            arrow.tint(ink);
+            arrow.node().floatAt(Length.rem(ax / rem), Length.rem(ay / rem));
             float textPx = 12f * u;
             String say = word;
             if (t > 0f && !say.isEmpty() && room >= size + 8f * u + say.length() * textPx * 0.56f) {
                 s.text(say, ax + size + 7f * u, ay + size, textPx, Color.withAlpha(accent, accent.a() * t));
             }
         }
+        arrow.node().visible(fits);
         well.picture(s.picture());
     }
 
