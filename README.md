@@ -4,6 +4,8 @@ A file explorer that suggests instead of asking. Built on [vexelray-gui](../vexe
 [vexelray-framework](../vexelray-framework), and deliberately a **framework witness**: every gap it finds goes into
 the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui-widget` rather than staying here.
 
+**Install it** on Windows, with the other VexelRay applications, from [sibarum.github.io](https://sibarum.github.io/).
+
 - **The design** — [docs/design/README.md](docs/design/README.md) holds the principles and they are the
   requirements; [HANDOFF.md](docs/design/HANDOFF.md) holds the numbers; the mockups only show one way of drawing them.
 - **What is needed** — [docs/components.md](docs/components.md): which GUI components the interface needs, which
