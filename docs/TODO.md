@@ -42,9 +42,9 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       build died at startup on one). Run the scenes against the exe, and re-trace after a change that adds a new
       kind of call. The metadata is in the app for now and belongs upstream (framework TODO, *native-image
       metadata*).
-- [ ] **Rename.** The chip exists and is disabled. By pattern (prefix, counter, change extension), with the plan
-      listing every `old -> new` before anything runs; the plan type already carries steps, so it is a new
-      `Plan.Kind` and a pattern editor, not a new idea.
+- [ ] **Rename by pattern.** One name at a time is built (`Plan.rename`, the card's name field). Several at once,
+      by pattern (prefix, counter, change extension), with the plan listing every `old -> new` before anything
+      runs: `Plan.Kind.RENAME` already carries the steps, so it is a pattern editor and not a new idea.
 - [ ] **Marks survive a restart.** They are in memory. `Settings` is the place, beside window memory. A mark holds
       paths, so it should also notice that a path has gone.
 - [ ] **Undo outlives the session.** `Operations.Done` is in the document and gone on exit; the trash is not. A
@@ -129,6 +129,40 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       the tree does not reveal it. `TreeView.revealPath(chain, then)` exists; it needs the tree's items to be the
       same values as the chain's.
 - [ ] **Back / forward / up.** Alt+Left, Alt+Right, Alt+Up, Backspace. History belongs in the model.
+
+## Remote folders (SSH / SFTP)
+
+Browsing, previewing, opening, download, upload, rename, new folder and a delete into a trash on the server are
+built (README, *Remote folders*). What is not:
+
+- [ ] **Move to… and Archive between a server's own folders.** Both would work through `Files` today (a move on one
+      host is a `RENAME`), but step 4 has nowhere remote to offer: `Destinations.suggest` would list the server's
+      neighbours over the network, and the folder dialog only browses this disk. Upload offers only the remote
+      folder last shown.
+- [ ] **The server's trash is never emptied** (`.vexplore-trash` in the remote home), and if the files are on
+      another file system than home, `RENAME` fails and a delete falls back to copying through this computer and
+      then removing, which is slow and has only been reasoned about, not run.
+- [ ] **New folder is on the remote panel only.** `Actor.makeFolder` is not remote-specific; the local rail, empty,
+      has nowhere it has been decided to put the field.
+- [ ] **A transfer interrupted half-way leaves half a file.** An upload writes straight to its name; writing to
+      `name.part` and renaming at the end would make a broken one obvious and never mistaken for whole.
+- [ ] **Passwords and passphrases.** `BatchMode=yes` turns a prompt into a refusal, so a host that wants a
+      password, or a key with a passphrase and no agent, cannot be reached. A prompt would need ssh's
+      `SSH_ASKPASS` pointed at something that asks in a window, and has to keep the secret out of Vexplore.
+- [ ] **One request at a time per host.** `Sftp` is synchronized, so a large download and a preview on the same
+      host take turns, and a download is one 32 KiB round trip after another. Pipelining several READs is the
+      standard fix and roughly multiplies throughput on a slow link.
+- [ ] **A remote download cannot be cancelled** and reports progress as files, not bytes: the same gap as
+      *Operations are not cancellable* above, felt sooner over a network.
+- [ ] **A host only the command line or the address field knew is not in the tree.** Remembering recently used
+      hosts belongs with the session state (*Settings and the session*).
+- [ ] **The tree's host rows open only once connected.** A host's chevron appears when it has connected (so that
+      drawing, or searching, the tree never connects to every host in the config). A click connects; a host that
+      refuses stays a leaf, with the reason on the rail.
+- [ ] **The cache of opened files is never emptied** (`~/.vexplore/remote`), like the trash.
+- [ ] **Remote folders are unexercised in the native `.exe`.** `ProcessBuilder` and a provider built directly need
+      no metadata, but nothing has been run there; nor has a real server been driven from the app, only Git's
+      `sftp-server` through `vexplore.sftp.server` and a real `ssh` to a host that does not exist.
 
 ## Git, and browsing more than the disk
 

@@ -6,6 +6,7 @@ import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Preview;
 import dev.sibarum.vexplore.ops.Operations.Done;
 import dev.sibarum.vexplore.ops.Plan;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Intents;
 import dev.sibarum.vexplore.suggest.Order;
 import dev.sibarum.vexplore.suggest.Suggestions;
@@ -63,47 +64,52 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
      * @param notice      one line saying how the last thing went, or empty
      * @param busy        one line saying what is running now, or empty
      * @param marks       the marks kept so far
+     * @param name        the new name typed for a rename, or null until one is
      */
     record Work(Path destination, Set<String> destNames, List<Dest> suggested, List<Done> history, String notice,
-                String busy, List<Mark> marks) {
-        static final Work NONE = new Work(null, Set.of(), List.of(), List.of(), "", "", List.of());
+                String busy, List<Mark> marks, String name) {
+        static final Work NONE = new Work(null, Set.of(), List.of(), List.of(), "", "", List.of(), null);
+
+        Work naming(String to) {
+            return new Work(destination, destNames, suggested, history, notice, busy, marks, to);
+        }
 
         Work choosing(Path to, Set<String> names) {
-            return new Work(to, names, suggested, history, notice, busy, marks);
+            return new Work(to, names, suggested, history, notice, busy, marks, name);
         }
 
         Work suggesting(List<Dest> d) {
-            return new Work(destination, destNames, d, history, notice, busy, marks);
+            return new Work(destination, destNames, d, history, notice, busy, marks, name);
         }
 
         Work noting(String text) {
-            return new Work(destination, destNames, suggested, history, text, busy, marks);
+            return new Work(destination, destNames, suggested, history, text, busy, marks, name);
         }
 
         Work running(String text) {
-            return new Work(destination, destNames, suggested, history, notice, text, marks);
+            return new Work(destination, destNames, suggested, history, notice, text, marks, name);
         }
 
         Work did(Done d, String text) {
             List<Done> h = new ArrayList<>(history);
             h.add(d);
-            return new Work(destination, destNames, suggested, List.copyOf(h), text, "", marks);
+            return new Work(destination, destNames, suggested, List.copyOf(h), text, "", marks, name);
         }
 
         Work undid(String text) {
             List<Done> h = history.isEmpty() ? history : history.subList(0, history.size() - 1);
-            return new Work(destination, destNames, suggested, List.copyOf(h), text, "", marks);
+            return new Work(destination, destNames, suggested, List.copyOf(h), text, "", marks, name);
         }
 
         Work marking(Mark m) {
             List<Mark> out = new ArrayList<>(marks);
             out.add(m);
-            return new Work(destination, destNames, suggested, history, notice, busy, List.copyOf(out));
+            return new Work(destination, destNames, suggested, history, notice, busy, List.copyOf(out), name);
         }
 
-        Work unmarking(String name) {
+        Work unmarking(String mark) {
             return new Work(destination, destNames, suggested, history, notice, busy,
-                    marks.stream().filter(m -> !m.name().equals(name)).toList());
+                    marks.stream().filter(m -> !m.name().equals(mark)).toList(), name);
         }
     }
 
@@ -117,19 +123,19 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
     }
 
     Doc navigating(Path to) {
-        return with(to, List.of(), true, Set.of(), Pick.NONE, null, now, input, work.noting(""), null);
+        return with(to, List.of(), true, Set.of(), Pick.NONE, null, now, input, work.noting("").naming(null), null);
     }
 
     Doc listed(List<Entry> listing, Instant at) {
-        return with(folder, listing, false, Set.of(), Pick.NONE, null, at, input, work, git);
+        return with(folder, listing, false, Set.of(), Pick.NONE, null, at, input, work.naming(null), git);
     }
 
     Doc selecting(Set<Path> paths) {
         // A new selection is a new question: what was picked on the rail was an answer to the old one, and a
         // preview of another file is not a preview of this one. The preview of the same single file stays,
-        // because re-selecting it must not make the dock blink.
+        // because re-selecting it must not make the dock blink. A name typed for a rename was for the old one.
         Preview keep = preview != null && paths.size() == 1 && paths.contains(preview.path()) ? preview : null;
-        return with(folder, entries, loading, paths, Pick.NONE, keep, now, input, work, git);
+        return with(folder, entries, loading, paths, Pick.NONE, keep, now, input, work.naming(null), git);
     }
 
     Doc picking(Pick p) {
@@ -150,6 +156,11 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
 
     Doc gitting(Status s) {
         return with(folder, entries, loading, selected, pick, preview, now, input, work, s);
+    }
+
+    /** Whether the folder shown is on another host, which is what gives the rail its other panel. */
+    boolean remote() {
+        return Remotes.is(folder);
     }
 
     /** The one selected path, or null if there are none or several: the only case the dock speaks to. */
@@ -191,12 +202,30 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
      */
     Plan plan() {
         Act act = pick.act();
-        if (act == null || act == Act.MARK || act == Act.RENAME) {
+        if (act == null || act == Act.MARK) {
+            return null;
+        }
+        // On a remote folder: a copy here (a download), a rename, and a delete into the host's own trash. Moving
+        // between its folders, and archiving there, are not offered yet.
+        if (remote() && act != Act.COPY && act != Act.RENAME && act != Act.DELETE) {
             return null;
         }
         List<Entry> targets = rail().effect().targets();
         List<Path> paths = targets.stream().map(Entry::path).toList();
         List<Long> sizes = targets.stream().map(Entry::size).toList();
+        if (act == Act.RENAME) {
+            if (targets.size() != 1) {
+                // Several at once is renaming by pattern, which is its own piece of work (docs/TODO.md).
+                List<Plan.Skip> why = paths.stream().map(p -> new Plan.Skip(p, "one name is changed at a time"))
+                        .toList();
+                return new Plan(Plan.Kind.RENAME, List.of(), why, 0L, null);
+            }
+            Set<String> taken = new java.util.HashSet<>();
+            for (Entry e : entries) {
+                taken.add(e.name());
+            }
+            return Plan.rename(paths.get(0), sizes.get(0), work.name(), taken);
+        }
         return switch (act) {
             case MOVE -> Plan.of(Plan.Kind.MOVE, paths, sizes, work.destination(), work.destNames(), null);
             case COPY -> Plan.of(Plan.Kind.COPY, paths, sizes, work.destination(), work.destNames(), null);

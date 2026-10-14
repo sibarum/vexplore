@@ -21,9 +21,12 @@ import java.util.Set;
  */
 public record Plan(Kind kind, List<Step> steps, List<Skip> skipped, long bytes, Path archive) {
 
-    /** What is done to the files. */
+    /**
+     * What is done to the files. {@code RENAME} is one name changed in place; {@code NEW_FOLDER} is never planned,
+     * only done ({@link Operations#makeFolder}), and is here so it can be undone like the rest.
+     */
     public enum Kind {
-        MOVE, COPY, DELETE, ARCHIVE
+        MOVE, COPY, DELETE, ARCHIVE, RENAME, NEW_FOLDER
     }
 
     /** One file or folder going from one place to another. For an archive, {@code to} is its name inside the zip. */
@@ -36,6 +39,31 @@ public record Plan(Kind kind, List<Step> steps, List<Skip> skipped, long bytes, 
 
     public int count() {
         return steps.size();
+    }
+
+    /**
+     * Giving {@code from} the name {@code to}, in the folder it is in. {@code taken} is the names already there. A
+     * name that is empty, unchanged, already taken, or not a name at all (a separator, {@code .}, {@code ..}) is a
+     * plan of nothing that says why.
+     */
+    public static Plan rename(Path from, long size, String to, Set<String> taken) {
+        String old = from.getFileName() == null ? from.toString() : from.getFileName().toString();
+        String name = to == null ? "" : to.strip();
+        String why = name.isEmpty() ? "type a new name and press Enter"
+                : name.equals(old) ? "that is its name already"
+                : !named(name) ? "a name cannot hold / or \\, or be . or .."
+                : taken.contains(name) ? "a file with that name is already there"
+                : null;
+        if (why != null) {
+            return new Plan(Kind.RENAME, List.of(), List.of(new Skip(from, why)), 0L, null);
+        }
+        return new Plan(Kind.RENAME, List.of(new Step(from, from.resolveSibling(name))), List.of(), size, null);
+    }
+
+    /** Whether {@code name} is one file name, on any of the systems a folder here can be on. */
+    public static boolean named(String name) {
+        return !name.isBlank() && !name.equals(".") && !name.equals("..")
+                && name.indexOf('/') < 0 && name.indexOf('\\') < 0 && name.indexOf('\0') < 0;
     }
 
     /** Paths that exist at the destination — what a plan is checked against. */

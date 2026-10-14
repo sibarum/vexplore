@@ -24,7 +24,12 @@ import java.util.zip.ZipOutputStream;
  * here: {@link Kind#DELETE} moves into a trash folder this application owns, and {@link #undo} moves it back.
  * (The operating system's recycle bin is not used because the only route to it from Java goes through AWT, which
  * nothing in this stack links; a trash of our own is also the same on every OS.) A move undoes by moving back, a
- * copy by removing the copies it made, an archive by removing the zip.
+ * copy by removing the copies it made, an archive by removing the zip, a rename by renaming back, a new folder by
+ * removing it while it is still empty.
+ *
+ * <p>Any of these may be on a remote host ({@code dev.sibarum.vexplore.remote}); they go through {@code Files} all
+ * the same. The trash is the caller's to choose, and for a remote file it is one on that host, so a delete there is a
+ * rename and not a download.
  *
  * <p>Nothing is overwritten. A step whose destination appeared since the plan was made is recorded as failed and
  * the rest carry on, so one surprise never turns nine files into a half-done operation with no account of it.
@@ -65,8 +70,8 @@ public final class Operations {
                 }
                 switch (plan.kind()) {
                     case COPY -> copyTree(s.from(), to);
-                    case MOVE, DELETE -> moveTree(s.from(), to);
-                    case ARCHIVE -> throw new IllegalStateException();
+                    case MOVE, DELETE, RENAME -> moveTree(s.from(), to);
+                    case ARCHIVE, NEW_FOLDER -> throw new IllegalStateException();
                 }
                 done.add(new Step(s.from(), to));
             } catch (IOException | RuntimeException e) {
@@ -77,6 +82,21 @@ public final class Operations {
         return new Done(plan.kind(), List.copyOf(done), List.copyOf(failed), null, plan.bytes());
     }
 
+    /**
+     * Make the empty folder {@code dir}. Its parent must exist and its name must be free; undone by removing it, and
+     * only while it is still empty.
+     */
+    public static Done makeFolder(Path dir) {
+        try {
+            Files.createDirectory(dir);
+            return new Done(Kind.NEW_FOLDER, List.of(new Step(dir, dir)), List.of(), null, 0L);
+        } catch (java.nio.file.FileAlreadyExistsException e) {
+            return new Done(Kind.NEW_FOLDER, List.of(), List.of(name(dir) + ": already there"), null, 0L);
+        } catch (IOException | RuntimeException e) {
+            return new Done(Kind.NEW_FOLDER, List.of(), List.of(name(dir) + ": " + reason(e)), null, 0L);
+        }
+    }
+
     /** Put things back. Returns the failures; an empty list is a clean undo. */
     public static List<String> undo(Done d) {
         List<String> failed = new ArrayList<>();
@@ -85,6 +105,19 @@ public final class Operations {
                 Files.deleteIfExists(d.archive());
             } catch (IOException e) {
                 failed.add(name(d.archive()) + ": " + reason(e));
+            }
+            return failed;
+        }
+        if (d.kind() == Kind.NEW_FOLDER) {
+            for (Step s : d.done()) {
+                try {
+                    Files.deleteIfExists(s.to());
+                } catch (java.nio.file.DirectoryNotEmptyException e) {
+                    // Taking the folder back would take what was put in it since: that is a delete, and not ours.
+                    failed.add(name(s.to()) + ": something has been put in it since");
+                } catch (IOException | RuntimeException e) {
+                    failed.add(name(s.to()) + ": " + reason(e));
+                }
             }
             return failed;
         }

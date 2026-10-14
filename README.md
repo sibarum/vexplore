@@ -30,7 +30,7 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 
 | Works | Not yet |
 | --- | --- |
-| Tree of the user's folders and drives, lazy | Rename (the chip is there, disabled) |
+| Tree of the user's folders and drives, lazy | Rename by pattern (one name at a time works) |
 | Breadcrumb, sortable resizable file list, range selection | Marks do not survive a restart |
 | Suggestion Rail: **Select**, **Condition**, **Action**, and a card that states the effect first | The folder dialog has never been opened by a person (see TODO) |
 | **Shift** held: where the range likely ends, in the order shown. **Control** held: the rule the picks are examples of. Same slot as the ordinary chips; ignoring them costs nothing | A modifier cannot be held from `ottermate`, so the live behaviour is checked by unit tests and `-Dvexplore.hold=` captures |
@@ -40,7 +40,8 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
 | **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, a click on the dock's picture, *View in Pix* in the row menu); without Pix, the same opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
 | **Git status** inside a repository: a GIT column (*modified*, *staged*, *part-staged*, *added*, *untracked*, *ignored*, *conflict*; a folder counts what is changed beneath it) and the branch in the status line, from the `git` executable, asked after the listing so it never holds the rows up. Without git, or outside a repository, nothing | Git on the rail, staging, refresh without navigating, and the column hidden outside a repository (see TODO) |
-| 86 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
+| **Remote folders over SFTP**: hosts from `~/.ssh/config` in the tree, `sftp://` and `user@host:path` addresses, through your own `ssh` (see below). Listing, the Preview Dock, opening (a downloaded copy), **Download**, **Upload**, **Rename**, **New folder** and a **Delete** into a trash on the server, all undoable. On a remote folder the rail switches to its remote panel | Moving or archiving between a server's own folders; password prompts; a host typed into the tree; cancelling a large transfer (see TODO) |
+| 101 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
@@ -64,6 +65,43 @@ Pictures, Videos and the pile folders; the scenes point it at the fixture), and 
 
 A path on the command line wins over `vexplore.folder`: `vexplore <folder>` opens it, and `vexplore <file>` opens the
 folder it is in with that file selected. That is how the suite's other apps say "show this here".
+
+## Remote folders: SSH and SFTP
+
+`vexplore sftp://me@box/srv/logs` (or `vexplore me@box:logs`, scp's form) opens a folder on another machine, and the
+hosts named in `~/.ssh/config` sit under the drives in the tree; clicking one connects and opens its home folder.
+
+Vexplore does not do SSH itself. It starts your `ssh` as `ssh -T -o BatchMode=yes -s <host> sftp` and speaks SFTP
+over its pipes (`remote/Sftp`), the way it runs `git`: so your config, agent, keys, known hosts and jump hosts all
+apply, and nothing in Vexplore ever holds a password. `BatchMode` means a host that would prompt refuses instead,
+and the rail shows ssh's own reason. `vexplore.ssh` names another `ssh`.
+
+A remote folder is a `java.nio.file` file system (`remote/RemoteProvider`), so the list, tree, breadcrumb, Preview
+Dock and Select/Condition chips work unchanged, and so do `Operations`: a copy to a server is `Files.copy` into an
+SFTP write, a rename there is SFTP's `RENAME`, which refuses rather than overwrite. What changes is the Suggestion
+Rail, which has a **remote panel**:
+
+- **Nothing selected:** the address, whether the host answered (and if not, why), and where to go next: home, up
+  one folder, the config's other hosts, back to this computer, or an address typed in and Enter. Once connected,
+  **New folder**: a name and Enter, undone by Ctrl+Z while the folder is still empty.
+- **Something selected:** Select and Condition as usual, then four actions, each planned and stated first and each
+  undone by Ctrl+Z:
+  - **Download to…** — a copy on *this* computer (step 4 offers Pictures or Videos for the kind, Downloads,
+    Desktop).
+  - **Rename…** — one item; type the new name and press Enter, and the card says what it becomes before the Rename
+    button does it. The same Rename now works on this computer's folders too.
+  - **Delete (recoverable)** — into `.vexplore-trash` in your home folder *on that server*, so a delete is a rename
+    there rather than a download here, and Ctrl+Z renames it back.
+  - **Mark for later.**
+
+**Uploading** is Copy to… (or Move to…) from a folder on this computer: the remote folder you were last in is
+offered in step 4 as "on <host>, where you were", for as long as that host stays connected.
+
+Opening a remote file (Enter, Open in Vex, Pix) downloads it to `~/.vexplore/remote/<host>/…` first and opens the
+copy, fetching again only when the server's size or time differ. Saving that copy does not change the server.
+
+For tests and captures, `vexplore.sftp.server=<path to sftp-server>` serves every host from a local `sftp-server`
+instead of `ssh`; Git for Windows ships one at `usr/lib/ssh/sftp-server.exe`, and `RemotesTest` uses it.
 
 ## Opening a file, and the suite
 

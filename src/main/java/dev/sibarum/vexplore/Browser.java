@@ -2,8 +2,10 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.suite.git.Git;
 import dev.sibarum.vexplore.files.Folders;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.vexelray.gui.core.Gui;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Set;
@@ -18,6 +20,12 @@ import java.util.Set;
  * <p><b>Git is asked after the listing, as a task of its own.</b> The rows are drawn when the listing lands, and the
  * Git column fills in when git answers, through {@link Model#gitted} and the same stale-folder check. Status on a
  * large repository is the slow call, and it must never be what keeps a folder's rows from appearing.
+ *
+ * <p><b>A remote folder is browsed the same way</b> ({@link Remotes}): the listing is a round trip instead of a disk
+ * read, which the offload lane already allows for. Two things differ. Git is not asked, since it runs here and the
+ * files are there. And a host's home arrives as a path the server has not been asked about yet, so it is resolved,
+ * which is what connects, before the model is told where it is; a host that cannot be reached is shown as its root,
+ * empty, with ssh's own reason on the rail.
  */
 final class Browser {
 
@@ -32,6 +40,18 @@ final class Browser {
 
     /** Show {@code folder}. A no-op if it is already the one being shown. */
     void go(Path folder) {
+        if (Remotes.is(folder) && !folder.isAbsolute()) {
+            offload(() -> {
+                Path at;
+                try {
+                    at = Remotes.absolute(folder);
+                } catch (IOException e) {
+                    at = folder.getFileSystem().getPath("/");
+                }
+                go(at);
+            });
+            return;
+        }
         if (!model.navigate(folder)) {
             return;
         }
@@ -65,17 +85,20 @@ final class Browser {
 
     /** List {@code folder}, run {@code then}, and ask git about it afterwards, each off the frame loop. */
     private void list(Path folder, Runnable then) {
-        Runnable listing = () -> {
+        offload(() -> {
             model.listed(folder, Folders.list(folder));
             then.run();
-        };
-        Runnable status = () -> model.gitted(folder, git.status(folder).orElse(null));
+        });
+        if (!Remotes.is(folder)) {
+            offload(() -> model.gitted(folder, git.status(folder).orElse(null)));
+        }
+    }
+
+    private void offload(Runnable r) {
         if (Startup.synchronous()) {
-            listing.run();
-            status.run();
+            r.run();
         } else {
-            gui.offload().execute(listing);
-            gui.offload().execute(status);
+            gui.offload().execute(r);
         }
     }
 }

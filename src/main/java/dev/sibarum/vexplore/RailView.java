@@ -7,6 +7,8 @@ import dev.sibarum.vexplore.files.Destinations.Dest;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.ops.Plan;
+import dev.sibarum.vexplore.remote.Host;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.sibarum.vexplore.suggest.Intents.Candidate;
 import dev.sibarum.vexplore.suggest.Suggestions;
@@ -20,6 +22,7 @@ import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.widget.Button;
+import dev.vexelray.gui.widget.TextField;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -48,8 +51,11 @@ import java.util.function.Consumer;
 final class RailView {
 
     private record Key(Rail rail, Suggestions.Pick pick, List<Candidate> intent, boolean shift, boolean control,
-                       Work work, Plan plan, Set<Path> selected) {
+                       Work work, Plan plan, Set<Path> selected, Path folder, boolean loading) {
     }
+
+    /** How many of the config's other hosts the remote panel offers to go to. */
+    private static final int OTHER_HOSTS = 4;
 
     /** How much of a file name the header's "based on" shows before cutting it in the middle. */
     private static final int BASIS_CHARS = 28;
@@ -57,14 +63,20 @@ final class RailView {
     private final Gui gui;
     private final Model model;
     private final Actor actor;
+    private final Browser browser;
     private final Node body;
     private final List<Node> kids = new ArrayList<>();
     private Key shown;
+    /** Whether the panel being built is the remote one: read by the pieces both panels share. */
+    private boolean remote;
+    /** The text fields the panel being shown holds (an address, a folder name, a new name), closed on a rebuild. */
+    private final List<TextField> fields = new ArrayList<>();
 
-    RailView(Gui gui, Model model, Actor actor) {
+    RailView(Gui gui, Model model, Actor actor, Browser browser) {
         this.gui = gui;
         this.model = model;
         this.actor = actor;
+        this.browser = browser;
         this.body = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(0.9f)).scroll(false, true);
     }
@@ -76,7 +88,7 @@ final class RailView {
     /** Redraw if anything the rail shows has changed. Returns whether it did. */
     synchronized boolean show(Doc doc) {
         Key key = new Key(doc.rail(), doc.pick(), doc.intent(), doc.input().shift(), doc.input().control(),
-                doc.work(), doc.plan(), doc.selected());
+                doc.work(), doc.plan(), doc.selected(), doc.folder(), doc.loading());
         if (key.equals(shown)) {
             return false;
         }
@@ -92,6 +104,15 @@ final class RailView {
             n.remove();
         }
         kids.clear();
+        for (TextField t : fields) {
+            t.close();
+        }
+        fields.clear();
+        remote = doc.remote();
+        if (remote) {
+            rebuildRemote(doc, key);
+            return;
+        }
         Rail rail = key.rail();
 
         // A long name is shortened by count, keeping its extension, and whatever still does not fit is clipped by
@@ -123,7 +144,7 @@ final class RailView {
         add(select(doc, key, rail));
         add(section(2, "Condition", chips(rail.conditions(), effectiveCondition(doc, rail),
                 c -> model.pick(p -> p.with(c)))));
-        add(section(3, "Action", actions(rail, doc.pick().act())));
+        add(section(3, "Action", actions(rail.acts(), doc.pick().act())));
         Act act = doc.pick().act();
         if (act == Act.MOVE || act == Act.COPY) {
             add(section(4, "Destination", places(doc, rail, work)));
@@ -133,6 +154,128 @@ final class RailView {
         }
         add(gui.box().width(Length.FILL).height(Length.grow(1f)));
         add(summary(doc, rail));
+    }
+
+    // ------------------------------------------------------------------ the remote panel
+
+    /**
+     * The rail for a folder on another host. The same column and the same steps, with what a read-only server allows:
+     * Select and Condition read only the listing, so they are as they are here; Action is <em>Download to…</em> or a
+     * mark, and step 4 offers places on this computer, never the server's neighbours. With nothing selected the
+     * panel says where it is and whether that host answered, and offers where to go next: home, up, the other hosts
+     * in the config, back to this computer, or an address typed in.
+     */
+    private void rebuildRemote(Doc doc, Key key) {
+        Rail rail = key.rail();
+        Host host = Remotes.host(doc.folder());
+        String tag = rail.basis().isEmpty() ? "on " + host.label() : "based on " + shorten(rail.basis(), BASIS_CHARS);
+        Node basis = gui.text(tag).font(Type.MONO).textSize(Type.SMALL).textColor(gui.theme().color(Look.ANCHOR))
+                .wordWrap(false);
+        gui.landmark(Landmarks.BASIS, basis);
+        Node basisBox = gui.row().width(Length.grow(1f)).alignItems(AlignItems.CENTER)
+                .justify(Justify.END).scroll(false, false).clip(true).children(basis);
+        add(gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).gap(Length.rem(0.6f)).children(
+                gui.text("Suggestions").font(Type.UI).textSize(Type.HEADING).textColor(gui.theme().color(Role.INK)),
+                basisBox));
+
+        Work work = doc.work();
+        if (!work.busy().isEmpty() || !work.notice().isEmpty()) {
+            add(notice(work));
+        }
+
+        if (rail == Rail.EMPTY) {
+            add(section(0, "Remote", connection(doc, host)));
+            add(section(0, "Go to", places(doc, host)));
+            if (!doc.loading() && Remotes.connected(doc.folder())) {
+                add(section(0, "New folder", newFolder()));
+            }
+            if (!work.marks().isEmpty()) {
+                add(marks(work));
+            }
+            add(gui.box().width(Length.FILL).height(Length.grow(1f)));
+            add(note("Select a file and Vexplore will say what it would bring to this computer. "
+                    + "The server is only read: nothing on it is changed."));
+            return;
+        }
+
+        add(select(doc, key, rail));
+        add(section(2, "Condition", chips(rail.conditions(), effectiveCondition(doc, rail),
+                c -> model.pick(p -> p.with(c)))));
+        add(section(3, "Action", actions(List.of(Act.COPY, Act.RENAME, Act.DELETE, Act.MARK), doc.pick().act())));
+        if (doc.pick().act() == Act.COPY) {
+            add(section(4, "Download to", places(doc, rail, work)));
+        }
+        if (!work.marks().isEmpty()) {
+            add(marks(work));
+        }
+        add(gui.box().width(Length.FILL).height(Length.grow(1f)));
+        add(summary(doc, rail));
+    }
+
+    /**
+     * Where this is, said as an address, and whether the host answered. When it did not, ssh's own words say why
+     * ("Could not resolve hostname", "Permission denied (publickey)"), because an unreachable folder lists as an
+     * empty one and only this tells the two apart.
+     */
+    private Node connection(Doc doc, Host host) {
+        String problem = Remotes.problem(doc.folder());
+        boolean up = Remotes.connected(doc.folder());
+        String state = doc.loading() ? "connecting to " + host.label() + "…"
+                : up ? "connected over SFTP · read-only"
+                : problem.isEmpty() ? "not connected" : "could not connect";
+        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.35f)).children(
+                gui.text(Remotes.address(doc.folder())).font(Type.MONO).textSize(Type.SMALL)
+                        .textColor(gui.theme().color(Role.INK)).wordWrap(true).width(Length.FILL),
+                gui.text(state).font(Type.UI).textSize(Type.META).textColor(gui.theme().color(Role.DIM)));
+        if (!doc.loading() && !up && !problem.isEmpty()) {
+            Node why = gui.text(problem).font(Type.UI).textSize(Type.META)
+                    .textColor(gui.theme().color(Look.ANCHOR)).wordWrap(true).width(Length.FILL);
+            gui.landmark(Landmarks.PROBLEM, why);
+            column.append(why);
+        }
+        return column;
+    }
+
+    /**
+     * Where to go from here: this host's home and the folder above, the config's other hosts, this computer, and an
+     * address field for a host the config does not name.
+     */
+    private Node places(Doc doc, Host host) {
+        List<Option<Runnable>> options = new ArrayList<>();
+        Path folder = doc.folder();
+        options.add(new Option<>(() -> browser.go(Remotes.home(host)), "Home folder", 0));
+        if (folder.getParent() != null) {
+            options.add(new Option<>(() -> browser.go(folder.getParent()), "Up one folder", 0));
+        }
+        int others = 0;
+        for (Host h : Remotes.configured()) {
+            if (!h.equals(host) && others++ < OTHER_HOSTS) {
+                options.add(new Option<>(() -> browser.go(Remotes.home(h)), h.label(), 0));
+            }
+        }
+        options.add(new Option<>(() -> browser.go(Startup.downloads()), "This computer", 0));
+        Node column = chips(options, null, Runnable::run);
+
+        TextField address = field("");
+        address.node().width(Length.FILL);
+        address.onSubmit(text -> Remotes.parse(text).ifPresentOrElse(browser::go,
+                () -> model.work(w -> w.noting("Not an address: " + text.strip()
+                        + ". Try user@host:path or sftp://host/path."))));
+        gui.landmark(Landmarks.ADDRESS, address.node());
+        column.append(address.node());
+        column.append(note("Another host: type user@host:path or sftp://host/path and press Enter. "
+                + "It is reached with your own ssh, so its keys and config apply."));
+        return column;
+    }
+
+    /** A name, and Enter: an empty folder here, selected once it is listed, and undone by Ctrl+Z while still empty. */
+    private Node newFolder() {
+        TextField name = field("");
+        name.node().width(Length.FILL);
+        name.onSubmit(actor::makeFolder);
+        gui.landmark(Landmarks.NEW_FOLDER, name.node());
+        return gui.column().width(Length.FILL).gap(Length.rem(0.5f)).children(name.node(),
+                note("Type a name and press Enter to make an empty folder here."));
     }
 
     private Node select(Doc doc, Key key, Rail rail) {
@@ -170,6 +313,7 @@ final class RailView {
                 .enabled(!busy && !work.history().isEmpty()).onPress(actor::undo);
         gui.landmark(Landmarks.UNDO, undo.node());
         return gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).gap(Length.rem(0.5f))
+                .scroll(false, false)
                 .children(text, undo.node());
     }
 
@@ -195,11 +339,14 @@ final class RailView {
         boolean writes = plan != null;
         // Until a destination is chosen there is no plan to speak of, only the reach of the rail: say that, and
         // nothing about files being "left alone" for want of somewhere to go.
-        boolean planned = plan != null && (act == Act.DELETE || act == Act.ARCHIVE || work.destination() != null);
-        int n = planned ? plan.count() : fx.count();
-        long bytes = planned ? plan.bytes() : fx.bytes();
+        boolean planned = plan != null && (act == Act.DELETE || act == Act.ARCHIVE || act == Act.RENAME
+                || work.destination() != null);
+        // A rename is of the one selected; what it says about counting is the selection, whatever the plan holds.
+        boolean counted = planned && act != Act.RENAME;
+        int n = counted ? plan.count() : fx.count();
+        long bytes = counted ? plan.bytes() : fx.bytes();
         String head = n + (n == 1 ? " file" : " files") + " · " + Bytes.format(bytes);
-        List<String> names = (planned ? plan.steps().stream().map(s -> s.from().getFileName().toString()).toList()
+        List<String> names = (counted ? plan.steps().stream().map(s -> s.from().getFileName().toString()).toList()
                 : fx.targets().stream().map(Entry::name).toList());
         String list = names.size() <= 3 ? String.join(", ", names)
                 : String.join(", ", names.subList(0, 3)) + " and " + (names.size() - 3)
@@ -222,7 +369,9 @@ final class RailView {
         if (act == Act.MOVE || act == Act.COPY) {
             card.append(destination(work));
         }
-        if (planned && !plan.skipped().isEmpty()) {
+        if (act == Act.RENAME && plan != null) {
+            card.append(rename(doc, plan));
+        } else if (planned && !plan.skipped().isEmpty()) {
             card.append(gui.text(plan.skipped().size() + " will be left alone: "
                     + plan.skipped().get(0).reason() + ".").font(Type.UI).textSize(Type.META)
                     .textColor(gui.theme().color(Look.ANCHOR)).wordWrap(true).width(Length.FILL));
@@ -251,19 +400,20 @@ final class RailView {
             b = new Button(gui, "Choose an action").enabled(false);
         } else if (act == Act.MARK) {
             b = new Button(gui, "Keep as Mark").onPress(actor::mark);
-        } else if (act == Act.RENAME) {
-            b = new Button(gui, "Rename is not built yet").enabled(false);
         } else {
             String verb = switch (act) {
                 case MOVE -> "Move";
-                case COPY -> "Copy";
+                case COPY -> remote ? "Download" : work.destination() != null && Remotes.is(work.destination())
+                        ? "Upload" : "Copy";
                 case DELETE -> "Delete";
+                case RENAME -> "Rename";
                 default -> "Archive";
             };
             boolean ready = plan != null && plan.count() > 0 && work.busy().isEmpty()
-                    && (act == Act.DELETE || act == Act.ARCHIVE || work.destination() != null);
+                    && (act == Act.DELETE || act == Act.ARCHIVE || act == Act.RENAME || work.destination() != null);
             boolean needsPlace = (act == Act.MOVE || act == Act.COPY) && work.destination() == null;
             b = new Button(gui, needsPlace ? "Choose where to " + verb.toLowerCase()
+                    : act == Act.RENAME ? verb
                     : plan != null && plan.count() == 0 ? "Nothing to " + verb.toLowerCase()
                     : verb + " " + files).enabled(ready).onPress(actor::run);
         }
@@ -273,9 +423,41 @@ final class RailView {
     }
 
 
+    /**
+     * A rename's part of the card: the new name, typed and then Enter, and what that would do or why it would not.
+     * Enter is what puts the name in the plan, so the card can say "to final.txt" before the button does it; the
+     * field starts from the name being changed.
+     */
+    private Node rename(Doc doc, Plan plan) {
+        Work work = doc.work();
+        String current = plan.steps().isEmpty() ? plan.skipped().isEmpty() ? "" : name(plan.skipped().get(0).path())
+                : name(plan.steps().get(0).from());
+        TextField field = field(work.name() != null ? work.name() : current);
+        field.node().width(Length.FILL);
+        field.onSubmit(text -> model.work(w -> w.naming(text)));
+        gui.landmark(Landmarks.RENAME_TO, field.node());
+        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.4f)).children(field.node());
+        if (plan.count() == 1) {
+            column.append(gui.text("to " + name(plan.steps().get(0).to())).font(Type.MONO).textSize(Type.SMALL)
+                    .textColor(gui.theme().color(Role.INK)).wordWrap(true).width(Length.FILL));
+        } else if (!plan.skipped().isEmpty()) {
+            // Nothing typed yet is a prompt, not a problem; a name that will not do is said in the warning colour.
+            String why = plan.skipped().get(0).reason();
+            column.append(gui.text(Character.toUpperCase(why.charAt(0)) + why.substring(1) + ".").font(Type.UI)
+                    .textSize(Type.META).textColor(gui.theme().color(work.name() == null ? Role.DIM : Look.ANCHOR))
+                    .wordWrap(true).width(Length.FILL));
+        }
+        return column;
+    }
+
+    private static String name(Path p) {
+        return p.getFileName() == null ? p.toString() : p.getFileName().toString();
+    }
+
     /** The card's line saying where a move or copy goes; the places to choose from are step 4. */
     private Node destination(Work work) {
-        Node where = gui.text(work.destination() == null ? "to … (pick a place)" : "to " + work.destination())
+        Node where = gui.text(work.destination() == null ? "to … (pick a place)"
+                        : "to " + Remotes.address(work.destination()))
                 .font(Type.MONO).textSize(Type.SMALL).textColor(gui.theme().color(Role.INK)).wordWrap(true)
                 .width(Length.FILL);
         gui.landmark(Landmarks.DESTINATION, where);
@@ -304,7 +486,8 @@ final class RailView {
             column.append(chip.node());
         }
         List<Kind> kinds = rail.effect().targets().stream().map(Entry::kind).toList();
-        if (rail.acts().contains(Act.ARCHIVE) && Destinations.archives(doc.folder(), Startup.home(), kinds)) {
+        if (!remote && rail.acts().contains(Act.ARCHIVE)
+                && Destinations.archives(doc.folder(), Startup.home(), kinds)) {
             Button archive = new Button(gui, "To compressed archive")
                     .onPress(() -> model.pick(p -> p.with(Act.ARCHIVE)));
             gui.landmark(Landmarks.DEST_ARCHIVE, archive.node());
@@ -331,17 +514,32 @@ final class RailView {
         return name.substring(0, head) + "…" + name.substring(name.length() - tail);
     }
 
-    private static String hint(Act act, Plan plan) {
+    private String hint(Act act, Plan plan) {
         if (act == null) {
             return "Choose an action to see exactly what it would do. Nothing happens until you press it.";
+        }
+        if (remote && act == Act.COPY) {
+            return "A download is a copy: the server is not changed. Ctrl+Z removes what was downloaded.";
+        }
+        if (remote && act == Act.DELETE) {
+            return "Deleted files wait in " + Remotes.TRASH + " in your home folder on the server. "
+                    + "Ctrl+Z puts them back.";
         }
         return switch (act) {
             case DELETE -> "Deleted files wait in Vexplore's trash. Ctrl+Z puts them back.";
             case MOVE, COPY -> "Ctrl+Z undoes it. A name that already exists there is never overwritten.";
             case ARCHIVE -> "The originals stay where they are. Ctrl+Z removes the archive.";
             case MARK -> "A mark is a group kept under a name, to come back to.";
-            case RENAME -> "Renaming by pattern comes next.";
+            case RENAME -> "Type the new name and press Enter to see it here; nothing is renamed until you press "
+                    + "Rename. Ctrl+Z puts the old name back.";
         };
+    }
+
+    /** A text field that lives as long as the panel it is in, starting from {@code text}. */
+    private TextField field(String text) {
+        TextField t = new TextField(gui, text);
+        fields.add(t);
+        return t;
     }
 
     // ------------------------------------------------------------------ pieces
@@ -390,22 +588,19 @@ final class RailView {
         return column;
     }
 
-    private Node actions(Rail rail, Act current) {
+    private Node actions(List<Act> acts, Act current) {
         Node column = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
         Node row = null;
-        List<Act> acts = rail.acts();
         for (int i = 0; i < acts.size(); i++) {
             if (i % 2 == 0) {
                 row = gui.row().gap(Length.rem(0.5f)).scroll(false, false);
                 column.append(row);
             }
             Act a = acts.get(i);
-            Button b = new Button(gui, label(a)).toggle(true).show(a == current)
+            String text = remote && a == Act.COPY ? "Download to…" : label(a);
+            Button b = new Button(gui, text).toggle(true).show(a == current)
                     .onToggle(pressed -> model.pick(p -> p.with(a)));
 gui.landmark("act." + a.name().toLowerCase(), b.node());
-            if (a == Act.RENAME) {
-                b.enabled(false);
-            }
             row.append(b.node());
         }
         return column;

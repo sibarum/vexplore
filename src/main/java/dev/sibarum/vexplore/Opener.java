@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.vexelray.framework.shell.Apps;
 import dev.vexelray.gui.core.Gui;
 import sibarum.probe.Log;
@@ -18,6 +19,9 @@ import java.nio.file.Path;
  *
  * <p>Each reads the disk. {@link #edit} and {@link #view} go to {@link Gui#offload()} themselves; {@link #pix},
  * {@link #editor} and {@link #shell} run where they are called, which is the lane {@link Routes} opens on.
+ *
+ * <p>A remote file is downloaded first ({@link Remotes#local}) and the copy is what opens: every application here
+ * wants a file on this disk. The copy is a copy, so saving it in the editor does not change the server.
  */
 final class Opener {
 
@@ -116,7 +120,10 @@ final class Opener {
     /** Start the application installed as {@code id} on {@code file}; false if it is not installed or did not start. */
     private static boolean spawn(String id, Path file) {
         try {
-            return Apps.spawn(id, file.toAbsolutePath().toString()).isPresent();
+            if (Remotes.is(file) && Apps.find(id).isEmpty()) {
+                return false;   // asked before downloading, so a missing app costs no transfer
+            }
+            return Apps.spawn(id, Remotes.local(file).toAbsolutePath().toString()).isPresent();
         } catch (IOException e) {
             LOG.warn("could not start {} for {}", id, file, e);
             return false;
@@ -129,7 +136,7 @@ final class Opener {
      */
     static void shell(Path file) {
         try {
-            new ProcessBuilder("explorer.exe", file.toAbsolutePath().toString())
+            new ProcessBuilder("explorer.exe", Remotes.local(file).toAbsolutePath().toString())
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                     .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start();

@@ -3,6 +3,7 @@ package dev.sibarum.vexplore;
 import dev.sibarum.vexplore.files.Destinations;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Suggestions.Act;
 import dev.vexelray.gui.core.Gui;
 
@@ -27,6 +28,8 @@ final class Destinator {
     private final Gui gui;
     private final Model model;
     private Question asked;
+    /** The remote folder most recently shown, once listed: offered as a place to upload to. */
+    private volatile Path lastRemote;
 
     Destinator(Gui gui, Model model) {
         this.gui = gui;
@@ -35,6 +38,9 @@ final class Destinator {
     }
 
     private void follow(Doc doc) {
+        if (doc.remote() && !doc.loading()) {
+            lastRemote = doc.folder();
+        }
         Act act = doc.pick().act();
         Question q = null;
         if ((act == Act.MOVE || act == Act.COPY) && doc.folder() != null) {
@@ -54,14 +60,29 @@ final class Destinator {
         }
         Question mine = q;
         Runnable work = () -> {
-            Destinations.Dest guess = Destinations.home(mine.folder(), Startup.home(), mine.kind());
-            var near = Destinations.suggest(mine.folder(), mine.kind(),
-                    guess == null ? Set.of() : Set.of(guess.path()));
             var found = new java.util.ArrayList<Destinations.Dest>();
-            if (guess != null) {
-                found.add(guess);
+            if (Remotes.is(mine.folder())) {
+                found.addAll(here(mine.kind()));
+            } else {
+                Destinations.Dest guess = Destinations.home(mine.folder(), Startup.home(), mine.kind());
+                var near = Destinations.suggest(mine.folder(), mine.kind(),
+                        guess == null ? Set.of() : Set.of(guess.path()));
+                if (guess != null) {
+                    found.add(guess);
+                }
+                found.addAll(near);
+                // The remote folder last shown is where an upload most likely goes. It takes the third place the
+                // rail has room for, and is offered only while its host is still connected, so offering it costs
+                // no connection.
+                Path there = lastRemote;
+                if (there != null && Remotes.connected(there)) {
+                    while (found.size() >= 3) {
+                        found.removeLast();
+                    }
+                    found.add(new Destinations.Dest(there, "on " + Remotes.host(there).label()
+                            + ", where you were", 0));
+                }
             }
-            found.addAll(near);
             synchronized (this) {
                 if (!Objects.equals(mine, asked)) {
                     return;
@@ -74,6 +95,26 @@ final class Destinator {
         } else {
             gui.offload().execute(work);
         }
+    }
+
+    /**
+     * Where a download from a remote folder goes: somewhere on this computer, never a neighbour on the server, which
+     * is not written to. The person's folder for the kind, then Downloads, then the Desktop.
+     */
+    private static List<Destinations.Dest> here(Kind kind) {
+        var out = new java.util.ArrayList<Destinations.Dest>();
+        Destinations.Dest guess = Destinations.home(null, Startup.home(), kind);
+        if (guess != null) {
+            out.add(guess);
+        }
+        Path downloads = Startup.downloads();
+        out.add(new Destinations.Dest(downloads, downloads.equals(Startup.home()) ? "your home folder"
+                : "your Downloads folder", 0));
+        Path desktop = Startup.home().resolve("Desktop");
+        if (java.nio.file.Files.isDirectory(desktop)) {
+            out.add(new Destinations.Dest(desktop, "your Desktop", 0));
+        }
+        return List.copyOf(out);
     }
 
     /** The kind most of what the rail reaches is, or null for nothing. */

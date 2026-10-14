@@ -5,6 +5,7 @@ import dev.sibarum.vexplore.files.Destinations;
 import dev.sibarum.vexplore.ops.Operations;
 import dev.sibarum.vexplore.ops.Operations.Done;
 import dev.sibarum.vexplore.ops.Plan;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.gui.core.Gui;
@@ -47,16 +48,30 @@ final class Actor {
         if (plan == null || plan.count() == 0 || !doc.work().busy().isEmpty()) {
             return;
         }
+        Plan.Step first = plan.steps().get(0);
         String verb = switch (plan.kind()) {
             case MOVE -> "Moving";
-            case COPY -> "Copying";
+            case COPY -> Remotes.is(first.from()) ? "Downloading" : Remotes.is(first.to()) ? "Uploading" : "Copying";
             case DELETE -> "Deleting";
             case ARCHIVE -> "Archiving";
+            case RENAME -> "Renaming";
+            case NEW_FOLDER -> "Making";
         };
         model.work(w -> w.running(verb + " " + plan.count() + (plan.count() == 1 ? " file" : " files") + "…"));
         offload(() -> {
+            // A remote file is deleted into a trash on its own host: a rename there, not a download here.
+            Path bin = trash;
+            if (plan.kind() == Plan.Kind.DELETE && Remotes.is(first.from())) {
+                try {
+                    bin = Remotes.trash(first.from());
+                } catch (java.io.IOException e) {
+                    model.work(w -> w.running("").noting("Nothing was deleted: " + Remotes.host(first.from()).label()
+                            + " did not say where its trash would be (" + e.getMessage() + ")."));
+                    return;
+                }
+            }
             int[] last = {0};
-            Done done = Operations.execute(plan, trash, n -> {
+            Done done = Operations.execute(plan, bin, n -> {
                 // A busy line per file would be a version per file; once every few is as live as it needs to be.
                 if (n - last[0] >= Math.max(1, plan.count() / 20) || n == plan.count()) {
                     last[0] = n;
@@ -123,10 +138,38 @@ final class Actor {
         });
     }
 
+    /**
+     * Make the empty folder {@code name} in the folder shown, and select it once the listing is back. Not planned
+     * first: what it will do is the name just typed, it touches nothing that exists, and Ctrl+Z takes it back while it
+     * is still empty.
+     */
+    void makeFolder(String name) {
+        Doc doc = model.doc();
+        if (doc.folder() == null || !doc.work().busy().isEmpty()) {
+            return;
+        }
+        String n = name == null ? "" : name.strip();
+        if (!Plan.named(n)) {
+            model.work(w -> w.noting("Not a folder name: " + (n.isEmpty() ? "it is empty" : n) + "."));
+            return;
+        }
+        Path dir = doc.folder().resolve(n);
+        model.work(w -> w.running("Making " + n + "…"));
+        offload(() -> {
+            Done done = Operations.makeFolder(dir);
+            if (done.count() == 0) {
+                model.work(w -> w.running("").noting("No folder made: " + done.failed().get(0) + "."));
+                return;
+            }
+            model.work(w -> w.did(done, capital(describe(done)) + "."));
+            browser.reveal(dir);
+        });
+    }
+
     /** Ask for a destination with the folder dialog. */
     void choose() {
         Path start = model.doc().work().destination() != null ? model.doc().work().destination()
-                : model.doc().folder();
+                : model.doc().remote() ? Startup.downloads() : model.doc().folder();   // the dialog browses this disk
         // The answer arrives on the handler lane, and destination puts its own disk work on the offload lane.
         dialogs.openFolder(start, this::destination, () -> { });
     }
@@ -158,14 +201,29 @@ final class Actor {
         return what + " · " + skipped + " left alone.";
     }
 
-private static String capital(String s) {        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);    }
+    private static String capital(String s) {
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
     private static String describe(Done d) {
         String n = d.count() + (d.count() == 1 ? " file" : " files");
         return switch (d.kind()) {
             case MOVE -> "moved " + n + " (" + Bytes.format(d.bytes()) + ")";
-            case COPY -> "copied " + n + " (" + Bytes.format(d.bytes()) + ")";
-            case DELETE -> "deleted " + n + " (kept in the trash)";
+            case COPY -> (d.done().isEmpty() ? "copied "
+                    : Remotes.is(d.done().get(0).from()) ? "downloaded "
+                    : Remotes.is(d.done().get(0).to()) ? "uploaded " : "copied ")
+                    + n + " (" + Bytes.format(d.bytes()) + ")";
+            case DELETE -> "deleted " + n + (!d.done().isEmpty() && Remotes.is(d.done().get(0).from())
+                    ? " (kept in " + Remotes.TRASH + " on " + Remotes.host(d.done().get(0).from()).label() + ")"
+                    : " (kept in the trash)");
             case ARCHIVE -> "archived " + n + " into " + d.archive().getFileName();
+            case RENAME -> d.done().isEmpty() ? "renamed nothing"
+                    : "renamed " + name(d.done().get(0).from()) + " to " + name(d.done().get(0).to());
+            case NEW_FOLDER -> d.done().isEmpty() ? "made no folder" : "made the folder " + name(d.done().get(0).to());
         };
+    }
+
+    private static String name(Path p) {
+        return p.getFileName() == null ? p.toString() : p.getFileName().toString();
     }
 }

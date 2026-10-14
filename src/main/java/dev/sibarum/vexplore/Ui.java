@@ -4,6 +4,8 @@ import dev.sibarum.suite.git.Status;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Folders;
+import dev.sibarum.vexplore.remote.Host;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.sibarum.vexplore.suggest.Dates;
 import dev.sibarum.vexplore.suggest.Order;
@@ -134,7 +136,7 @@ final class Ui {
         gui.landmark(Landmarks.ITEMS, status.slot("items"));
         gui.landmark(Landmarks.BRANCH, status.slot("branch"));
         gui.landmark(Landmarks.SELECTED, status.slot("selected"));
-        this.rail = new RailView(gui, model, actor);
+        this.rail = new RailView(gui, model, actor, browser);
 
         Node topBar = gui.row().width(Length.FILL).height(Length.rem(3f))
                 .alignItems(AlignItems.CENTER)
@@ -198,16 +200,27 @@ final class Ui {
                 return item.label();
             }
 
+            /**
+             * A host is not opened until it is connected: opening is a listing, and a tree that connected to every
+             * host in the config to draw its chevrons (or to search, which walks) would be reaching out unasked.
+             * Clicking a host connects, and it can be opened from then on.
+             */
             @Override
             public boolean hasChildren(Place item) {
-                return true;
+                Path p = item.path();
+                return !Remotes.is(p) || p.isAbsolute() || Remotes.connected(p);
             }
 
             @Override
             public List<Place> children(Place item) {
-                return Folders.subfolders(item.path()).stream().map(Place::of).toList();
+                try {
+                    return Folders.subfolders(Remotes.absolute(item.path())).stream().map(Place::of).toList();
+                } catch (java.io.IOException e) {
+                    return List.of();
+                }
             }
         });
+        Remotes.onConnect(tree::refresh);
         tree.onSelect(place -> {
             if (place != null) {
                 browser.go(place.path());
@@ -219,7 +232,10 @@ final class Ui {
         return tree.node();
     }
 
-    /** The user's own folders, then the drives: what a file browser opens onto. */
+    /**
+     * The user's own folders, then the drives: what a file browser opens onto. Then the hosts named in
+     * {@code ~/.ssh/config}, each opening on its home folder; naming one connects to nothing.
+     */
     private static List<Place> places() {
         List<Place> out = new ArrayList<>();
         Path home = Path.of(System.getProperty("user.home"));
@@ -231,6 +247,9 @@ final class Ui {
         }
         for (Path root : java.nio.file.FileSystems.getDefault().getRootDirectories()) {
             out.add(new Place(root, root.toString().replaceAll("[\\\\/]+$", "")));
+        }
+        for (Host h : Remotes.configured()) {
+            out.add(new Place(Remotes.home(h), h.label()));
         }
         return out;
     }
@@ -296,6 +315,7 @@ final class Ui {
         }
         Set<Path> paths = paths(Set.copyOf(on));
         boolean one = on.size() == 1;
+        boolean remote = Remotes.is(clicked.path());
         if (one) {
             // Open is the route a double-click takes, named for where it goes; the rest are the other doors.
             Routes.Route way = routes.pick(clicked);
@@ -311,11 +331,31 @@ final class Ui {
                     menu.item("Open with default app", () -> routes.openByDefault(clicked));
                 }
             }
-            menu.item("Open MainFrame Here", opener.mainframeInstalled(),
-                    () -> opener.mainframe(clicked.path(), clicked.folder()));
+            if (!remote) {
+                menu.item("Open MainFrame Here", opener.mainframeInstalled(),
+                        () -> opener.mainframe(clicked.path(), clicked.folder()));
+            }
             menu.separator();
         }
+        if (remote) {
+            // What the remote panel offers (RailView): download, rename, delete into the host's trash, mark.
+            menu.item("Download to…", () -> stage(paths, Act.COPY));
+            if (one) {
+                menu.item("Rename…", () -> stage(paths, Act.RENAME));
+            }
+            menu.item("Delete…", () -> stage(paths, Act.DELETE));
+            menu.item("Mark for later…", () -> stage(paths, Act.MARK));
+            menu.separator();
+            menu.item(one ? "Copy address" : "Copy " + on.size() + " addresses",
+                    () -> gui.clipboard().set(join(on, e -> Remotes.address(e.path()))));
+            menu.item(one ? "Copy name" : "Copy " + on.size() + " names",
+                    () -> gui.clipboard().set(join(on, Entry::name)));
+            return;
+        }
         menu.item("Move to…", () -> stage(paths, Act.MOVE));
+        if (one) {
+            menu.item("Rename…", () -> stage(paths, Act.RENAME));
+        }
         menu.item("Copy to…", () -> stage(paths, Act.COPY));
         menu.item("Archive…", () -> stage(paths, Act.ARCHIVE));
         menu.item("Delete…", () -> stage(paths, Act.DELETE));
@@ -403,6 +443,9 @@ final class Ui {
 
     private static String crumbLabel(Path p) {
         Path n = p.getFileName();
+        if (n == null && Remotes.is(p)) {
+            return Remotes.host(p).label();   // a host's "/" would otherwise be a crumb with no words
+        }
         return n == null ? p.toString().replaceAll("[\\\\/]+$", "") : n.toString();
     }
 
@@ -416,7 +459,7 @@ final class Ui {
         if (before == null || before.folder() != doc.folder()) {
             if (doc.folder() != null) {
                 crumbs.path(Folders.chain(doc.folder()));
-                status.text("path", doc.folder().toString());
+                status.text("path", Remotes.address(doc.folder()));
             }
         }
         // Git answers after the listing, so its arrival rebuilds the rows on screen with the same entries: the

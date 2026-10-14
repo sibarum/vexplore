@@ -2,6 +2,7 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Folders;
+import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Suggestions;
 import dev.sibarum.vexplore.suggest.Suggestions.Act;
 import dev.sibarum.vexplore.suggest.Suggestions.Scope;
@@ -38,7 +39,7 @@ final class Startup {
     static Path folder() {
         String given = System.getProperty("vexplore.folder");
         if (given != null && !given.isBlank()) {
-            return Path.of(given);
+            return Remotes.parse(given).orElseGet(() -> Path.of(given));
         }
         Path home = Path.of(System.getProperty("user.home"));
         Path downloads = home.resolve("Downloads");
@@ -54,6 +55,15 @@ final class Startup {
         return Path.of(given != null && !given.isBlank() ? given : System.getProperty("user.home"));
     }
 
+    /**
+     * Where a download goes when nothing better is known: Downloads under {@link #home}, or home itself. Always on this
+     * disk, which is the point: it is the place a remote file can be copied to.
+     */
+    static Path downloads() {
+        Path d = home().resolve("Downloads");
+        return Files.isDirectory(d) ? d : home();
+    }
+
     static boolean synchronous() {
         return Boolean.getBoolean("vexplore.sync");
     }
@@ -65,9 +75,15 @@ final class Startup {
      * {@code vexplore.folder}: a folder is opened, and a file is shown selected in its folder. That is how another
      * application of the suite says "show this here" ({@code vexplore <folder>}, {@code vexplore <file>}). A path
      * that does not exist is ignored rather than refused, since the window is still useful where it would have
-     * opened anyway.
+     * opened anyway. An address ({@code sftp://host/path}, or scp's {@code host:path}) opens that remote folder
+     * ({@link Remotes}); reaching it is the listing's work, so nothing here waits on the network.
      */
     static void apply(Browser browser, Model model, List<String> given) {
+        Path remote = given.isEmpty() ? null : Remotes.parse(given.getFirst()).orElse(null);
+        if (remote != null) {
+            browser.go(remote);
+            return;
+        }
         Path asked = given.isEmpty() ? null : Path.of(given.getFirst()).toAbsolutePath().normalize();
         if (asked != null && Files.isRegularFile(asked) && asked.getParent() != null) {
             browser.reveal(asked);

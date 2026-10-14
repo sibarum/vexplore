@@ -35,6 +35,14 @@ final class Landmarks {
     static final String DEST_FIRST = "dest.1";
     /** Step 4's "To compressed archive", offered for a mixed bunch in Desktop, Downloads or Documents. */
     static final String DEST_ARCHIVE = "dest.archive";
+    /** The remote panel's address field: {@code user@host:path} or {@code sftp://host/path}, then Enter. */
+    static final String ADDRESS = "address";
+    /** The remote panel's new-folder name field: a name, then Enter. */
+    static final String NEW_FOLDER = "newfolder";
+    /** The card's new-name field for a rename: Enter puts the name in the plan; {@link #GO} does it. */
+    static final String RENAME_TO = "renameto";
+    /** The remote panel's account of why a host could not be reached: ssh's own last line. */
+    static final String PROBLEM = "problem";
     /** The dock's picture, which is its own control: a click views it in Pix, or in the viewer without Pix. */
     static final String POP_OUT = "popout";
 
