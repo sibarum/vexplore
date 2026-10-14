@@ -1,17 +1,22 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.suite.update.Updates;
+import dev.sibarum.suite.view.UpdateNotice;
 import dev.vexelray.codec.image.gui.Textures;
 import dev.vexelray.framework.api.Configuration;
 import dev.vexelray.framework.api.Provides;
 import dev.vexelray.framework.core.Launch;
 import dev.vexelray.framework.shell.Appearance;
+import dev.vexelray.framework.shell.Apps;
 import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.framework.shell.Windows;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.TitleBar;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.List;
 import sibarum.tactroller.api.Key;
 import sibarum.tactroller.api.Modifier;
 
@@ -94,7 +99,8 @@ final class Recipes {
      */
     @Provides
     Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Viewer viewer,
-          Previewer previewer, Destinator destinator, Actor actor, TitleBar titleBar, Launch launch) {
+          Previewer previewer, Destinator destinator, Actor actor, TitleBar titleBar, Launch launch,
+          Windows windows) {
         Ui ui = new Ui(gui, krono, model, browser, opener, textures, viewer, actor, titleBar);
         // Every change to the state redraws what is derived from it, on the committing thread -- which is a
         // worker, because every control's handler is. The GUI thread never reads the model.
@@ -108,7 +114,25 @@ final class Recipes {
         // Last, and after the listener above: opening the first folder is a change, and a change nobody is
         // listening for is a window that opens onto an empty list.
         Startup.apply(browser, model, launch.rest());
+        updates(gui, model, windows);
         return ui;
+    }
+
+    /**
+     * Word of a newer version, in the window's top right corner, when this is the installed copy: Update and restart
+     * closes Vexplore, lets the installer's updater replace it, and opens it again on the folder that was open (a
+     * folder on this computer: a remote one is not an argument a new start can take).
+     */
+    private static void updates(Gui gui, Model model, Windows windows) {
+        Updates.of(Apps.registryDir(), Vexplore.APP).ifPresent(u -> {
+            UpdateNotice notice = new UpdateNotice(gui, u, () -> windows.main().close(), () -> {
+                Path folder = model.doc().folder();
+                return folder == null || folder.getFileSystem() != FileSystems.getDefault()
+                        ? List.of() : List.of(folder.toString());
+            }, "");
+            gui.root().append(notice.node());
+            notice.start();
+        });
     }
 
     /**
