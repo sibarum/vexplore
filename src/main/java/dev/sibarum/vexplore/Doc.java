@@ -4,7 +4,6 @@ import dev.sibarum.suite.git.Status;
 import dev.sibarum.vexplore.files.Destinations.Dest;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Preview;
-import dev.sibarum.vexplore.ops.Operations.Done;
 import dev.sibarum.vexplore.ops.Plan;
 import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Intents;
@@ -60,55 +59,51 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
      * @param destination the chosen folder for a move, copy or archive, or null
      * @param destNames   the names in it, so a plan can say what would collide before anything runs
      * @param suggested   places nearby that already hold what is being acted on
-     * @param history     what has been done, oldest first; the last can be undone
      * @param notice      one line saying how the last thing went, or empty
      * @param busy        one line saying what is running now, or empty
      * @param marks       the marks kept so far
      * @param name        the new name typed for a rename, or null until one is
+     *
+     * <p>What has been done is not kept here: it is the window's undo history ({@link Actor}), the one Ctrl+Z,
+     * Ctrl+Y and the Undo button all reach, along with the typing in this window's fields.
      */
-    record Work(Path destination, Set<String> destNames, List<Dest> suggested, List<Done> history, String notice,
+    record Work(Path destination, Set<String> destNames, List<Dest> suggested, String notice,
                 String busy, List<Mark> marks, String name) {
-        static final Work NONE = new Work(null, Set.of(), List.of(), List.of(), "", "", List.of(), null);
+        static final Work NONE = new Work(null, Set.of(), List.of(), "", "", List.of(), null);
 
         Work naming(String to) {
-            return new Work(destination, destNames, suggested, history, notice, busy, marks, to);
+            return new Work(destination, destNames, suggested, notice, busy, marks, to);
         }
 
         Work choosing(Path to, Set<String> names) {
-            return new Work(to, names, suggested, history, notice, busy, marks, name);
+            return new Work(to, names, suggested, notice, busy, marks, name);
         }
 
         Work suggesting(List<Dest> d) {
-            return new Work(destination, destNames, d, history, notice, busy, marks, name);
+            return new Work(destination, destNames, d, notice, busy, marks, name);
         }
 
         Work noting(String text) {
-            return new Work(destination, destNames, suggested, history, text, busy, marks, name);
+            return new Work(destination, destNames, suggested, text, busy, marks, name);
         }
 
         Work running(String text) {
-            return new Work(destination, destNames, suggested, history, notice, text, marks, name);
+            return new Work(destination, destNames, suggested, notice, text, marks, name);
         }
 
-        Work did(Done d, String text) {
-            List<Done> h = new ArrayList<>(history);
-            h.add(d);
-            return new Work(destination, destNames, suggested, List.copyOf(h), text, "", marks, name);
-        }
-
-        Work undid(String text) {
-            List<Done> h = history.isEmpty() ? history : history.subList(0, history.size() - 1);
-            return new Work(destination, destNames, suggested, List.copyOf(h), text, "", marks, name);
+        /** Something finished: say how it went, and nothing is running any more. */
+        Work finished(String text) {
+            return new Work(destination, destNames, suggested, text, "", marks, name);
         }
 
         Work marking(Mark m) {
             List<Mark> out = new ArrayList<>(marks);
             out.add(m);
-            return new Work(destination, destNames, suggested, history, notice, busy, List.copyOf(out), name);
+            return new Work(destination, destNames, suggested, notice, busy, List.copyOf(out), name);
         }
 
         Work unmarking(String mark) {
-            return new Work(destination, destNames, suggested, history, notice, busy,
+            return new Work(destination, destNames, suggested, notice, busy,
                     marks.stream().filter(m -> !m.name().equals(mark)).toList(), name);
         }
     }

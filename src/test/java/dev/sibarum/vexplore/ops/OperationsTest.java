@@ -168,4 +168,75 @@ class OperationsTest {
         Operations.execute(plan(Kind.COPY, List.of(a, b), out, Set.of()), root.resolve("t"), seen::add);
         assertEquals(List.of(1, 2), seen);
     }
+
+    // ---- redo: doing again what an undo took back ----
+
+    @Test
+    void aMoveUndoneCanBeRedoneAndUndoneAgain(@TempDir Path root) throws IOException {
+        Path a = file(root.resolve("in"), "a.txt", "aaa");
+        Path out = Files.createDirectories(root.resolve("out"));
+        Done d = Operations.execute(plan(Kind.MOVE, List.of(a), out, Set.of()), root.resolve("t"), n -> { });
+        Operations.undo(d);
+
+        Done again = Operations.redo(d);
+        assertEquals(1, again.count());
+        assertFalse(Files.exists(a));
+        assertEquals("aaa", Files.readString(out.resolve("a.txt")), "to the same place it went the first time");
+
+        assertEquals(List.of(), Operations.undo(again), "and what the redo did is what the next undo takes back");
+        assertEquals("aaa", Files.readString(a));
+    }
+
+    @Test
+    void aRedoNeverOverwrites(@TempDir Path root) throws IOException {
+        Path a = file(root.resolve("in"), "a.txt", "aaa");
+        Path out = Files.createDirectories(root.resolve("out"));
+        Done d = Operations.execute(plan(Kind.MOVE, List.of(a), out, Set.of()), root.resolve("t"), n -> { });
+        Operations.undo(d);
+        file(out, "a.txt", "something new");
+
+        Done again = Operations.redo(d);
+        assertEquals(0, again.count());
+        assertEquals(1, again.failed().size(), again.failed().toString());
+        assertEquals("something new", Files.readString(out.resolve("a.txt")), "what took its place is untouched");
+        assertEquals("aaa", Files.readString(a), "and the file stays where the undo put it");
+    }
+
+    @Test
+    void aDeleteRedoneGoesBackToTheSameTrash(@TempDir Path root) throws IOException {
+        Path a = file(root.resolve("in"), "a.txt", "aaa");
+        Done d = Operations.execute(plan(Kind.DELETE, List.of(a), null, Set.of()), root.resolve("trash"), n -> { });
+        Path binned = d.done().get(0).to();
+        Operations.undo(d);
+        Files.delete(binned.getParent());   // the trash was emptied in between
+
+        Done again = Operations.redo(d);
+        assertEquals(1, again.count());
+        assertFalse(Files.exists(a));
+        assertTrue(Files.exists(binned));
+    }
+
+    @Test
+    void aCopyAFolderAndAnArchiveRedo(@TempDir Path root) throws IOException {
+        Path a = file(root.resolve("in"), "a.txt", "aaa");
+        Path out = Files.createDirectories(root.resolve("out"));
+        Done copy = Operations.execute(plan(Kind.COPY, List.of(a), out, Set.of()), root.resolve("t"), n -> { });
+        Operations.undo(copy);
+        assertEquals(1, Operations.redo(copy).count());
+        assertTrue(Files.exists(a) && Files.exists(out.resolve("a.txt")));
+
+        Done folder = Operations.makeFolder(root.resolve("made"));
+        Operations.undo(folder);
+        assertEquals(1, Operations.redo(folder).count());
+        assertTrue(Files.isDirectory(root.resolve("made")));
+
+        Path zip = root.resolve("in/Archive.zip");
+        Done archived = Operations.execute(Plan.of(Kind.ARCHIVE, List.of(a), List.of(3L), null, Set.of(), zip),
+                root.resolve("t"), n -> { });
+        Operations.undo(archived);
+        assertEquals(1, Operations.redo(archived).count());
+        try (ZipFile z = new ZipFile(zip.toFile())) {
+            assertTrue(z.getEntry("a.txt") != null);
+        }
+    }
 }

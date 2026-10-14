@@ -110,7 +110,7 @@ final class Recipes {
         // Modifier keys are an intent signal, so the model hears them: Shift announces a range, Control a rule.
         gui.modifiers().onCommit(v -> model.holding(v.value().contains(Modifier.SHIFT),
                 v.value().contains(Modifier.CONTROL)));
-        gui.shortcut(Key.Z, actor::undo, Modifier.CONTROL);
+        // No Ctrl+Z here: the window binds it, and what Actor does is recorded in the window's history.
         // Last, and after the listener above: opening the first folder is a change, and a change nobody is
         // listening for is a window that opens onto an empty list.
         Startup.apply(browser, model, launch.rest());

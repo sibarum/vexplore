@@ -140,18 +140,64 @@ public final class Operations {
         return failed;
     }
 
+    /**
+     * Do again what {@code d} did, step for step and to the same places: the redo of an {@link #undo}. Under the
+     * same rule as everything else here, nothing is overwritten — a step whose destination is taken, or whose source
+     * has gone, is reported and left out. Returns what was done again, which is what the next undo takes back.
+     */
+    public static Done redo(Done d) {
+        List<String> failed = new ArrayList<>();
+        if (d.kind() == Kind.ARCHIVE) {
+            return zip(d.archive(), d.done(), failed, n -> { }, d.bytes());
+        }
+        List<Step> done = new ArrayList<>();
+        for (Step s : d.done()) {
+            try {
+                if (d.kind() == Kind.NEW_FOLDER) {
+                    Files.createDirectory(s.to());
+                    done.add(s);
+                    continue;
+                }
+                if (Files.exists(s.to())) {
+                    failed.add(name(s.to()) + ": something is already at its new place");
+                    continue;
+                }
+                if (!Files.exists(s.from())) {
+                    failed.add(name(s.from()) + ": it is no longer there");
+                    continue;
+                }
+                if (d.kind() == Kind.COPY) {
+                    copyTree(s.from(), s.to());
+                } else {
+                    if (d.kind() == Kind.DELETE) {
+                        Files.createDirectories(s.to().getParent());   // the trash folder may have been emptied
+                    }
+                    moveTree(s.from(), s.to());
+                }
+                done.add(s);
+            } catch (IOException | RuntimeException e) {
+                failed.add(name(s.from()) + ": " + reason(e));
+            }
+        }
+        return new Done(d.kind(), List.copyOf(done), List.copyOf(failed), d.archive(), d.bytes());
+    }
+
     // ------------------------------------------------------------------ pieces
 
     private static Done archive(Plan plan, List<String> failed, IntConsumer progress) {
+        return zip(plan.archive(), plan.steps(), failed, progress, plan.bytes());
+    }
+
+    /** Write {@code steps}' sources into a new zip at {@code zip}; never over one that is already there. */
+    private static Done zip(Path zip, List<Step> steps, List<String> failed, IntConsumer progress, long bytes) {
         List<Step> done = new ArrayList<>();
-        Path zip = plan.archive();
         if (Files.exists(zip)) {
             failed.add(name(zip) + ": already exists");
             return new Done(Kind.ARCHIVE, List.of(), List.copyOf(failed), zip, 0L);
         }
         int n = 0;
         try (OutputStream out = Files.newOutputStream(zip); ZipOutputStream z = new ZipOutputStream(out)) {
-            for (Step s : plan.steps()) {
+            for (Step s : steps) {
                 try {
                     addToZip(z, s.from(), name(s.from()));
                     done.add(s);
@@ -163,7 +209,7 @@ public final class Operations {
         } catch (IOException e) {
             failed.add(name(zip) + ": " + reason(e));
         }
-        return new Done(Kind.ARCHIVE, List.copyOf(done), List.copyOf(failed), zip, plan.bytes());
+        return new Done(Kind.ARCHIVE, List.copyOf(done), List.copyOf(failed), zip, bytes);
     }
 
     private static void addToZip(ZipOutputStream z, Path source, String entry) throws IOException {

@@ -9,10 +9,13 @@ import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Bytes;
 import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.gui.core.Gui;
+import dev.vexelray.gui.core.edit.Change;
+import dev.vexelray.gui.core.edit.History;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Doing things: the one place a button becomes a change to the disk.
@@ -24,6 +27,9 @@ import java.util.Set;
  *
  * <p>One thing runs at a time. A second press while something is running is ignored, because two operations on
  * overlapping files are a question nobody asked.
+ *
+ * <p>What it does is recorded in the window's undo history, so Ctrl+Z, Ctrl+Y and the rail's Undo button take
+ * file operations back and forth in the same order as everything else done in the window, typing included.
  */
 final class Actor {
 
@@ -32,6 +38,8 @@ final class Actor {
     private final Browser browser;
     private final Dialogs dialogs;
     private final Path trash;
+    /** The window's undo history: what has been done to the disk is undone there, with everything else. */
+    private final History history;
 
     Actor(Gui gui, Model model, Browser browser, Dialogs dialogs, Path trash) {
         this.gui = gui;
@@ -39,6 +47,18 @@ final class Actor {
         this.browser = browser;
         this.dialogs = dialogs;
         this.trash = trash;
+        History bound = gui.history();
+        if (bound == null) {
+            // A tree the framework did not build has no window history; this one becomes it.
+            bound = new History();
+            gui.history(bound);
+        }
+        this.history = bound;
+    }
+
+    /** The history Ctrl+Z, Ctrl+Y and the rail's Undo button reach. Undo through {@code gui.undo}, never directly. */
+    History history() {
+        return history;
     }
 
     /** Do what the rail says it will do. */
@@ -78,27 +98,87 @@ final class Actor {
                     model.work(w -> w.running(verb + " " + n + " of " + plan.count() + "…"));
                 }
             });
-            model.work(w -> w.did(done, summary(plan, done)));
-            afterChange(doc);
+            if (done.count() > 0) {
+                history.record(new Undo(new AtomicReference<>(done)));   // before the notice, which draws the button
+            }
+            model.work(w -> w.finished(summary(plan, done)));
+            afterChange();
         });
     }
 
-    /** Take the last thing back. */
-    void undo() {
-        Doc doc = model.doc();
-        List<Done> history = doc.work().history();
-        if (history.isEmpty() || !doc.work().busy().isEmpty()) {
-            return;
+    /** Whether nothing is running: one thing at a time, undo and redo included. */
+    private boolean idle() {
+        return model.doc().work().busy().isEmpty();
+    }
+
+    /**
+     * The way back from what was done to the disk, as an entry in the window's history.
+     *
+     * <p><b>Applying it only starts the work.</b> An entry applies under the history's lock, and putting back a
+     * thousand files is not a quick step, so the disk is touched on the offload lane exactly as it was before this
+     * was an entry, with the busy line saying so; the redo is handed back at once. It names no target: what it
+     * changes is files, not a control, and the busy line and the notice are where the user watches it happen.
+     *
+     * <p>Refused while anything is running, so a Ctrl+Z pressed mid-copy is told so rather than ignored. The
+     * {@link Done} is a reference because an undo made by a redo still running learns what was redone only when it
+     * finishes — and it cannot be applied before then, since that redo is running.
+     */
+    private final class Undo implements Change {
+
+        private final AtomicReference<Done> done;
+
+        Undo(AtomicReference<Done> done) {
+            this.done = done;
         }
-        Done last = history.get(history.size() - 1);
-        model.work(w -> w.running("Undoing…"));
-        offload(() -> {
-            List<String> failed = Operations.undo(last);
-            String text = failed.isEmpty() ? "Undid: " + describe(last)
-                    : "Undid part of: " + describe(last) + " · " + failed.size() + " could not be put back";
-            model.work(w -> w.undid(text));
-            afterChange(doc);
-        });
+
+        @Override
+        public Check check() {
+            return idle() ? Check.OK : Check.REFUSED;
+        }
+
+        @Override
+        public Change apply() {
+            Done d = done.get();
+            model.work(w -> w.running("Undoing…"));
+            offload(() -> {
+                List<String> failed = Operations.undo(d);
+                String text = failed.isEmpty() ? "Undid: " + describe(d)
+                        : "Undid part of: " + describe(d) + " · " + failed.size() + " could not be put back";
+                model.work(w -> w.finished(text));
+                afterChange();
+            });
+            return new Redo(d);
+        }
+    }
+
+    /** Doing again what an {@link Undo} took back, to the same places, never over anything ({@link Operations#redo}). */
+    private final class Redo implements Change {
+
+        private final Done done;
+
+        Redo(Done done) {
+            this.done = done;
+        }
+
+        @Override
+        public Check check() {
+            return idle() ? Check.OK : Check.REFUSED;
+        }
+
+        @Override
+        public Change apply() {
+            AtomicReference<Done> again = new AtomicReference<>(done);
+            model.work(w -> w.running("Redoing…"));
+            offload(() -> {
+                Done d = Operations.redo(done);
+                again.set(d);
+                String text = d.failed().isEmpty() ? "Redid: " + describe(d)
+                        : "Redid part of: " + describe(d) + " · " + d.failed().size() + " could not be done again";
+                model.work(w -> w.finished(text));
+                afterChange();
+            });
+            return new Undo(again);
+        }
     }
 
     /** Keep what the rail reaches as a mark: a group to come back to. */
@@ -161,7 +241,8 @@ final class Actor {
                 model.work(w -> w.running("").noting("No folder made: " + done.failed().get(0) + "."));
                 return;
             }
-            model.work(w -> w.did(done, capital(describe(done)) + "."));
+            history.record(new Undo(new AtomicReference<>(done)));
+            model.work(w -> w.finished(capital(describe(done)) + "."));
             browser.reveal(dir);
         });
     }
@@ -176,7 +257,7 @@ final class Actor {
 
     // ------------------------------------------------------------------ helpers
 
-    private void afterChange(Doc before) {
+    private void afterChange() {
         Path dest = model.doc().work().destination();
         if (dest != null) {
             destination(dest);

@@ -310,7 +310,7 @@ final class RailView {
                 .width(Length.grow(1f));
         gui.landmark(Landmarks.NOTICE, text);
         Button undo = new Button(gui, "Undo").kind(Button.Kind.GHOST)
-                .enabled(!busy && !work.history().isEmpty()).onPress(actor::undo);
+                .enabled(!busy && actor.history().canUndo()).onPress(() -> gui.undo(actor.history()));
         gui.landmark(Landmarks.UNDO, undo.node());
         return gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).gap(Length.rem(0.5f))
                 .scroll(false, false)
