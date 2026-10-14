@@ -5,3 +5,8 @@
 // vexplore.ico is vexplore.svg (the suite icon canvas's Vexplore primary, dark) rendered at 16 to 256 px by
 // vex-suite-common's tools/Ico.java.
 1 ICON "vexplore.ico"
+
+// The manifest: PerMonitorV2 DPI awareness and the OS compatibility java.exe declares, so this executable is
+// drawn at the display's real pixels exactly as a JVM launch is, rather than rendered at 96 DPI and stretched by
+// Windows. Resource 1 of type 24 (RT_MANIFEST) is the one the loader reads for a process.
+1 24 "vexplore.manifest"
