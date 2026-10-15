@@ -57,7 +57,7 @@ final class Columns {
 
     /** The name, after its type icon: two cells of the file-icon atlas, so a zoom or a resize redraws nothing. */
     private static Node nameCell(Gui g, Entry e, Unclip names) {
-        Node glyph = FileIcon.of(e).node(g, ICON);
+        Node glyph = FileIcon.node(g, e, ICON);
         Node name = g.text(e.name()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
                 .height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
         // Not a scroller, as the table's own cells are not: a name wider than its column is clipped, not scrolled.

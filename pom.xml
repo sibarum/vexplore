@@ -81,8 +81,8 @@
             <artifactId>vexelray-gui-widget</artifactId>
             <version>${vexelray-gui.version}</version>
         </dependency>
-        <!-- The file-type families as distance fields, in an atlas of their own: the list's type icons. Only the
-             shapes; FileIcon holds their colours. The suite's utility icons come with -widget. -->
+        <!-- The file-type families, the list's type icons: shapes in an atlas of their own, with the palette and
+             the extensions each claims, all generated from the canvas. The suite's utility icons come with -widget. -->
         <dependency>
             <groupId>dev.vexelray.gui</groupId>
             <artifactId>vexelray-gui-file-icons</artifactId>
