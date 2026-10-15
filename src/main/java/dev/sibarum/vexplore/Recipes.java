@@ -39,7 +39,7 @@ final class Recipes {
     /** The look, and the smallest window this UI is still coherent in — a floor, not the design size. */
     @Provides
     Appearance look() {
-        return Appearance.of(Look.THEME, Length.em(Vexplore.MIN_W_EM), Length.em(Vexplore.MIN_H_EM));
+        return Appearance.of(Look.THEME, Length.rem(Vexplore.MIN_W_EM), Length.rem(Vexplore.MIN_H_EM));
     }
 
     /** The one authoritative state, built before the tree because every control is a view onto it. */
