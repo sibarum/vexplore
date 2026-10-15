@@ -7,7 +7,6 @@ import dev.sibarum.vexplore.files.Folders;
 import dev.sibarum.vexplore.remote.Host;
 import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Bytes;
-import dev.sibarum.vexplore.suggest.Dates;
 import dev.sibarum.vexplore.suggest.Order;
 import dev.sibarum.vexplore.suggest.Suggestions;
 import dev.sibarum.vexplore.suggest.Suggestions.Act;
@@ -30,17 +29,11 @@ import dev.vexelray.gui.widget.Table;
 import dev.vexelray.gui.widget.TitleBar;
 import dev.vexelray.gui.widget.TreeView;
 import dev.vexelray.gui.widget.Unclip;
-import dev.vexelray.text.TextLayout.HAlign;
-import dev.vexelray.text.TextLayout.VAlign;
 
 import java.nio.file.Path;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * The tree. Builds it, holds the handles the application needs afterwards, and owns nothing else.
@@ -63,12 +56,6 @@ import java.util.function.Consumer;
  * applied by the next drain, so that is correct here; what is not allowed is reading the model from the frame loop.
  */
 final class Ui {
-
-    private static final Length ROW = Length.rem(2.125f);
-    private static final float ROW_REM = 2.125f;
-
-    /** A type icon in the list: 16 px, the grid {@link FileIcon} is drawn on. */
-    private static final Length ICON = Length.rem(1f);
 
     /** A place the tree can show: a folder, and the name to give it (a drive is {@code D:}, not empty). */
     record Place(Path path, String label) {
@@ -93,6 +80,18 @@ final class Ui {
     private final Node sortNote;
     private final Dock dock;
     private final RailView rail;
+    private final Node railPane;
+    private final Node railEdge;
+    /** The second folder, in the rail's place while {@link #two}. */
+    private final FolderPane other;
+    private final Node twoEdge;
+    /** The first folder's accent strip: shown only with two folders, accent while the tree's clicks go there. */
+    private final Node firstStrip;
+    private final Button twoButton;
+    /** Whether the second folder is shown instead of the rail. */
+    private volatile boolean two;
+    /** Whether the tree's clicks go to the second folder. */
+    private volatile boolean secondActive;
     /** Shows a list row's cut-off name whole while it is hovered: the window's reveal, which the tree's is too. */
     private final Unclip names;
 
@@ -124,25 +123,36 @@ final class Ui {
         this.names = Unclip.of(gui);   // the window's reveal: it fades as the framework says every reveal does
 
         Node tree = tree();
-        this.crumbs = new Breadcrumb<Path>(gui, Ui::crumbLabel).font(Type.UI).onNavigate(browser::go);
+        this.crumbs = new Breadcrumb<Path>(gui, Ui::crumbLabel).font(Type.UI).onNavigate(p -> {
+            activate(false);
+            browser.go(p);
+        });
         this.sortNote = gui.text("").font(Type.MONO).textSize(Type.SMALL).textColor(gui.theme().color(Role.FAINT))
                 .wordWrap(false);
         this.table = table();
         this.status = new StatusBar(gui).font(Type.MONO)
                 .slot("items", StatusBar.Side.LEFT, "")
                 .slot("selected", StatusBar.Side.LEFT, "")
+                .slot("work", StatusBar.Side.RIGHT, "")
                 .slot("branch", StatusBar.Side.RIGHT, "")
                 .slot("path", StatusBar.Side.RIGHT, "");
         gui.landmark(Landmarks.ITEMS, status.slot("items"));
         gui.landmark(Landmarks.BRANCH, status.slot("branch"));
         gui.landmark(Landmarks.SELECTED, status.slot("selected"));
+        gui.landmark(Landmarks.WORK, status.slot("work"));
         this.rail = new RailView(gui, model, actor, browser);
+        this.other = new FolderPane(gui, opener, actor, names, () -> activate(true));
+        Drops.wire(gui, table.rows(), () -> model.doc().folder(), actor);
 
+        this.twoButton = new Button(gui, "Two folders").kind(Button.Kind.GHOST).toggle(true)
+                .onToggle(this::twoFolders);
+        gui.landmark(Landmarks.TWO, twoButton.node());
         Node topBar = gui.row().width(Length.FILL).height(Length.rem(3f))
-                .alignItems(AlignItems.CENTER)
+                .alignItems(AlignItems.CENTER).gap(Type.GAP)
                 .padding(Length.ZERO, Length.rem(1.25f))
                 .background(gui.theme().color(Look.CHROME))
-                .children(crumbs.node(), gui.box().width(Length.grow(1f)).height(Length.FILL), sortNote);
+                .children(crumbs.node(), gui.box().width(Length.grow(1f)).height(Length.FILL), sortNote,
+                        twoButton.node());
         gui.landmark(Landmarks.TOP_BAR, topBar);
 
         Node treePane = gui.column().width(Length.FILL).height(Length.FILL)
@@ -152,16 +162,27 @@ final class Ui {
         SplitPane listAndDock = new SplitPane(gui, SplitPane.Orientation.STACKED, table.node(), dock.node())
                 .sized(SplitPane.Pane.SECOND).size(Length.rem(15f))
                 .minFirst(Length.rem(8f)).minSecond(Length.rem(6f));
-        Node listPane = gui.column().width(Length.FILL).height(Length.FILL)
-                .background(gui.theme().color(Look.LIST)).children(listAndDock.node());
+        listAndDock.node().width(Length.FILL).height(Length.grow(1f));
+        // With two folders, the first and the second are the same width (grow 1 each), and the one the tree's clicks
+        // go to wears the accent strip at its top.
+        this.firstStrip = gui.box().width(Length.FILL).height(Length.dp(2))
+                .background(gui.theme().color(Role.ACCENT)).visible(false);
+        Node first = gui.column().width(Length.grow(1f)).height(Length.FILL)
+                .children(firstStrip, listAndDock.node());
+        this.twoEdge = gui.box().width(Length.dp(1)).height(Length.FILL).background(gui.theme().color(Role.LINE))
+                .visible(false);
+        other.node().visible(false);
+        Node listPane = gui.row().width(Length.FILL).height(Length.FILL)
+                .background(gui.theme().color(Look.LIST)).children(first, twoEdge, other.node());
         SplitPane split = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, treePane, listPane)
                 .size(Length.rem(15.625f)).minFirst(Length.rem(9f)).minSecond(Length.rem(24f));
         gui.landmark(Landmarks.SPLIT, split.node());
 
-        Node railPane = gui.column().width(Length.rem(25f)).height(Length.FILL)
+        this.railPane = gui.column().width(Length.rem(25f)).height(Length.FILL)
                 .background(gui.theme().color(Look.RAIL)).children(rail.node());
         gui.landmark(Landmarks.RAIL, railPane);
-        Node railEdge = gui.box().width(Length.dp(1)).height(Length.FILL).background(gui.theme().color(Role.LINE));
+        this.railEdge = gui.box().width(Length.dp(1)).height(Length.FILL)
+                .background(gui.theme().color(Role.LINE));
 
         Node main = gui.row().width(Length.FILL).height(Length.grow(1f))
                 .children(split.node(), railEdge, railPane);
@@ -173,6 +194,50 @@ final class Ui {
         gui.root().direction(Direction.COLUMN)
                 .background(gui.theme().color(Role.PAGE))
                 .children(titleBar.node(), topBar, main, status.node());
+    }
+
+    // ------------------------------------------------------------------ two folders
+
+    /**
+     * Swap the Suggestion Rail for a second folder, or put the rail back. The second opens on the folder it last
+     * showed, or the first time on the one the first shows. Nothing else moves: the rail's column and the second
+     * folder are one place, and the first folder gives up width to make the two equal.
+     */
+    void twoFolders(boolean on) {
+        if (two == on) {
+            twoButton.show(on);
+            return;
+        }
+        two = on;
+        if (on && other.folder() == null && model.doc().folder() != null) {
+            other.go(model.doc().folder());
+        }
+        railEdge.visible(!on);
+        railPane.visible(!on);
+        twoEdge.visible(on);
+        other.node().visible(on);
+        firstStrip.visible(on);
+        twoButton.show(on);
+        activate(false);
+        status.text("work", on ? work(model.doc()) : "");
+    }
+
+    /** Show {@code folder} as the second folder. */
+    void showSecond(Path folder) {
+        other.go(folder);
+        twoFolders(true);
+    }
+
+    /** Which folder the tree's clicks go to: the second, or the first. Only ever the second while it is shown. */
+    private void activate(boolean second) {
+        secondActive = second && two;
+        other.active(secondActive);
+        firstStrip.background(gui.theme().color(secondActive ? Role.LINE : Role.ACCENT));
+    }
+
+    /** What is running, or how the last thing went: the rail's notice, on the status line while the rail is put away. */
+    private static String work(Doc doc) {
+        return doc.work().busy().isEmpty() ? doc.work().notice() : doc.work().busy();
     }
 
     /**
@@ -222,7 +287,9 @@ final class Ui {
         });
         Remotes.onConnect(tree::refresh);
         tree.onSelect(place -> {
-            if (place != null) {
+            if (place != null && secondActive) {
+                other.go(place.path());
+            } else if (place != null) {
                 browser.go(place.path());
             }
         });
@@ -257,19 +324,9 @@ final class Ui {
     // ------------------------------------------------------------------ the list
 
     private Table<Entry> table() {
-        Comparator<Entry> byName = Comparator.comparing(e -> e.name().toLowerCase(java.util.Locale.ROOT));
-        Table<Entry> t = new Table<>(gui, ROW_REM, List.of(
-                Table.Column.of("NAME", Length.grow(1), this::nameCell, byName),
-                Table.Column.of("TYPE", Length.rem(5f), (g, e) -> cell(g, e.typeLabel(), Type.MONO, Type.SMALL,
-                        Role.DIM, HAlign.LEFT), Comparator.comparing(Entry::typeLabel)),
-                Table.Column.of("SIZE", Length.rem(6.5f), (g, e) -> cell(g, e.folder() ? "" : Bytes.format(e.size()),
-                        Type.UI, Type.BODY, Role.INK, HAlign.RIGHT), Comparator.comparingLong(Entry::size)),
-                Table.Column.of("MODIFIED", Length.rem(9.5f), (g, e) -> cell(g,
-                        Dates.column(e.modified(), Instant.now(), ZoneId.systemDefault()), Type.UI, Type.BODY,
-                        Role.DIM, HAlign.LEFT), Comparator.comparing(Entry::modified)),
-                // Not sortable yet: Order shares each column's comparator with the suggestion engine, and this one
-                // reads the git status beside the entries rather than the entries themselves.
-                Table.Column.of("GIT", Length.rem(6.25f), this::gitCell)));
+        // Git is read from gitShown as each row is built, so only rows on screen ever ask, and the rows are rebuilt
+        // when git answers (see show).
+        Table<Entry> t = new Table<>(gui, Columns.ROW_REM, Columns.of(names, () -> gitShown));
         t.node().width(Length.FILL).height(Length.FILL);
         t.headers(Type.MONO, Type.SMALL, Role.DIM);
         t.rows().looks(Look.SELECTED, Look.TARGETED).marked(e -> targeted.contains(e.path()));
@@ -280,6 +337,7 @@ final class Ui {
         });
         t.rows().onContextMenu(this::rowMenu);
         t.rows().onActivate(routes::open);
+        t.rows().onRowClicked(e -> activate(false));
         t.onSort((column, direction) -> {
             sortNote.text(sortWords(column, direction));
             model.sorted(column < 0 || direction == Table.Sort.NONE ? Order.LISTED
@@ -368,6 +426,7 @@ final class Ui {
 
     /** Put {@code paths} and {@code act} on the rail: those files selected, and nothing else chosen but the action. */
     private void stage(Set<Path> paths, Act act) {
+        twoFolders(false);   // the rail is where a staged action is shown and done
         model.change(d -> {
             Doc s = d.selected().equals(paths) ? d : d.selecting(paths);
             return s.picking(Suggestions.Pick.NONE.with(act));
@@ -383,44 +442,7 @@ final class Ui {
         return out.toString();
     }
 
-    /** The name, after its type icon: two cells of the file-icon atlas, so a zoom or a resize redraws nothing. */
-    private Node nameCell(Gui g, Entry e) {
-        Node glyph = FileIcon.of(e).node(g, ICON);
-        Node name = g.text(e.name()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
-                .height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
-        // Not a scroller, as the table's own cells are not: a name wider than its column is clipped, not scrolled.
-        Node cell = g.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
-                .alignItems(AlignItems.CENTER).gap(Type.GAP)
-                .padding(Length.ZERO, Length.dp(10)).children(glyph, name);
-        // The cut-off name, shown whole while its cell is hovered — the one thing in this file drawn over something
-        // else (see the class comment). Attached here because the name is inside the cell's content rather than
-        // being it, which is the one shape the table cannot attach for itself.
-        names.attach(cell, name);
-        return cell;
-    }
-
-    /**
-     * What git says about the row. Read from {@link #gitShown} as the row is built, so only rows on screen ever ask,
-     * and the rows are rebuilt when git answers (see {@link #show}).
-     */
-    private Node gitCell(Gui g, Entry e) {
-        GitColumn.Mark m = GitColumn.of(gitShown, e);
-        Role ink = switch (m.tone()) {
-            case ALARM -> Look.ANCHOR;
-            case CHANGED -> Role.INK;
-            case STAGED -> Role.ACCENT;
-            case QUIET -> Role.DIM;
-            case FAINT -> Role.FAINT;
-        };
-        return cell(g, m.words(), Type.MONO, Type.SMALL, ink, HAlign.LEFT);
-    }
-
-    private Node cell(Gui g, String text, int face, Length size, Role ink, HAlign align) {
-        return g.text(text).font(face).textSize(size).textColor(g.theme().color(ink)).wordWrap(false)
-                .height(Length.FILL).padding(Length.ZERO, Length.dp(10)).align(align, VAlign.MIDDLE);
-    }
-
-    private static Set<Path> paths(Set<Entry> entries) {
+    static Set<Path> paths(Set<Entry> entries) {
         java.util.HashSet<Path> out = new java.util.HashSet<>();
         for (Entry e : entries) {
             out.add(e.path());
@@ -441,7 +463,7 @@ final class Ui {
         return "sorted by " + name + ", " + order;
     }
 
-    private static String crumbLabel(Path p) {
+    static String crumbLabel(Path p) {
         Path n = p.getFileName();
         if (n == null && Remotes.is(p)) {
             return Remotes.host(p).label();   // a host's "/" would otherwise be a crumb with no words
@@ -504,6 +526,10 @@ final class Ui {
         }
 
         dock.show(doc.preview());
+
+        if (two) {
+            status.text("work", work(doc));
+        }
 
         // Last, so that a script awaiting the status line finds everything else already written.
         status.text("items", doc.loading() ? "reading..." : doc.entries().size() + " items");

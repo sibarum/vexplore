@@ -34,18 +34,20 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | Breadcrumb, sortable resizable file list, range selection | Marks do not survive a restart |
 | Suggestion Rail: **Select**, **Condition**, **Action**, and a card that states the effect first | The folder dialog has never been opened by a person (see TODO) |
 | **Shift** held: where the range likely ends, in the order shown. **Control** held: the rule the picks are examples of. Same slot as the ordinary chips; ignoring them costs nothing | A modifier cannot be held from `ottermate`, so the live behaviour is checked by unit tests and `-Dvexplore.hold=` captures |
-| **Move, Copy, Archive, Delete, Mark.** Each plans first (counts, bytes, what would be left alone and why), runs off the frame loop, and can be undone with Ctrl+Z or the Undo button | Drag and drop, fresh-file highlighting |
+| **Move, Copy, Archive, Delete, Mark.** Each plans first (counts, bytes, what would be left alone and why), runs off the frame loop, and can be undone with Ctrl+Z or the Undo button | Fresh-file highlighting; dragging onto the tree, or to and from other applications |
+| **Two folders**: the top bar's *Two folders* swaps the Suggestion Rail for a second file list, and the two lists share the width equally. Drag rows from one to the other, or onto a folder row, to move them. They are copied across drives, to or from a server, or with Ctrl held; Shift forces a move. Each drop says what it did on the status line and is undone by Ctrl+Z. The tree opens folders in whichever side was used last, marked by the accent strip at its top | The design's comparison: a status per row, suggestions from it, and the rail beside both lists rather than swapped out (see TODO) |
 | Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
-| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2, Two Folders |
+| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2 |
 | Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
 | **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, a click on the dock's picture, *View in Pix* in the row menu); without Pix, the same opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
 | **Git status** inside a repository: a GIT column (*modified*, *staged*, *part-staged*, *added*, *untracked*, *ignored*, *conflict*; a folder counts what is changed beneath it) and the branch in the status line, from the `git` executable, asked after the listing so it never holds the rows up. Without git, or outside a repository, nothing | Git on the rail, staging, refresh without navigating, and the column hidden outside a repository (see TODO) |
 | **Remote folders over SFTP**: hosts from `~/.ssh/config` in the tree, `sftp://` and `user@host:path` addresses, through your own `ssh` (see below). Listing, the Preview Dock, opening (a downloaded copy), **Download**, **Upload**, **Rename**, **New folder** and a **Delete** into a trash on the server, all undoable. On a remote folder the rail switches to its remote panel | Moving or archiving between a server's own folders; password prompts; a host typed into the tree; cancelling a large transfer (see TODO) |
-| 101 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
+| 110 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
-every action states what it will affect before it runs and is recoverable.
+every action states what it will affect before it runs and is recoverable. The one exception is a drag between two
+folders: it is recoverable, but says what it left alone only after it lands (see TODO).
 
 ## Run it
 
@@ -61,7 +63,8 @@ enabled for Panama.
 
 Startup properties, for a known state (see `Startup`): `vexplore.folder`, `vexplore.select` (comma-separated
 names), `vexplore.scope`, `vexplore.act`, `vexplore.hold`, `vexplore.trash`, `vexplore.home` (where step 4 looks for
-Pictures, Videos and the pile folders; the scenes point it at the fixture), and `vexplore.sync=true` to list on the calling thread.
+Pictures, Videos and the pile folders; the scenes point it at the fixture), `vexplore.other` (a folder to open as the
+second of two folders), and `vexplore.sync=true` to list on the calling thread.
 
 A path on the command line wins over `vexplore.folder`: `vexplore <folder>` opens it, and `vexplore <file>` opens the
 folder it is in with that file selected. That is how the suite's other apps say "show this here".

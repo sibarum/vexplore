@@ -76,9 +76,19 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 
 - [ ] **A file that landed five seconds ago is highlighted** (screen 02). Needs a `WatchService` on the shown folder,
       a "fresh" mark in amber (`Look.ANCHOR_DIM` exists), and the *new* tag. Mark, don't select.
-- [ ] **Drag and drop as the fallback** (screen 02). A dragged list row, a *Carrying* card at the top of the rail,
-      likely destinations listed with reasons (`Destinator` already computes them), and the same numbers marked on
-      the tree's folders. The rail already never moves anything, so this is content, not layout.
+- [ ] **Drag and drop as the fallback** (screen 02). **Between the two folders, built** (`Drops`, over
+      `ListView.draggable`/`droppable`): rows carried with a label, dropped on a folder row or on a list, moved or
+      copied by drive and key, undoable. Still open: a *Carrying* card at the top of the rail, likely destinations
+      listed with reasons (`Destinator` already computes them), the same numbers marked on the tree's folders, and
+      dropping onto the tree at all, which is a `TreeView` that takes a foreign payload. The rail already never
+      moves anything, so this is content, not layout.
+- [ ] **A drop is planned when it lands, not before** (`Actor.dropping`). The design's rule is that an action states
+      its effect before it runs; a drop target is asked every frame on the GUI thread and may not read a disk, so
+      what is already at the destination is found at the release and left alone, and the status line says so
+      afterwards ("· 2 left alone"). Saying it while the pointer is still moving needs the destination's names read
+      ahead, off the frame loop, as soon as the pointer enters a folder: a `Destinator` for drops.
+- [ ] **Dragging to and from other applications.** An OS file drag is `IDropTarget` in `vexelray-os`, deferred in the
+      framework (transfer.md §8). `Drops.FILES` would be offered beside a list of paths.
 - [ ] **Inline previews in rows** (screen 03): thumbnail, sparkline, waveform, first line, page count. Cheap
       ones first: *first line* and *page count* need no decoding.
 - [ ] **Preview tiers 1 and 2.** Tier 4 (bytes) and tier 3 (text) are built and are the floor, and tier 1 has its
@@ -121,8 +131,13 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       something the renderer does not have (FN-25); decide whether that is generated textures here or effects
       upstream before starting.
 - [ ] **The viewer cannot hide the cursor** when its bar fades, which the redesign's idle state wants (FN-26).
-- [ ] **Two Folders mode** (screen 05). Two tables, a status per row, suggestions from the comparison. **Open
-      question from the design:** how "identical" is decided. Size and date are cheap; hashing is exact and slow for
+- [ ] **Two Folders mode** (screen 05). **Two tables, built** (`FolderPane`, the top bar's *Two folders*): the
+      second folder has its own `Model` and `Browser`, takes the rail's place at the first's width, and trades rows
+      with the first by dragging. **A departure, asked for (2026-10-15):** the design keeps the rail beside both
+      panes; this swaps it out, so the two lists get equal room. Still open: a status per row, suggestions from the
+      comparison, and putting the rail back beside them once there is something for it to say about two folders;
+      the row menu, the dock and Shift/Control intent on the second folder; remembering the mode and the second
+      folder across a restart. **Open question from the design:** how "identical" is decided. Size and date are cheap; hashing is exact and slow for
       a multi-gigabyte video. Proposal: size + date first, hash only on demand and only when they disagree in a way
       that matters, with the row saying which it used.
 - [ ] **The tree follows the list.** Clicking a breadcrumb or opening a folder in the list changes the folder, and

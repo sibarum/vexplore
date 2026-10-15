@@ -40,6 +40,8 @@ final class Actor {
     private final Path trash;
     /** The window's undo history: what has been done to the disk is undone there, with everything else. */
     private final History history;
+    /** What else is listed again after a change: the second folder, when one is shown. */
+    private final List<Runnable> changed = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     Actor(Gui gui, Model model, Browser browser, Dialogs dialogs, Path trash) {
         this.gui = gui;
@@ -52,6 +54,9 @@ final class Actor {
             // A tree the framework did not build has no window history; this one becomes it.
             bound = new History();
             gui.history(bound);
+        }
+        if (gui.dropHistory() == null) {
+            gui.dropHistory(bound);   // a drop is a file operation, undone with the rest
         }
         this.history = bound;
     }
@@ -104,6 +109,52 @@ final class Actor {
             model.work(w -> w.finished(summary(plan, done)));
             afterChange();
         });
+    }
+
+    /**
+     * Moving or copying {@code held} into {@code into}, as a drop makes it: a change for the drop history to perform,
+     * so a drop is undone by Ctrl+Z exactly as the rail's button is.
+     *
+     * <p>Planned when it runs, not when it is offered: a drop target is asked every frame on the GUI thread and may
+     * not read a disk, so what is already at the destination is learnt here, off the frame loop, and left alone as
+     * the rail's plan would leave it. The notice line says how it went, skipped files included. Refused while
+     * anything else is running, like every other operation.
+     */
+    Change dropping(Plan.Kind kind, List<dev.sibarum.vexplore.files.Entry> held, Path into) {
+        List<Path> from = held.stream().map(dev.sibarum.vexplore.files.Entry::path).toList();
+        List<Long> sizes = held.stream().map(dev.sibarum.vexplore.files.Entry::size).toList();
+        return new Change() {
+            @Override
+            public Check check() {
+                return idle() ? Check.OK : Check.REFUSED;
+            }
+
+            @Override
+            public Change apply() {
+                AtomicReference<Done> done = new AtomicReference<>(
+                        new Done(kind, List.of(), List.of(), null, 0L));
+                String verb = kind == Plan.Kind.MOVE ? "Moving" : "Copying";
+                model.work(w -> w.running(verb + " " + from.size() + (from.size() == 1 ? " file" : " files") + "…"));
+                offload(() -> {
+                    Plan plan = Plan.of(kind, from, sizes, into, Destinations.names(into), null);
+                    Done d = plan.count() == 0 ? new Done(kind, List.of(), List.of(), null, 0L)
+                            : Operations.execute(plan, trash, n -> { });
+                    done.set(d);
+                    String text = plan.count() == 0
+                            ? "Nothing " + (kind == Plan.Kind.MOVE ? "moved" : "copied") + ": "
+                              + (plan.skipped().isEmpty() ? "nothing to do" : plan.skipped().getFirst().reason()) + "."
+                            : summary(plan, d);
+                    model.work(w -> w.finished(text));
+                    afterChange();
+                });
+                return new Undo(done);
+            }
+        };
+    }
+
+    /** Run {@code r} after anything here changes the disk, as well as listing the folder shown again. */
+    void onChanged(Runnable r) {
+        changed.add(r);
     }
 
     /** Whether nothing is running: one thing at a time, undo and redo included. */
@@ -263,6 +314,7 @@ final class Actor {
             destination(dest);
         }
         browser.reload();
+        changed.forEach(Runnable::run);
     }
 
     private void offload(Runnable r) {

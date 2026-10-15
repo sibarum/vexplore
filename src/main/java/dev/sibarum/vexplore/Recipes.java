@@ -114,6 +114,7 @@ final class Recipes {
         // Last, and after the listener above: opening the first folder is a change, and a change nobody is
         // listening for is a window that opens onto an empty list.
         Startup.apply(browser, model, launch.rest());
+        Startup.other().ifPresent(ui::showSecond);
         updates(gui, model, windows);
         return ui;
     }

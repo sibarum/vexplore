@@ -41,18 +41,19 @@ Ordered by region of the screen, using the [design handoff](design/HANDOFF.md)'s
 | Modifier keys as intent | `Gui.modifiers()` | had | A `State<Set<Modifier>>`; `Recipes` feeds it to the model, and `suggest/Intents` answers. |
 | Keyboard reachability | `ClaimScope` claims | had | Every chip and button takes Enter and Space. |
 | File list: row menu | `ListView.onContextMenu` | **extended** | The item under the pointer and a `MenuSink`, as `TreeView` has; a right click selects first unless the row is already selected. Vexplore's menu opens at once and *stages* actions on the rail, so the card still states the effect first. |
+| File list: rows dragged between lists | `ListView.draggable` + `ListView.droppable` | **added** | A payload type the two lists share, the selection carried in order with a label beside the pointer, and a `Receiver` asked about the row under the pointer and then, if that row refuses, about the list itself. `Drops` is Vexplore's half: what a landing means for files. |
 
 ## Still needed for the rest of the design
 
 | Screen | Component | Status | Notes |
 | --- | --- | --- | --- |
-| 02 Fresh file, drag start | "new" tag on a row, drag ghost replaced by a *Carrying* card | missing | `TreeView` and `Reorder` do drag and drop between tree nodes; dragging a *list row* to the tree does not exist. The card that stands in for the drag ghost is app code over `Gui.drag()`. |
+| 02 Fresh file, drag start | "new" tag on a row, drag ghost replaced by a *Carrying* card | missing | `TreeView` and `Reorder` do drag and drop between tree nodes, and `ListView` between lists; dragging a *list row* to the tree does not exist. The card that stands in for the drag ghost is app code over `Gui.drag()`. |
 | 02 | Marks on tree rows (destination counts) | missing | `TreeView.rowNode(item)` gives the row, so it is expressible, but a `TreeView.marked(...)` mirroring the list's would be the reusable form. |
 | 03 | Inline row previews: thumbnail, sparkline, waveform, first line, page count | missing | Sparkline and waveform are `Sketch` → `Picture` marks (draw lane). Thumbnails are now the dock's path at a smaller size: `Previews` decodes, `Textures` uploads through `GuiApp.texture` and gives back through `GuiApp.release`. |
 | 03/04 | Preview tier 1 (image, PDF, video, audio) | **images built** | Images through `imagelib-wrapper` (raster, animated and SVG). PDF, video and audio still need a decoder story. |
 | 04 | Preview tier 2 (CSV table, JSON tree, archive listing) | missing | CSV is a `Table`, JSON is a `TreeView`, an archive is a `TreeView`: composition, not new widgets. |
 | 04 | Executable signature info | missing | Read the PE header as bytes. Never run anything. |
-| 05 | Two-folder mode, per-row comparison status | missing | Two `Table`s side by side inside a `SplitPane`, a status column, and a comparison engine beside `Suggestions`. |
+| 05 | Two-folder mode, per-row comparison status | **two tables built** | `FolderPane` beside the main list, each `Length.grow(1)`. Still missing: a status column, and a comparison engine beside `Suggestions`. |
 | All | Folder chooser for Move/Copy | missing | `vexelray-gui-nfd` has a native dialog. A destination the rail *suggests* is the design's point, so the dialog is the fallback. |
 | All | Undo history for actions ("recoverable by default") | missing | `Gui.history` and `dropHistory` exist for edits; file operations need their own journal. |
 | All | `Progress` | missing | Long copies need a value that moves and a cancel beside it (gui `todo.md` §4.6). |

@@ -45,6 +45,14 @@ final class Landmarks {
     static final String PROBLEM = "problem";
     /** The dock's picture, which is its own control: a click views it in Pix, or in the viewer without Pix. */
     static final String POP_OUT = "popout";
+    /** The top bar's toggle that swaps the Suggestion Rail for a second folder, and back. */
+    static final String TWO = "two";
+    /** The second folder: its whole pane, its list, and its item count ("reading..." until a listing lands). */
+    static final String OTHER = "other";
+    static final String OTHER_LIST = "other.list";
+    static final String OTHER_ITEMS = "other.items";
+    /** The status line's account of what is running or what last ran, written while the rail is put away. */
+    static final String WORK = "work";
 
     private Landmarks() {
     }
