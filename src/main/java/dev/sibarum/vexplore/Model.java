@@ -97,6 +97,14 @@ final class Model {
         change(d -> d.inputting(d.input().holding(shift, control)));
     }
 
+    /** The rail's Connect panel opened ({@code true}) or was put away. */
+    void connecting(boolean on) {
+        if (doc().input().connecting() == on) {
+            return;
+        }
+        change(d -> d.inputting(d.input().connecting(on)));
+    }
+
     /** The list's order changed. */
     void sorted(dev.sibarum.vexplore.suggest.Order order) {
         if (doc().input().order().equals(order)) {

@@ -51,7 +51,7 @@ import java.util.function.Consumer;
 final class RailView {
 
     private record Key(Rail rail, Suggestions.Pick pick, List<Candidate> intent, boolean shift, boolean control,
-                       Work work, Plan plan, Set<Path> selected, Path folder, boolean loading) {
+                       Work work, Plan plan, Set<Path> selected, Path folder, boolean loading, boolean connecting) {
     }
 
     /** How many of the config's other hosts the remote panel offers to go to. */
@@ -64,6 +64,9 @@ final class RailView {
     private final Model model;
     private final Actor actor;
     private final Browser browser;
+    private final Hosts hosts;
+    /** Try the address typed in the Connect panel: remember it if it answers, and go to it either way. */
+    private final Consumer<String> connect;
     private final Node body;
     private final List<Node> kids = new ArrayList<>();
     private Key shown;
@@ -72,11 +75,13 @@ final class RailView {
     /** The text fields the panel being shown holds (an address, a folder name, a new name), closed on a rebuild. */
     private final List<TextField> fields = new ArrayList<>();
 
-    RailView(Gui gui, Model model, Actor actor, Browser browser) {
+    RailView(Gui gui, Model model, Actor actor, Browser browser, Hosts hosts, Consumer<String> connect) {
         this.gui = gui;
         this.model = model;
         this.actor = actor;
         this.browser = browser;
+        this.hosts = hosts;
+        this.connect = connect;
         this.body = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(0.9f)).scroll(false, true);
     }
@@ -88,7 +93,7 @@ final class RailView {
     /** Redraw if anything the rail shows has changed. Returns whether it did. */
     synchronized boolean show(Doc doc) {
         Key key = new Key(doc.rail(), doc.pick(), doc.intent(), doc.input().shift(), doc.input().control(),
-                doc.work(), doc.plan(), doc.selected(), doc.folder(), doc.loading());
+                doc.work(), doc.plan(), doc.selected(), doc.folder(), doc.loading(), doc.input().connecting());
         if (key.equals(shown)) {
             return false;
         }
@@ -109,6 +114,10 @@ final class RailView {
         }
         fields.clear();
         remote = doc.remote();
+        if (doc.input().connecting()) {
+            rebuildConnect(doc);
+            return;
+        }
         if (remote) {
             rebuildRemote(doc, key);
             return;
@@ -156,14 +165,55 @@ final class RailView {
         add(summary(doc, rail));
     }
 
+    // ------------------------------------------------------------------ the Connect panel
+
+    /**
+     * New host, from the title bar's Open menu: a host typed in, in the rail, because the rail is the place that
+     * exists to change and nothing in this window is drawn over anything else. Connect (or Enter) goes to its home
+     * folder and, if it answers, remembers it beside the config's hosts; Cancel puts the rail back as it was.
+     */
+    private void rebuildConnect(Doc doc) {
+        add(gui.row().width(Length.FILL).alignItems(AlignItems.CENTER).children(
+                gui.text("Connect").font(Type.UI).textSize(Type.HEADING).textColor(gui.theme().color(Role.INK))));
+        Work work = doc.work();
+        if (!work.busy().isEmpty() || !work.notice().isEmpty()) {
+            add(notice(work));
+        }
+
+        TextField address = field("");
+        address.node().width(Length.FILL);
+        address.onSubmit(connect);
+        gui.landmark(Landmarks.HOST, address.node());
+        Button go = new Button(gui, "Connect").kind(Button.Kind.PRIMARY).onPress(() -> connect.accept(address.text()));
+        gui.landmark(Landmarks.CONNECT, go.node());
+        Button cancel = new Button(gui, "Cancel").kind(Button.Kind.GHOST).onPress(() -> model.connecting(false));
+        Node buttons = gui.row().gap(Length.rem(0.6f)).scroll(false, false).children(go.node(), cancel.node());
+        add(section(0, "New host", gui.column().width(Length.FILL).gap(Length.rem(0.6f)).children(
+                address.node(),
+                note("A host as ssh takes it: user@host, user@host:2222, or a name from ~/.ssh/config. "
+                        + "Vexplore runs your own ssh, so its keys, agent and config apply, and nothing here asks "
+                        + "for a password."),
+                buttons)));
+
+        List<Host> known = hosts.added();
+        if (!known.isEmpty()) {
+            add(section(0, "Added before", note(String.join(", ",
+                    known.stream().map(Host::authority).toList()))));
+        }
+        add(gui.box().width(Length.FILL).height(Length.grow(1f)));
+        add(note("A host that answers is kept in Vexplore's own settings and offered in the Open menu and the "
+                + "tree. Your ssh config is never changed."));
+    }
+
     // ------------------------------------------------------------------ the remote panel
 
     /**
-     * The rail for a folder on another host. The same column and the same steps, with what a read-only server allows:
-     * Select and Condition read only the listing, so they are as they are here; Action is <em>Download to…</em> or a
-     * mark, and step 4 offers places on this computer, never the server's neighbours. With nothing selected the
-     * panel says where it is and whether that host answered, and offers where to go next: home, up, the other hosts
-     * in the config, back to this computer, or an address typed in.
+     * The rail for a folder on another host. The same column and the same steps, with what is offered there: Select
+     * and Condition read only the listing, so they are as they are here; Action is <em>Download to…</em>, a rename, a
+     * delete into the host's own trash, or a mark, and a download's step 4 offers places on this computer, never the
+     * server's neighbours. With nothing selected the panel says where it is and whether that host answered, and
+     * offers where to go next (home, up, the other hosts, back to this computer, or an address typed in) and a new
+     * folder.
      */
     private void rebuildRemote(Doc doc, Key key) {
         Rail rail = key.rail();
@@ -193,8 +243,8 @@ final class RailView {
                 add(marks(work));
             }
             add(gui.box().width(Length.FILL).height(Length.grow(1f)));
-            add(note("Select a file and Vexplore will say what it would bring to this computer. "
-                    + "The server is only read: nothing on it is changed."));
+            add(note("Select a file and Vexplore will say what it would do with it: bring it to this computer, "
+                    + "rename it, or delete it into a trash on the server. Nothing changes until you press."));
             return;
         }
 
@@ -221,7 +271,7 @@ final class RailView {
         String problem = Remotes.problem(doc.folder());
         boolean up = Remotes.connected(doc.folder());
         String state = doc.loading() ? "connecting to " + host.label() + "…"
-                : up ? "connected over SFTP · read-only"
+                : up ? "connected over SFTP"
                 : problem.isEmpty() ? "not connected" : "could not connect";
         Node column = gui.column().width(Length.FILL).gap(Length.rem(0.35f)).children(
                 gui.text(Remotes.address(doc.folder())).font(Type.MONO).textSize(Type.SMALL)
@@ -248,7 +298,7 @@ final class RailView {
             options.add(new Option<>(() -> browser.go(folder.getParent()), "Up one folder", 0));
         }
         int others = 0;
-        for (Host h : Remotes.configured()) {
+        for (Host h : hosts.all()) {
             if (!h.equals(host) && others++ < OTHER_HOSTS) {
                 options.add(new Option<>(() -> browser.go(Remotes.home(h)), h.label(), 0));
             }

@@ -72,6 +72,10 @@ final class Ui {
     /** What opening a row means, for a double-click and the menu alike. */
     private final Routes routes;
     private final TitleBar titleBar;
+    /** The hosts the tree and the Open menu offer, and where New host remembers one. */
+    private final Hosts hosts;
+    /** The tree, refreshed when a host is added so it shows there at once. */
+    private TreeView<Place> treeView;
     private final Viewer viewer;
 
     private final Breadcrumb<Path> crumbs;
@@ -112,13 +116,14 @@ final class Ui {
     private final ThreadLocal<Boolean> following = ThreadLocal.withInitial(() -> false);
 
     Ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Viewer viewer,
-       Actor actor, TitleBar titleBar) {
+       Actor actor, TitleBar titleBar, Hosts hosts) {
         this.gui = gui;
         this.model = model;
         this.browser = browser;
         this.opener = opener;
         this.routes = Routes.standard(gui.offload(), opener, browser::go);
         this.titleBar = titleBar;
+        this.hosts = hosts;
         this.viewer = viewer;
         this.names = Unclip.of(gui);   // the window's reveal: it fades as the framework says every reveal does
 
@@ -140,7 +145,7 @@ final class Ui {
         gui.landmark(Landmarks.BRANCH, status.slot("branch"));
         gui.landmark(Landmarks.SELECTED, status.slot("selected"));
         gui.landmark(Landmarks.WORK, status.slot("work"));
-        this.rail = new RailView(gui, model, actor, browser);
+        this.rail = new RailView(gui, model, actor, browser, hosts, this::connect);
         this.other = new FolderPane(gui, opener, actor, names, () -> activate(true));
         Drops.wire(gui, table.rows(), () -> model.doc().folder(), actor);
 
@@ -192,7 +197,8 @@ final class Ui {
         gui.landmark(Landmarks.STATUS, status.node());
 
         // Open sits in the bar's leading slot, after the title, where an application's own menu goes.
-        titleBar.addLeading(new OpenMenu(gui, this::go, () -> model.doc().folder(), actor, opener).node());
+        titleBar.addLeading(new OpenMenu(gui, this::go, () -> model.doc().folder(), actor, opener, hosts,
+                this::newHost).node());
 
         gui.root().direction(Direction.COLUMN)
                 .background(gui.theme().color(Role.PAGE))
@@ -223,6 +229,43 @@ final class Ui {
         twoButton.show(on);
         activate(false);
         status.text("work", on ? work(model.doc()) : "");
+    }
+
+    /**
+     * New host, from the Open menu: the rail becomes the Connect panel. The rail is put back first if two folders
+     * had taken its place, since that is where the panel is.
+     */
+    void newHost() {
+        twoFolders(false);
+        model.connecting(true);
+    }
+
+    /**
+     * Connect to the host typed in the Connect panel and open its home folder, where the tree's clicks would. It is
+     * remembered only if it answers; one that does not still opens, empty, with ssh's reason on the rail, as any
+     * unreachable host does. A typing mistake is said on the panel and nothing is tried.
+     */
+    void connect(String typed) {
+        Host host;
+        try {
+            host = Host.parse(typed);
+        } catch (IllegalArgumentException e) {
+            model.work(w -> w.noting("Not a host: " + e.getMessage() + "."));
+            return;
+        }
+        Path home = Remotes.home(host);
+        model.work(w -> w.running("Connecting to " + host.label() + "…"));
+        gui.offload().execute(() -> {
+            try {
+                Remotes.absolute(home);   // connects, or says why not
+                hosts.add(host);
+                treeView.refresh();
+            } catch (java.io.IOException e) {
+                // Not remembered; the remote panel the listing lands on says why.
+            }
+            model.work(w -> w.running(""));
+            go(home);
+        });
     }
 
     /** Show {@code folder} as the second folder. */
@@ -297,6 +340,7 @@ final class Ui {
                 }
             }
         });
+        this.treeView = tree;
         Remotes.onConnect(tree::refresh);
         tree.onSelect(place -> {
             if (place != null) {
@@ -311,9 +355,10 @@ final class Ui {
 
     /**
      * The user's own folders, then the drives: what a file browser opens onto. Then the hosts named in
-     * {@code ~/.ssh/config}, each opening on its home folder; naming one connects to nothing.
+     * {@code ~/.ssh/config} and those added with New host, each opening on its home folder; naming one connects to
+     * nothing.
      */
-    private static List<Place> places() {
+    private List<Place> places() {
         List<Place> out = new ArrayList<>();
         Path home = Path.of(System.getProperty("user.home"));
         for (String name : List.of("Desktop", "Documents", "Downloads", "Music", "Pictures", "Videos")) {
@@ -325,7 +370,7 @@ final class Ui {
         for (Path root : java.nio.file.FileSystems.getDefault().getRootDirectories()) {
             out.add(new Place(root, root.toString().replaceAll("[\\\\/]+$", "")));
         }
-        for (Host h : Remotes.configured()) {
+        for (Host h : hosts.all()) {
             out.add(new Place(Remotes.home(h), h.label()));
         }
         return out;

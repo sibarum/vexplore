@@ -53,6 +53,9 @@ final class Landmarks {
     static final String OTHER_ITEMS = "other.items";
     /** The status line's account of what is running or what last ran, written while the rail is put away. */
     static final String WORK = "work";
+    /** The Connect panel's host field and its Connect button, from the Open menu's New host. */
+    static final String HOST = "host";
+    static final String CONNECT = "connect";
     /** The title bar's Open button, which drops the Open menu. */
     static final String OPEN = "open";
 

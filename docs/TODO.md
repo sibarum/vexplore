@@ -169,8 +169,10 @@ built (README, *Remote folders*). What is not:
       standard fix and roughly multiplies throughput on a slow link.
 - [ ] **A remote download cannot be cancelled** and reports progress as files, not bytes: the same gap as
       *Operations are not cancellable* above, felt sooner over a network.
-- [ ] **A host only the command line or the address field knew is not in the tree.** Remembering recently used
-      hosts belongs with the session state (*Settings and the session*).
+- [ ] **An added host cannot be forgotten from the window.** New host keeps it under `remote.hosts` in
+      Vexplore's settings, and the only way out is editing that file. A *Forget* beside it (the tree's row menu is
+      the natural place) is the missing half. A host only the command line or the address field knew is still not
+      kept: only New host remembers.
 - [ ] **The tree's host rows open only once connected.** A host's chevron appears when it has connected (so that
       drawing, or searching, the tree never connects to every host in the config). A click connects; a host that
       refuses stays a leaf, with the reason on the rail.

@@ -42,7 +42,7 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, a click on the dock's picture, *View in Pix* in the row menu); without Pix, the same opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
 | **Git status** inside a repository: a GIT column (*modified*, *staged*, *part-staged*, *added*, *untracked*, *ignored*, *conflict*; a folder counts what is changed beneath it) and the branch in the status line, from the `git` executable, asked after the listing so it never holds the rows up. Without git, or outside a repository, nothing | Git on the rail, staging, refresh without navigating, and the column hidden outside a repository (see TODO) |
 | **Remote folders over SFTP**: hosts from `~/.ssh/config` in the tree, `sftp://` and `user@host:path` addresses, through your own `ssh` (see below). Listing, the Preview Dock, opening (a downloaded copy), **Download**, **Upload**, **Rename**, **New folder** and a **Delete** into a trash on the server, all undoable. On a remote folder the rail switches to its remote panel | Moving or archiving between a server's own folders; password prompts; a host typed into the tree; cancelling a large transfer (see TODO) |
-| 110 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
+| 113 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
@@ -74,7 +74,9 @@ folder it is in with that file selected. That is how the suite's other apps say 
 `vexplore sftp://me@box/srv/logs` (or `vexplore me@box:logs`, scp's form) opens a folder on another machine, and the
 hosts named in `~/.ssh/config` sit under the drives in the tree and in the title bar's **Open** menu; choosing one
 connects and opens its home folder. The Open menu (the folder icon beside the title) also has Open folder…, New window
-here, and Home, Desktop, Documents and Downloads.
+here, and Home, Desktop, Documents and Downloads. **New host…** at its end turns the rail into a Connect panel: type
+`user@host`, `user@host:2222` or a config alias and press Enter. A host that answers is remembered in Vexplore's own
+settings (`remote.hosts`) and offered in the menu and the tree from then on; your ssh config is never changed.
 
 Vexplore does not do SSH itself. It starts your `ssh` as `ssh -T -o BatchMode=yes -s <host> sftp` and speaks SFTP
 over its pipes (`remote/Sftp`), the way it runs `git`: so your config, agent, keys, known hosts and jump hosts all

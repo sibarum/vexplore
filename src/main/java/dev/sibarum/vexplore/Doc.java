@@ -37,15 +37,20 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
            Instant now, Input input, Work work, Status git) {
 
     /** The keys held, and the order shown. */
-    record Input(boolean shift, boolean control, Order order) {
-        static final Input NONE = new Input(false, false, Order.NEWEST);
+    record Input(boolean shift, boolean control, Order order, boolean connecting) {
+        static final Input NONE = new Input(false, false, Order.NEWEST, false);
 
         Input holding(boolean shift, boolean control) {
-            return new Input(shift, control, order);
+            return new Input(shift, control, order, connecting);
         }
 
         Input sorted(Order o) {
-            return new Input(shift, control, o);
+            return new Input(shift, control, o, connecting);
+        }
+
+        /** Whether the rail is showing the Connect panel, the person part-way through naming a new host. */
+        Input connecting(boolean on) {
+            return new Input(shift, control, order, on);
         }
     }
 
@@ -118,7 +123,9 @@ record Doc(Path folder, List<Entry> entries, boolean loading, Set<Path> selected
     }
 
     Doc navigating(Path to) {
-        return with(to, List.of(), true, Set.of(), Pick.NONE, null, now, input, work.noting("").naming(null), null);
+        // Going somewhere ends naming a new host: either that is where it went, or the person went elsewhere instead.
+        return with(to, List.of(), true, Set.of(), Pick.NONE, null, now, input.connecting(false),
+                work.noting("").naming(null), null);
     }
 
     Doc listed(List<Entry> listing, Instant at) {

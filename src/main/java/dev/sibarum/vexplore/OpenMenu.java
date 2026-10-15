@@ -29,9 +29,9 @@ import java.util.function.Supplier;
 
 /**
  * The title bar's Open button and the menu it drops: the ways into a folder that are not already on screen. A
- * folder from the dialog, a new window on this one, the person's home and Downloads, and the hosts in
- * {@code ~/.ssh/config}. The tree holds the same places, but scrolled away or collapsed; this is one click from
- * anywhere.
+ * folder from the dialog, a new window on this one, the person's home and Downloads, the hosts in
+ * {@code ~/.ssh/config} and those added here, and New host for one that is neither. The tree holds the same places,
+ * but scrolled away or collapsed; this is one click from anywhere.
  *
  * <p><b>It is the window's context menu, opened by a left click.</b> Core has no "menu from a button": menus open on
  * a right click, by dispatch. So this asks the installed {@link MenuPresenter} directly, with a click made up at the
@@ -48,6 +48,9 @@ final class OpenMenu {
     private final Supplier<Path> shown;
     private final Actor actor;
     private final Opener opener;
+    private final Hosts hosts;
+    /** Turn the rail into the Connect panel, for a host the menu does not list. */
+    private final Runnable newHost;
     /** The button's box, in the pixels a click is given in; the menu hangs from its bottom-left. */
     private volatile Rect box = new Rect(0f, 0f, 0f, 0f);
 
@@ -55,12 +58,15 @@ final class OpenMenu {
      * @param go    open a folder where the tree would
      * @param shown the folder the window is showing now, or null before the first
      */
-    OpenMenu(Gui gui, Consumer<Path> go, Supplier<Path> shown, Actor actor, Opener opener) {
+    OpenMenu(Gui gui, Consumer<Path> go, Supplier<Path> shown, Actor actor, Opener opener, Hosts hosts,
+             Runnable newHost) {
         this.gui = gui;
         this.go = go;
         this.shown = shown;
         this.actor = actor;
         this.opener = opener;
+        this.hosts = hosts;
+        this.newHost = newHost;
         ContextMenu.presentOn(gui);
         // Caption-sized, hover-shaded and declared interactive, as the bar's own buttons are: on a caption, a click
         // that is not claimed starts a window drag.
@@ -111,14 +117,12 @@ final class OpenMenu {
         }
         out.add(MenuItem.SEPARATOR);
 
-        // Naming a host connects to nothing; choosing it does, and opens its home folder.
-        List<Host> hosts = Remotes.configured();
-        for (Host h : hosts) {
+        // Naming a host connects to nothing; choosing it does, and opens its home folder. New host is the way to one
+        // the config does not name, typed into the rail.
+        for (Host h : hosts.all()) {
             out.add(MenuItem.of(Icon.TERMINAL, "Connect to " + h.label(), () -> go.accept(Remotes.home(h))));
         }
-        if (hosts.isEmpty()) {
-            out.add(MenuItem.disabled(Icon.TERMINAL, "No hosts in ~/.ssh/config"));
-        }
+        out.add(MenuItem.of(Icon.PLUS, "New host…", newHost));
         return out;
     }
 }

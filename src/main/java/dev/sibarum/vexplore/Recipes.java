@@ -11,6 +11,7 @@ import dev.vexelray.framework.shell.Apps;
 import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.framework.shell.Windows;
 import dev.vexelray.gui.core.Gui;
+import dev.vexelray.gui.core.app.Settings;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.krono.KronoGui;
 import dev.vexelray.gui.widget.TitleBar;
@@ -82,6 +83,13 @@ final class Recipes {
     Destinator destinator(Gui gui, Model model) {
         return new Destinator(gui, model);
     }
+
+    /** The hosts offered: the ssh config's, then those added with New host, kept in Vexplore's own settings. */
+    @Provides
+    Hosts hosts(Settings settings) {
+        return new Hosts(settings);
+    }
+
     /**
      * The Preview Dock's reader. A part of its own, and named by {@link #ui} though {@code Ui} never touches it,
      * because a listener has to exist before the state it listens to is seeded: the wiring builds what a recipe
@@ -100,8 +108,8 @@ final class Recipes {
     @Provides
     Ui ui(Gui gui, KronoGui krono, Model model, Browser browser, Opener opener, Textures textures, Viewer viewer,
           Previewer previewer, Destinator destinator, Actor actor, TitleBar titleBar, Launch launch,
-          Windows windows) {
-        Ui ui = new Ui(gui, krono, model, browser, opener, textures, viewer, actor, titleBar);
+          Windows windows, Hosts hosts) {
+        Ui ui = new Ui(gui, krono, model, browser, opener, textures, viewer, actor, titleBar, hosts);
         // Every change to the state redraws what is derived from it, on the committing thread -- which is a
         // worker, because every control's handler is. The GUI thread never reads the model.
         model.onChange(ui::show);
