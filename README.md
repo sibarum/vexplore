@@ -72,7 +72,9 @@ folder it is in with that file selected. That is how the suite's other apps say 
 ## Remote folders: SSH and SFTP
 
 `vexplore sftp://me@box/srv/logs` (or `vexplore me@box:logs`, scp's form) opens a folder on another machine, and the
-hosts named in `~/.ssh/config` sit under the drives in the tree; clicking one connects and opens its home folder.
+hosts named in `~/.ssh/config` sit under the drives in the tree and in the title bar's **Open** menu; choosing one
+connects and opens its home folder. The Open menu (the folder icon beside the title) also has Open folder…, New window
+here, and Home, Desktop, Documents and Downloads.
 
 Vexplore does not do SSH itself. It starts your `ssh` as `ssh -T -o BatchMode=yes -s <host> sftp` and speaks SFTP
 over its pipes (`remote/Sftp`), the way it runs `git`: so your config, agent, keys, known hosts and jump hosts all

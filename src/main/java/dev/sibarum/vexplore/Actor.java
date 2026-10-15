@@ -298,6 +298,15 @@ final class Actor {
         });
     }
 
+    /**
+     * Ask for a folder to open with the folder dialog, starting at {@code start}, and hand the answer to
+     * {@code then}. The dialog browses this disk, so it starts in Downloads when {@code start} is remote or absent.
+     */
+    void askFolder(Path start, java.util.function.Consumer<Path> then) {
+        Path from = start == null || Remotes.is(start) ? Startup.downloads() : start;
+        dialogs.openFolder(from, then, () -> { });
+    }
+
     /** Ask for a destination with the folder dialog. */
     void choose() {
         Path start = model.doc().work().destination() != null ? model.doc().work().destination()

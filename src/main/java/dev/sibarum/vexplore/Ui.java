@@ -191,6 +191,9 @@ final class Ui {
         status.node().width(Length.FILL).height(Length.rem(1.875f)).background(gui.theme().color(Look.CHROME));
         gui.landmark(Landmarks.STATUS, status.node());
 
+        // Open sits in the bar's leading slot, after the title, where an application's own menu goes.
+        titleBar.addLeading(new OpenMenu(gui, this::go, () -> model.doc().folder(), actor, opener).node());
+
         gui.root().direction(Direction.COLUMN)
                 .background(gui.theme().color(Role.PAGE))
                 .children(titleBar.node(), topBar, main, status.node());
@@ -229,6 +232,15 @@ final class Ui {
     }
 
     /** Which folder the tree's clicks go to: the second, or the first. Only ever the second while it is shown. */
+    /** Open {@code folder} where the tree's clicks go: the second folder while it is the active one, else the first. */
+    private void go(Path folder) {
+        if (secondActive) {
+            other.go(folder);
+        } else {
+            browser.go(folder);
+        }
+    }
+
     private void activate(boolean second) {
         secondActive = second && two;
         other.active(secondActive);
@@ -287,10 +299,8 @@ final class Ui {
         });
         Remotes.onConnect(tree::refresh);
         tree.onSelect(place -> {
-            if (place != null && secondActive) {
-                other.go(place.path());
-            } else if (place != null) {
-                browser.go(place.path());
+            if (place != null) {
+                go(place.path());
             }
         });
         tree.node().width(Length.FILL).height(Length.FILL);

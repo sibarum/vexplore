@@ -210,6 +210,10 @@ the list's GIT column and the status line's branch show the answer. What is left
 
 ## Details found while building
 
+- [ ] **A menu from a button has no API.** The title bar's Open menu (`OpenMenu`) asks the installed
+      `MenuPresenter` directly with a `ClickEvent` made up at the button's bottom-left, because core opens menus
+      only on a right click. A `Gui.menu(node, items)` or a menu-button widget belongs upstream (framework TODO), and
+      would also own what this does not: a second click on the button closing the menu, and keyboard opening.
 - [ ] ***To compressed archive* from a move keeps the originals.** Step 4 offers it for a mixed bunch in Desktop,
       Downloads or Documents, and pressing it switches the action to Archive, which writes a zip beside them and
       leaves them where they were. A move means they should go: archive, then the originals to the trash, undone as

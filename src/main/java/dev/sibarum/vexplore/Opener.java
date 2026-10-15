@@ -117,6 +117,30 @@ final class Opener {
         });
     }
 
+    /** Whether an installed Vexplore can be started for New window. Reads one small file. */
+    boolean windowInstalled() {
+        return Apps.find(Vexplore.APP).isPresent();
+    }
+
+    /**
+     * Another Vexplore, a process and a window of its own, opened on {@code folder}: its path, or for a remote folder
+     * its {@code sftp://} address, which {@code Startup} reads the same way. On home when {@code folder} is null.
+     */
+    void window(Path folder) {
+        gui.offload().execute(() -> {
+            try {
+                boolean started = folder == null ? Apps.spawn(Vexplore.APP).isPresent()
+                        : Apps.spawn(Vexplore.APP, Remotes.is(folder) ? Remotes.address(folder)
+                        : folder.toAbsolutePath().toString()).isPresent();
+                if (!started) {
+                    LOG.warn("Vexplore is not installed; no new window was opened");
+                }
+            } catch (IOException e) {
+                LOG.warn("could not start another Vexplore at {}", folder, e);
+            }
+        });
+    }
+
     /** Start the application installed as {@code id} on {@code file}; false if it is not installed or did not start. */
     private static boolean spawn(String id, Path file) {
         try {
