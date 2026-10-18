@@ -35,10 +35,7 @@ import java.io.IOException;
  * <p>A misspelled flag is refused by name with the alternatives listed, rather than a stack trace before any
  * window. Needs {@code --enable-native-access=ALL-UNNAMED}.
  *
- * <p><b>The {@code @VexelApp} declaration is {@link VexploreApp}, and there are two of it</b>: the debug edition
- * ({@code src/edition-debug}) names {@code AutomationStarter}, the driving socket; the release edition
- * ({@code src/edition-release}) names no starters and its build has no automation module at all. This class
- * holds the facts both read.
+ * <p>The {@code @VexelApp} declaration is {@link VexploreApp}; this class holds the facts it reads.
  */
 public final class Vexplore {
 

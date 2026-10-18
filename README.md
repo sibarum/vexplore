@@ -203,7 +203,7 @@ GUI in it) → `Ui.java` → `docs/framework-notes.md`.
 ## Native builds
 
 Windows, GraalVM 25 as `JAVA_HOME`, from a Visual Studio developer prompt (or after `vcvars64.bat`) so `link.exe` is
-MSVC's and not Git Bash's. Two profiles build the same code as two editions:
+MSVC's and not Git Bash's. Two profiles build the same code:
 
 ```
 mvn -Pnative-release package -DskipTests   # target/vexplore.exe        what ships and is signed
@@ -211,13 +211,15 @@ mvn -Pnative package -DskipTests           # target/vexplore-debug.exe  for otte
 ```
 
 - **release** (`installer.json` points at this one): linked as a Windows GUI subsystem program, so no console window
-  ever appears, and built without the automation module: the source root `src/edition-release` is compiled instead
-  of `src/edition-debug` and `vexelray-*-automation` is not on its classpath, so the binary cannot open a driving
-  socket (`--automation` is accepted and does nothing). stdout and stderr go nowhere; the log files are still written.
-- **debug**: console subsystem, automation present: `vexplore-debug.exe --automation=0` prints
-  `automation: localhost:<port>` for `ottermate --launch`.
+  ever appears. stdout and stderr go nowhere; the log files are still written, and a socket's port is in its
+  discovery file (`~/.vexelray/automation/`), which `ottermate` reads.
+- **debug**: console subsystem: `vexplore-debug.exe --automation=0` prints `automation: localhost:<port>` for
+  `ottermate --launch`.
 
-The plain JVM build, tests and `exec:exec` are the debug edition. The linker options are
+Both carry the framework's automation sockets, remote control and diagnostics, off until the launch asks
+(`--automation=0`, `VEXELRAY_AUTOMATION=0`) or the title bar's plug switches one on; `--automation.available=none`
+leaves them out of a run. The plug's lamps show each socket's state: a ring while its port is open, filled while
+something is connected, a grey dot once something has been and gone (Pix's README has the table). The linker options are
 `/SUBSYSTEM:WINDOWS|CONSOLE` and `/ENTRY:mainCRTStartup` (pom, `pluginManagement`). Both profiles also link
 `src/main/rc/vexplore.rc`, the executable's icon, compiled by `rc.exe`. The icon is the suite icon canvas's Vexplore
 (`src/main/rc/vexplore.svg`, with its window, file and light variants beside it), rendered to `vexplore.ico` by

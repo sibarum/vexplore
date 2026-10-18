@@ -32,7 +32,7 @@ import sibarum.tactroller.api.Modifier;
  *
  * <p>Two things are not here, because a starter that {@link VexploreApp} names in its {@code @VexelApp} provides them:
  * the {@code Textures} the dock and the viewer show pictures through, built with the tree and bound to the window,
- * from {@code ImageStarter}; and the driving socket, from {@code AutomationStarter} (debug edition only).
+ * from {@code ImageStarter}; and the automation sockets, from {@code AutomationStarter}.
  */
 @Configuration
 final class Recipes {
