@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.files.Entry;
+import dev.sibarum.vexplore.files.Kind;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -19,6 +20,7 @@ class RoutesTest {
 
     private static final Entry FOLDER = new Entry(Path.of("C:/x/stuff"), true, 0, Instant.EPOCH);
     private static final Entry PICTURE = new Entry(Path.of("C:/x/kiln.png"), false, 10, Instant.EPOCH);
+    private static final Entry CLIP = new Entry(Path.of("C:/x/trip.mkv"), false, 10, Instant.EPOCH);
     private static final Entry NOTES = new Entry(Path.of("C:/x/notes.txt"), false, 10, Instant.EPOCH);
     private static final Entry OTHER = new Entry(Path.of("C:/x/setup.exe"), false, 10, Instant.EPOCH);
 
@@ -29,7 +31,8 @@ class RoutesTest {
     private Routes routes() {
         return new Routes(Runnable::run, List.of(
                 new Routes.Route("Open", Entry::folder, () -> true, p -> log.add("browse " + p.getFileName())),
-                new Routes.Route(Routes.IN_PIX, e -> e.extension().equals("png"), () -> pixInstalled,
+                new Routes.Route(Routes.IN_PIX, e -> e.extension().equals("png") || e.kind() == Kind.VIDEO,
+                        () -> pixInstalled,
                         p -> pixStarts && log.add("pix " + p.getFileName())),
                 new Routes.Route(Routes.IN_VEX, e -> e.extension().equals("txt"), () -> true,
                         p -> log.add("vex " + p.getFileName()))),
@@ -41,9 +44,11 @@ class RoutesTest {
         Routes r = routes();
         r.open(FOLDER);
         r.open(PICTURE);
+        r.open(CLIP);
         r.open(NOTES);
         r.open(OTHER);
-        assertEquals(List.of("browse stuff", "pix kiln.png", "vex notes.txt", "shell setup.exe"), log);
+        assertEquals(List.of("browse stuff", "pix kiln.png", "pix trip.mkv", "vex notes.txt", "shell setup.exe"),
+                log);
     }
 
     @Test

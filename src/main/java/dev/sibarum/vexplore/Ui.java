@@ -437,6 +437,10 @@ final class Ui {
                 if (clicked.kind() == Kind.IMAGE && !way.label().equals(Routes.IN_PIX)) {
                     menu.item("View", () -> view(clicked.path()));
                 }
+                // Said even when Pix is not installed, as Open in Vex is, so the way to play a video is visible.
+                if (clicked.kind() == Kind.VIDEO && !way.label().equals(Routes.IN_PIX)) {
+                    menu.item(Routes.IN_PIX, opener.pixInstalled(), () -> opener.play(clicked.path()));
+                }
                 if (!way.label().equals(Routes.IN_VEX)) {
                     menu.item(Routes.IN_VEX, opener.editorInstalled(), () -> opener.edit(clicked.path()));
                 }

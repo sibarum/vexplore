@@ -18,7 +18,7 @@ import java.util.List;
  * ({@code pix <file>}). The path goes as one argument, absolute, so it is never read as an option. The rest goes to
  * the shell's own open, exactly as Explorer would do it.
  *
- * <p>Each reads the disk. {@link #edit} and {@link #view} go to {@link Gui#offload()} themselves; {@link #pix},
+ * <p>Each reads the disk. {@link #edit}, {@link #play} and {@link #view} go to {@link Gui#offload()} themselves; {@link #pix},
  * {@link #editor} and {@link #shell} run where they are called, which is the lane {@link Routes} opens on.
  *
  * <p>A remote file is downloaded first ({@link Remotes#local}) and the copy is what opens: every application here
@@ -68,6 +68,15 @@ final class Opener {
         gui.offload().execute(() -> {
             if (!spawn(EDITOR, file)) {
                 LOG.warn("the text editor is not installed; {} was not opened", file);
+            }
+        });
+    }
+
+    /** Open {@code file} in Pix, a picture or a video. Nothing happens when Pix is not installed. */
+    void play(Path file) {
+        gui.offload().execute(() -> {
+            if (!spawn(PIX, file)) {
+                LOG.warn("Pix is not installed; {} was not opened", file);
             }
         });
     }

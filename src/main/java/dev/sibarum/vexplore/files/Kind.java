@@ -49,7 +49,8 @@ public enum Kind {
 
     private static Map<String, Kind> build() {
         Map<String, Kind> m = new java.util.HashMap<>();
-        put(m, VIDEO, "mp4 mov mkv webm avi wmv m4v mpg mpeg");
+        // What Pix plays (the codec's Videos), but for .ts, which here is TypeScript.
+        put(m, VIDEO, "mp4 mov mkv webm avi wmv m4v mpg mpeg flv m2ts mts 3gp ogv");
         put(m, IMAGE, "png jpg jpeg gif webp bmp tif tiff svg heic ico");
         put(m, AUDIO, "wav mp3 flac ogg m4a aac opus");
         put(m, DOCUMENT, "pdf doc docx odt rtf xls xlsx ods ppt pptx epub");
