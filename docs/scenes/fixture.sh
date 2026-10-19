@@ -23,6 +23,9 @@ head -c 8000 /dev/urandom >> setup-x64.exe; touch -d "3 days ago" setup-x64.exe
 head -c 65536 /dev/urandom > backup-key.zip; touch -d "10 days ago" backup-key.zip
 
 # A sibling that already holds videos: where the rail should suggest moving videos to.
+# Made afresh like Downloads: a scene moves files in here, and one left from the last run makes the next one's
+# move "Nothing moved: a file with that name is already there", with every row after it where the scene did not expect.
+rm -rf ../Videos
 mkdir -p ../Videos
 cd ../Videos
 truncate -s 700M holiday-1.mp4; truncate -s 300M holiday-2.mp4
