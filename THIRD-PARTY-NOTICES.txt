@@ -2,6 +2,8 @@ Vexplore: third-party software notices
 
 Vexplore contains the third-party software listed below. Each item names its licence; the full texts of the licences are at the end of this file. The rest of the program is VexelRay's own code.
 
+The ffmpeg folder next to Vexplore holds FFmpeg's libraries, which Vexplore uses to show frames from a video in its Preview Dock. They are not part of vexplore.exe. FFmpeg is licensed under the GNU Lesser General Public License; its licence and where to get its source are in ffmpeg\FFMPEG-LICENSE.txt and ffmpeg\FFMPEG-SOURCE.txt. The same folder's ffwrap.dll has miniaudio (https://miniaud.io, by David Reid) built in, which Vexplore does not use; it is offered as public domain or under MIT No Attribution, and asks for no notice.
+
 ===============================================================================
 1. Oracle GraalVM Native Image runtime and Java class library 25.0.3
 https://www.graalvm.org/

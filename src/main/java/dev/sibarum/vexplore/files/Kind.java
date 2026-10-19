@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore.files;
 
+import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 
@@ -45,6 +46,14 @@ public enum Kind {
     /** The kind a lower-case extension (no dot) stands for; {@link #OTHER} when nothing claims it. */
     public static Kind ofExtension(String extension) {
         return BY_EXTENSION.getOrDefault(extension.toLowerCase(Locale.ROOT), OTHER);
+    }
+
+    /** The kind {@code file}'s name stands for, as {@link Entry#kind} reads it for a file that is not a folder. */
+    public static Kind of(Path file) {
+        Path name = file.getFileName();
+        String n = name == null ? "" : name.toString();
+        int dot = n.lastIndexOf('.');
+        return dot <= 0 || dot == n.length() - 1 ? OTHER : ofExtension(n.substring(dot + 1));
     }
 
     private static Map<String, Kind> build() {

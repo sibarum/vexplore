@@ -29,8 +29,8 @@ import java.util.function.Consumer;
  * comes free, not every one passed on the way. The decode already running is not abandoned (imagelib has no
  * cancel); it lands, is dropped as stale, and the worker goes straight to the newest request.
  *
- * <p><b>Decoded images are kept</b>, least recently used first out, so going back finds them without decoding
- * again. Only images: a text or bytes preview is one 64 KB read, cheaper to redo than to hold. The key is the file's
+ * <p><b>Decoded images are kept</b>, and videos' slideshows, least recently used first out, so going back finds them
+ * without decoding again. Only those: a text or bytes preview is one 64 KB read, cheaper to redo than to hold. The key is the file's
  * {@link Stamp}, so a file changed since it was decoded is decoded again.
  *
  * <p><b>While the viewer is open</b> ({@link #large}), each image is also made at the viewer's size from the same
@@ -179,7 +179,8 @@ final class Previewer {
     private Preview preview(Path path, boolean big) {
         try {
             Preview kept = images.get(Stamp.of(path));
-            if (kept != null && (!big || kept.large() != null)) {
+            // A video's slideshow has no viewer's size: the viewer shows pictures only.
+            if (kept != null && (!big || kept.large() != null || kept.tier() == Preview.Tier.VIDEO)) {
                 return kept;
             }
         } catch (IOException e) {

@@ -25,13 +25,14 @@ import java.util.function.Consumer;
  * it is drawn as a rebuild of its body, not an edit of it: a preview is a picture of one file, and the previous
  * file's picture has nothing worth keeping.
  *
- * <p>Three tiers exist so far: images (the picture, animated if the file is), text (the first lines, with the
- * encoding) and bytes (a hex dump, the strings in the file, and how random it looks). Bytes is the floor of the
+ * <p>Four tiers exist so far: images (the picture, animated if the file is), videos (frames from across the video,
+ * one after another, shown as an animated image is), text (the first lines, with the encoding) and bytes (a hex dump, the strings in the file, and how random it looks). Bytes is the floor of the
  * design's ladder — every file reaches it — which is why it was built first.
  *
  * <p>An image is an {@link ImageView}, made once and shown or hidden in place of the body; it is cleared when another
  * tier takes the dock, so its texture is free to be given back. The picture is itself the control that views it, in
- * Pix when Pix is installed and in Vexplore's own {@link Viewer} when it is not; {@link Lens} is what says so.
+ * Pix when Pix is installed and in Vexplore's own {@link Viewer} when it is not (a video, in the default app);
+ * {@link Lens} is what says so.
  */
 final class Dock {
 
@@ -112,15 +113,18 @@ final class Dock {
                 }
             }
             case BYTES -> bytes(preview);
-            case IMAGE -> {
+            case IMAGE, VIDEO -> {
                 // With no window (a headless capture) there is nothing to upload into, and the dock says so.
+                boolean video = preview.tier() == Preview.Tier.VIDEO;
                 if (image.show(preview.picture())) {
                     body.visible(false);
                     image.node().visible(true);
-                    lens.show(preview.path(), preview.picture(),
-                            opener.pixInstalled() ? "View in Pix" : "Open viewer");
+                    boolean pix = opener.pixInstalled();
+                    lens.show(preview.path(), preview.picture(), video ? pix ? "Play in Pix" : "Play"
+                            : pix ? "View in Pix" : "Open viewer");
                 } else {
-                    addBody(text("An image. There is no window to draw it in.", Type.META, Role.DIM, Type.UI));
+                    addBody(text((video ? "A video" : "An image") + ". There is no window to draw it in.", Type.META,
+                            Role.DIM, Type.UI));
                 }
             }
         }

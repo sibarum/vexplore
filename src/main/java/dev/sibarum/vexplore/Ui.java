@@ -301,6 +301,11 @@ final class Ui {
      * selection and so selects the file first.
      */
     private void view(Path file) {
+        if (Kind.of(file) == Kind.VIDEO) {
+            // The viewer shows pictures; a video with no Pix to play it goes where the shell would send it.
+            opener.view(file, () -> Opener.shell(file));
+            return;
+        }
         opener.view(file, () -> {
             model.select(Set.of(file));
             viewer.open();

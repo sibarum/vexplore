@@ -19,7 +19,8 @@ import java.util.List;
  * @param entropy  Shannon entropy of the sample in bits per byte, 0 to 8; meaningful for {@link Tier#BYTES}
  * @param strings  printable runs found in the sample; meaningful for {@link Tier#BYTES}
  * @param truncated whether the file is longer than what was read
- * @param picture  the decoded image for {@link Tier#IMAGE}, and null for every other tier
+ * @param picture  the decoded image for {@link Tier#IMAGE}, the slideshow for {@link Tier#VIDEO}, and null for every
+ *                 other tier
  * @param large    the same image at the viewer's size, made from the same decode while the viewer is open; null
  *                 otherwise, and for every other tier
  */
@@ -40,6 +41,8 @@ public record Preview(Path path, Tier tier, String identity, List<String> lines,
         FOLDER("folder"),
         /** Tier 1: the picture itself, animated if the file is. */
         IMAGE("tier 1 · image"),
+        /** Tier 1: frames from across a video, shown one after another. */
+        VIDEO("tier 1 · video"),
         /** Tier 3: the first lines of anything that decodes as text. */
         TEXT("tier 3 · text"),
         /** Tier 4: a hex dump, the strings in the file and an entropy bar. */

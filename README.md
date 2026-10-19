@@ -37,12 +37,12 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
 | **Move, Copy, Archive, Delete, Mark.** Each plans first (counts, bytes, what would be left alone and why), runs off the frame loop, and can be undone with Ctrl+Z or the Undo button | Fresh-file highlighting; dragging onto the tree, or to and from other applications |
 | **Two folders**: the top bar's *Two folders* swaps the Suggestion Rail for a second file list, and the two lists share the width equally. Drag rows from one to the other, or onto a folder row, to move them. They are copied across drives, to or from a server, or with Ctrl held; Shift forces a move. Each drop says what it did on the status line and is undone by Ctrl+Z. The tree opens folders in whichever side was used last, marked by the accent strip at its top | The design's comparison: a status per row, suggestions from it, and the rail beside both lists rather than swapped out (see TODO) |
 | Suggested destinations: the neighbouring folder that already holds that kind | A history of destinations |
-| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/video/audio previews, preview tier 2 |
-| Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), text (tier 3), bytes (tier 4) | Any test of the layout itself |
+| Delete goes to Vexplore's own trash (`~/.vexplore/trash`), so it is recoverable | Inline row previews, PDF/audio previews, preview tier 2 |
+| Preview Dock: images (tier 1: PNG, JPEG, GIF, WebP, SVG and the rest, animated where the file is), videos (tier 1: eight frames from across the video, one after another, through FFmpeg), text (tier 3), bytes (tier 4) | Any test of the layout itself |
 | **Viewer**: an image opens in [Pix](../Pix) when Pix is installed (Enter, double-click, a click on the dock's picture, *View in Pix* in the row menu); without Pix, the same opens Vexplore's own viewer window, the same tree as Pix's, from `vex-suite-common`. ←/→, Home/End and PgUp/PgDn step through the folder's images and move the selection with them; Esc closes. Backdrop: dark, light, checker, magenta, green. Holding an arrow key decodes only where it stops, and the next images are read ahead | Zoom and pan; the viewer forgets its backdrop and size on close |
 | **Git status** inside a repository: a GIT column (*modified*, *staged*, *part-staged*, *added*, *untracked*, *ignored*, *conflict*; a folder counts what is changed beneath it) and the branch in the status line, from the `git` executable, asked after the listing so it never holds the rows up. Without git, or outside a repository, nothing | Git on the rail, staging, refresh without navigating, and the column hidden outside a repository (see TODO) |
 | **Remote folders over SFTP**: hosts from `~/.ssh/config` in the tree, `sftp://` and `user@host:path` addresses, through your own `ssh` (see below). Listing, the Preview Dock, opening (a downloaded copy), **Download**, **Upload**, **Rename**, **New folder** and a **Delete** into a trash on the server, all undoable. On a remote folder the rail switches to its remote panel | Moving or archiving between a server's own folders; password prompts; a host typed into the tree; cancelling a large transfer (see TODO) |
-| 113 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib; the git ones run git against a fresh repository, and skip without it) | |
+| 115 tests here, 30 in `vex-suite-common` and 24 in `vexelray-codec`, none of which needs a window (the image ones decode for real, through imagelib, and the video ones through FFmpeg; the git ones run git against a fresh repository, and skip without it) | |
 
 Everything the design says a screenshot cannot show holds: nothing covers anything else, the rail is a fixed
 column that may be empty, a suggestion arriving or leaving moves no row, ignoring a suggestion costs nothing, and
@@ -114,10 +114,10 @@ instead of `ssh`; Git for Windows ships one at `usr/lib/ssh/sftp-server.exe`, an
 
 Enter or a double-click on a file opens it. Text and source (whatever the Preview Dock shows as text) go to the
 suite's text editor, started as `text-editor <file>` in a new window, and pictures (named like what imagelib
-decodes) to Pix, as `pix <file>`; everything else, and anything whose application is not installed, goes to the
+decodes) and videos to Pix, as `pix <file>`; everything else, and anything whose application is not installed, goes to the
 shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text file, and says *Vex not installed*
 instead when it is not; for a picture the picture itself is the control: a click on it, or Enter while it has the
-focus, views it in Pix, or in Vexplore's own viewer without Pix. Its mat and the pop-out icon off its corner say so, and
+focus, views it in Pix, or in Vexplore's own viewer without Pix; a video's slideshow plays it in Pix, or in the default app. Its mat and the pop-out icon off its corner say so, and
 answer the pointer with the words for where it goes.
 Both are found through their install records (`vexelray-installer`, read by the framework's `Apps`), so they have
 to be installed; a run from the checkout still finds installed ones, and `INSTALL_REGISTRY_DIR` points the lookup
@@ -215,6 +215,13 @@ mvn -Pnative package -DskipTests           # target/vexplore-debug.exe  for otte
   discovery file (`~/.vexelray/automation/`), which `ottermate` reads.
 - **debug**: console subsystem: `vexplore-debug.exe --automation=0` prints `automation: localhost:<port>` for
   `ottermate --launch`.
+
+**FFmpeg ships beside the executable, not in it**, as in Pix: six shared libraries that ffmpeg-wrapper's loader looks
+for in an `ffmpeg` folder next to the running program. Both native builds take them out of ffmpeg-wrapper's jar into
+`target/ffmpeg/`, so `target/vexplore.exe` previews videos as it stands, and zip them, with FFmpeg's licence and
+source pointer, into `target/vexplore-ffmpeg-windows-x86_64.zip` (about 55 MB, the same bytes for the same
+libraries), which `installer.json` unpacks into the install's own `ffmpeg` folder. Without them a video previews as
+its bytes. A JVM run (`mvn exec:exec`) extracts them from the jar instead.
 
 Both carry the framework's automation sockets, remote control and diagnostics, off until the launch asks
 (`--automation=0`, `VEXELRAY_AUTOMATION=0`) or the title bar's plug switches one on; `--automation.available=none`

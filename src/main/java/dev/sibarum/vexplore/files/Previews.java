@@ -4,6 +4,7 @@ import dev.sibarum.suite.pictures.Sizes;
 import dev.sibarum.vexplore.files.Preview.Tier;
 import dev.vexelray.codec.image.Decoded;
 import dev.vexelray.codec.image.Pictures;
+import dev.vexelray.codec.video.Videos;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,7 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -20,7 +22,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The preview ladder: the picture for anything imagelib can decode, then the first lines of anything that decodes as
+ * The preview ladder: frames from a video, the picture for anything imagelib can decode, then the first lines of anything that decodes as
  * text, and, for everything else, a hex dump with the strings inside it and how random it looks.
  *
  * <p><b>A bounded read, and nothing executed.</b> {@link #SAMPLE} bytes from the start of the file, through a plain
@@ -43,6 +45,11 @@ public final class Previews {
     /** Bytes shown in the hex dump, sixteen to a row. */
     static final int DUMP = 16 * 16;
 
+    /** Frames in a video's slideshow, how long each shows, and the longest side each keeps: the dock's, not a screen's. */
+    static final int SLIDES = 8;
+    static final int SLIDE_MS = 1200;
+    static final int SLIDE_SIDE = 640;
+
     private static final int TEXT_LINES = 60;
     private static final int MIN_STRING = 6;
     private static final int MAX_STRINGS = 8;
@@ -63,6 +70,10 @@ public final class Previews {
         try {
             if (Files.isDirectory(path)) {
                 return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false, null, null);
+            }
+            Preview video = video(path);
+            if (video != null) {
+                return video;
             }
             long size = Files.size(path);
             byte[] sample = read(path);
@@ -118,6 +129,21 @@ public final class Previews {
         Decoded d = Pictures.decode(path, sample, size, Sizes.of(large));
         return d.image() ? new Preview(path, Tier.IMAGE, d.identity(), List.of(), 0d, List.of(), false, d.picture(),
                 d.picture(1)) : null;
+    }
+
+    /**
+     * The video tier, or null to fall through to the others: {@link #SLIDES} frames from across a file named like a
+     * video, through FFmpeg ({@link Videos#slides}), shown {@link #SLIDE_MS} each as an animated picture is. Only a
+     * file on this disk, since FFmpeg opens a path and not a remote one. A file FFmpeg will not open, or a machine
+     * where it will not load, falls a tier, to the bytes it is.
+     */
+    static Preview video(Path path) {
+        if (Kind.of(path) != Kind.VIDEO || path.getFileSystem() != FileSystems.getDefault()) {
+            return null;
+        }
+        Decoded d = Videos.slides(path, SLIDES, SLIDE_SIDE, SLIDE_MS);
+        return d.image() ? new Preview(path, Tier.VIDEO, d.identity(), List.of(), 0d, List.of(), false, d.picture(),
+                null) : null;
     }
 
     private static byte[] read(Path path) throws IOException {

@@ -20,6 +20,11 @@
         "addToPath": true,
         "shortcuts": { "desktop": true, "startMenu": true, "label": "Vexplore" }
       },
+      {
+        "name": "vexplore-ffmpeg",
+        "source": "target/vexplore-ffmpeg-windows-x86_64.zip",
+        "dir": "ffmpeg"
+      },
       { "name": "notices", "source": "THIRD-PARTY-NOTICES.txt" }
     ]
   }
