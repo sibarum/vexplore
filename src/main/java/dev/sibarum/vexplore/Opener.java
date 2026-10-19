@@ -7,6 +7,7 @@ import sibarum.probe.Log;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Opening a file, which Vexplore does by handing it to something else. Which of these a file gets is
@@ -166,6 +167,24 @@ final class Opener {
                     .start();
         } catch (IOException e) {
             LOG.warn("could not open {}", file, e);
+        }
+    }
+
+    /**
+     * Windows Explorer at {@code path}: a folder opens as itself, a file opens its folder with it selected.
+     * {@code /select,} and the path go as two arguments, because Explorer does not read a quoted
+     * {@code "/select,C:\a b"}, which is what one argument with a space in it becomes.
+     */
+    static void explorer(Path path, boolean folder) {
+        String where = path.toAbsolutePath().toString();
+        List<String> command = folder ? List.of("explorer.exe", where) : List.of("explorer.exe", "/select,", where);
+        try {
+            new ProcessBuilder(command)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+        } catch (IOException e) {
+            LOG.warn("could not show {} in Explorer", path, e);
         }
     }
 }

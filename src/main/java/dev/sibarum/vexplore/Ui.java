@@ -447,6 +447,7 @@ final class Ui {
             if (!remote) {
                 menu.item("Open MainFrame Here", opener.mainframeInstalled(),
                         () -> opener.mainframe(clicked.path(), clicked.folder()));
+                menu.item("Open in Windows Explorer", () -> Opener.explorer(clicked.path(), clicked.folder()));
             }
             menu.separator();
         }
