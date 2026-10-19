@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * The preview ladder: frames from a video, the picture for anything imagelib can decode, then the first lines of anything that decodes as
@@ -67,11 +68,19 @@ public final class Previews {
      * from one decode, which is the expensive part.
      */
     public static Preview of(Path path, boolean large) {
+        return of(path, large, p -> { });
+    }
+
+    /**
+     * The same, giving {@code early} a first look at a video while the rest of it is read: see {@link #video}. What
+     * comes back is the whole preview, and replaces it.
+     */
+    public static Preview of(Path path, boolean large, Consumer<Preview> early) {
         try {
             if (Files.isDirectory(path)) {
                 return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false, null, null);
             }
-            Preview video = video(path);
+            Preview video = video(path, early);
             if (video != null) {
                 return video;
             }
@@ -136,12 +145,16 @@ public final class Previews {
      * video, through FFmpeg ({@link Videos#slides}), shown {@link #SLIDE_MS} each as an animated picture is. Only a
      * file on this disk, since FFmpeg opens a path and not a remote one. A file FFmpeg will not open, or a machine
      * where it will not load, falls a tier, to the bytes it is.
+     *
+     * <p>{@code early} is given the first frame found, as a preview of its own, the moment it is: in a long HD video
+     * finding the rest is most of the wait, so the dock shows that frame and then the slideshow.
      */
-    static Preview video(Path path) {
+    static Preview video(Path path, Consumer<Preview> early) {
         if (Kind.of(path) != Kind.VIDEO || path.getFileSystem() != FileSystems.getDefault()) {
             return null;
         }
-        Decoded d = Videos.slides(path, SLIDES, SLIDE_SIDE, SLIDE_MS);
+        Decoded d = Videos.slides(path, SLIDES, SLIDE_SIDE, SLIDE_MS, (identity, first) -> early.accept(
+                new Preview(path, Tier.VIDEO, identity, List.of(), 0d, List.of(), false, first, null)));
         return d.image() ? new Preview(path, Tier.VIDEO, d.identity(), List.of(), 0d, List.of(), false, d.picture(),
                 null) : null;
     }

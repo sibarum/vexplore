@@ -161,7 +161,9 @@ final class Previewer {
                         return;
                     }
                 }
-                Preview p = preview(path, big);
+                Path asked = path;
+                // A video's first frame goes to the dock as soon as it is found; reading ahead shows nothing.
+                Preview p = preview(path, big, real ? first -> model.previewed(asked, first) : first -> { });
                 if (real) {
                     model.previewed(path, p);
                 } else {
@@ -176,7 +178,7 @@ final class Previewer {
         }
     }
 
-    private Preview preview(Path path, boolean big) {
+    private Preview preview(Path path, boolean big, Consumer<Preview> early) {
         try {
             Preview kept = images.get(Stamp.of(path));
             // A video's slideshow has no viewer's size: the viewer shows pictures only.
@@ -186,7 +188,7 @@ final class Previewer {
         } catch (IOException e) {
             // Gone or unreadable: Previews says so in the dock.
         }
-        Preview fresh = Previews.of(path, big);
+        Preview fresh = Previews.of(path, big, early);
         if (fresh.picture() != null) {
             images.put(fresh.picture().key(), fresh);
         }

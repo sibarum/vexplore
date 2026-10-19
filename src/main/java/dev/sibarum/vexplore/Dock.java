@@ -76,6 +76,14 @@ final class Dock {
         if (empty != null && shown == preview) {
             return;
         }
+        // A video's slideshow after its first frame: the same file, so only the picture changes, and the frame stays
+        // up until the slideshow's texture replaces it rather than the dock going blank between them.
+        if (!nothing && shown != null && shown.tier() == Preview.Tier.VIDEO && preview.tier() == Preview.Tier.VIDEO
+                && shown.path().equals(preview.path()) && image.show(preview.picture())) {
+            shown = preview;
+            lens.show(preview.path(), preview.picture(), word(preview));
+            return;
+        }
         empty = nothing;
         shown = preview;
         clear();
@@ -119,15 +127,19 @@ final class Dock {
                 if (image.show(preview.picture())) {
                     body.visible(false);
                     image.node().visible(true);
-                    boolean pix = opener.pixInstalled();
-                    lens.show(preview.path(), preview.picture(), video ? pix ? "Play in Pix" : "Play"
-                            : pix ? "View in Pix" : "Open viewer");
+                    lens.show(preview.path(), preview.picture(), word(preview));
                 } else {
                     addBody(text((video ? "A video" : "An image") + ". There is no window to draw it in.", Type.META,
                             Role.DIM, Type.UI));
                 }
             }
         }
+    }
+
+    /** What the picture says a click does: where a picture is viewed, or a video played. Reads one small file. */
+    private String word(Preview p) {
+        boolean pix = opener.pixInstalled();
+        return p.tier() == Preview.Tier.VIDEO ? pix ? "Play in Pix" : "Play" : pix ? "View in Pix" : "Open viewer";
     }
 
     private void bytes(Preview p) {
