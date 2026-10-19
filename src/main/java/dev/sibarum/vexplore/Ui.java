@@ -4,6 +4,7 @@ import dev.sibarum.suite.git.Status;
 import dev.sibarum.vexplore.files.Entry;
 import dev.sibarum.vexplore.files.Kind;
 import dev.sibarum.vexplore.files.Folders;
+import dev.sibarum.vexplore.files.Previews;
 import dev.sibarum.vexplore.remote.Host;
 import dev.sibarum.vexplore.remote.Remotes;
 import dev.sibarum.vexplore.suggest.Bytes;
@@ -408,7 +409,8 @@ final class Ui {
      * case the menu is about every selected row, in the order shown.
      *
      * <p><b>Opening is immediate; acting is staged.</b> Open does what a double-click does ({@link Routes}), named for
-     * where it goes; View, Open in Vex and Open with default app are the other ways in. Move, Copy,
+     * where it goes; View, Open in Pix (for a video), Open in Vex (for text) and Open with default app are the other
+     * ways in. Move, Copy,
      * Archive, Delete and Mark put the files and the action on the Suggestion Rail, exactly as choosing the Action chip
      * would, so the summary card says what will happen ("9 files, 6.5 GB, nothing has moved yet") and its button does
      * it: an action shows its effect before it runs, whichever door it came in by. Hence the ellipsis on each.
@@ -441,7 +443,8 @@ final class Ui {
                 if (clicked.kind() == Kind.VIDEO && !way.label().equals(Routes.IN_PIX)) {
                     menu.item(Routes.IN_PIX, opener.pixInstalled(), () -> opener.play(clicked.path()));
                 }
-                if (!way.label().equals(Routes.IN_VEX)) {
+                // Only for text: a picture or a video in the editor is a screen of bytes.
+                if (!way.label().equals(Routes.IN_VEX) && Previews.isText(clicked.path())) {
                     menu.item(Routes.IN_VEX, opener.editorInstalled(), () -> opener.edit(clicked.path()));
                 }
                 if (way != routes.fallback()) {
