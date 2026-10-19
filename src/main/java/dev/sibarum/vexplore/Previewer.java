@@ -94,7 +94,7 @@ final class Previewer {
     Preview kept(Path path) {
         try {
             return images.get(Stamp.of(path));
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             return null;
         }
     }
@@ -185,8 +185,8 @@ final class Previewer {
             if (kept != null && (!big || kept.large() != null || kept.tier() == Preview.Tier.VIDEO)) {
                 return kept;
             }
-        } catch (IOException e) {
-            // Gone or unreadable: Previews says so in the dock.
+        } catch (IOException | RuntimeException e) {
+            // Gone, unreadable, or a file system with no attributes to read: Previews says so in the dock.
         }
         Preview fresh = Previews.of(path, big, early);
         if (fresh.picture() != null) {

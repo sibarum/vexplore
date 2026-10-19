@@ -34,7 +34,9 @@ import java.util.function.Consumer;
  *
  * <p><b>Every failure falls a tier.</b> A file that says it is an image and will not decode, an image too large to
  * hold, or a machine where the native decoder will not load: each one previews as the bytes it is, so no file is ever
- * blank and none takes the dock down.
+ * blank and none takes the dock down. A file named like a picture or a video that gives none says the decoder's
+ * reason beside what it is ("PNG image · does not decode as an image"), so a hex dump where a picture was expected
+ * is not left to explain itself.
  *
  * <p>Blocking: run it on the offload lane.
  */
@@ -80,14 +82,24 @@ public final class Previews {
             if (Files.isDirectory(path)) {
                 return new Preview(path, Tier.FOLDER, "folder", List.of(), 0d, List.of(), false, null, null);
             }
-            Preview video = video(path, early);
-            if (video != null) {
-                return video;
+            Decoded video = video(path, early);
+            if (video != null && video.image()) {
+                return new Preview(path, Tier.VIDEO, video.identity(), List.of(), 0d, List.of(), false,
+                        video.picture(), null);
             }
             long size = Files.size(path);
             byte[] sample = read(path);
-            Preview image = image(path, sample, size, large);
-            return image != null ? image : of(path, sample, size > sample.length);
+            Decoded image = image(path, sample, size, large);
+            if (image.image()) {
+                return new Preview(path, Tier.IMAGE, image.identity(), List.of(), 0d, List.of(), false,
+                        image.picture(), image.picture(1));
+            }
+            // Named for a decoder that gave no picture: the tier below says why. Anything else was never expected
+            // to be a picture, and is simply what it is.
+            String why = video != null ? video.identity() : Pictures.named(path) ? image.identity() : null;
+            Preview floor = of(path, sample, size > sample.length);
+            return why == null ? floor : new Preview(path, floor.tier(), floor.identity() + " · " + why,
+                    floor.lines(), floor.entropy(), floor.strings(), floor.truncated(), null, null);
         } catch (IOException | RuntimeException e) {
             return new Preview(path, Tier.BYTES, "unreadable: " + e.getClass().getSimpleName(), List.of(), 0d,
                     List.of(), false, null, null);
@@ -130,33 +142,29 @@ public final class Previews {
     }
 
     /**
-     * The image tier, or null to fall through to the others: the suite's decoder ({@link Pictures}), which reads the
-     * whole file only once the sample's first bytes say imagelib wants it. A file it has no picture of, for whatever
-     * reason, falls a tier.
+     * The image tier: the suite's decoder ({@link Pictures}), which reads the whole file only once the sample's first
+     * bytes say imagelib wants it. A file it has no picture of, for whatever reason, falls a tier, and the decode
+     * says the reason.
      */
-    static Preview image(Path path, byte[] sample, long size, boolean large) {
-        Decoded d = Pictures.decode(path, sample, size, Sizes.of(large));
-        return d.image() ? new Preview(path, Tier.IMAGE, d.identity(), List.of(), 0d, List.of(), false, d.picture(),
-                d.picture(1)) : null;
+    static Decoded image(Path path, byte[] sample, long size, boolean large) {
+        return Pictures.decode(path, sample, size, Sizes.of(large));
     }
 
     /**
-     * The video tier, or null to fall through to the others: {@link #SLIDES} frames from across a file named like a
+     * The video tier, or null for a file not tried as one: {@link #SLIDES} frames from across a file named like a
      * video, through FFmpeg ({@link Videos#slides}), shown {@link #SLIDE_MS} each as an animated picture is. Only a
      * file on this disk, since FFmpeg opens a path and not a remote one. A file FFmpeg will not open, or a machine
-     * where it will not load, falls a tier, to the bytes it is.
+     * where it will not load, falls a tier, to the bytes it is, and the decode says the reason.
      *
      * <p>{@code early} is given the first frame found, as a preview of its own, the moment it is: in a long HD video
      * finding the rest is most of the wait, so the dock shows that frame and then the slideshow.
      */
-    static Preview video(Path path, Consumer<Preview> early) {
+    static Decoded video(Path path, Consumer<Preview> early) {
         if (Kind.of(path) != Kind.VIDEO || path.getFileSystem() != FileSystems.getDefault()) {
             return null;
         }
-        Decoded d = Videos.slides(path, SLIDES, SLIDE_SIDE, SLIDE_MS, (identity, first) -> early.accept(
+        return Videos.slides(path, SLIDES, SLIDE_SIDE, SLIDE_MS, (identity, first) -> early.accept(
                 new Preview(path, Tier.VIDEO, identity, List.of(), 0d, List.of(), false, first, null)));
-        return d.image() ? new Preview(path, Tier.VIDEO, d.identity(), List.of(), 0d, List.of(), false, d.picture(),
-                null) : null;
     }
 
     private static byte[] read(Path path) throws IOException {
@@ -229,7 +237,13 @@ public final class Previews {
             return "RIFF container (WAV, AVI or WebP)";
         }
         if (b.length >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p') {
-            return "MPEG-4 container (video or audio)";
+            // The same box starts a phone's photographs, which no decoder here reads; a video they are not.
+            String brand = b.length >= 12 ? new String(b, 8, 4, StandardCharsets.ISO_8859_1) : "";
+            return switch (brand) {
+                case "heic", "heix", "heim", "heis", "mif1", "msf1" -> "HEIF image";
+                case "avif", "avis" -> "AVIF image";
+                default -> "MPEG-4 container (video or audio)";
+            };
         }
         if (starts(b, 0x1A, 0x45, 0xDF, 0xA3)) {
             return "Matroska or WebM video";

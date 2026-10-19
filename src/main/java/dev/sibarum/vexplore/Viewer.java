@@ -4,6 +4,7 @@ import dev.sibarum.suite.view.PictureViewer;
 import dev.sibarum.suite.view.PictureViewer.Showing;
 import dev.sibarum.vexplore.files.Preview;
 import dev.vexelray.codec.image.Picture;
+import dev.vexelray.codec.image.Pictures;
 import dev.vexelray.codec.image.gui.Textures;
 import dev.vexelray.framework.shell.NamedWindow;
 import dev.vexelray.framework.shell.Window;
@@ -125,7 +126,10 @@ final class Viewer {
             return new Showing(pictures, i, name, title, count, at == null ? "" : "reading…", null, at != null);
         }
         if (p.tier() != Preview.Tier.IMAGE) {
-            return new Showing(pictures, i, name, title, count, p.identity() + " · not an image", null, false);
+            // A file named like a picture has the decoder's reason in its identity already (Previews).
+            boolean said = p.tier() != Preview.Tier.FOLDER && Pictures.named(at);
+            String why = said ? p.identity() : p.identity() + " · not an image";
+            return new Showing(pictures, i, name, title, count, why, null, false);
         }
         Picture want = p.large() != null ? p.large() : p.picture();
         return new Showing(pictures, i, name, title, count, p.identity(), want, true);

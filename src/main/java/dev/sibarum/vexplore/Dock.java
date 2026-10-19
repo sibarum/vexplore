@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -46,6 +47,7 @@ final class Dock {
     private final List<Node> headerKids = new ArrayList<>();
     private final List<Node> bodyKids = new ArrayList<>();
     private Preview shown;
+    private Path reading;
     private Boolean empty;
 
     Dock(Gui gui, KronoGui krono, Opener opener, Textures textures, Consumer<Path> view) {
@@ -63,19 +65,25 @@ final class Dock {
         this.frame = gui.column().role("preview").width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Look.RAIL)).scroll(false, false)
                 .children(header, body, image.node());
-        show(null);
+        show(null, null);
     }
 
     Node node() {
         return frame;
     }
 
-    /** Draw {@code preview}, or the empty dock for null. A preview already on show is left alone. */
-    synchronized void show(Preview preview) {
+    /**
+     * Draw {@code preview}; or, while it is still being read, the name of {@code selected}, the one file selected, and
+     * that it is being read; or the empty dock when both are null. A video or a large picture can take seconds, and
+     * "select a file" is the wrong thing to say about a file that is selected.
+     */
+    synchronized void show(Path selected, Preview preview) {
         boolean nothing = preview == null;
-        if (empty != null && shown == preview) {
+        Path wait = nothing ? selected : null;
+        if (empty != null && shown == preview && Objects.equals(reading, wait)) {
             return;
         }
+        reading = wait;
         // A video's slideshow after its first frame: the same file, so only the picture changes, and the frame stays
         // up until the slideshow's texture replaces it rather than the dock going blank between them.
         if (!nothing && shown != null && shown.tier() == Preview.Tier.VIDEO && preview.tier() == Preview.Tier.VIDEO
@@ -91,15 +99,18 @@ final class Dock {
         lens.show(null, null, "");
         image.node().visible(false);
         body.visible(true);
+        if (wait != null) {
+            addHeader(text(name(wait), Type.RAIL, Role.INK, Type.UI));
+            addHeader(text("reading…", Type.SMALL, Role.DIM, Type.MONO));
+            return;
+        }
         if (nothing) {
             addHeader(text("Preview", Type.RAIL, Role.DIM, Type.UI));
             addBody(text("Select a file to see it here. The dock never covers the list.", Type.META, Role.FAINT,
                     Type.UI));
             return;
         }
-        Node name = text(preview.path().getFileName() == null ? preview.path().toString()
-                : preview.path().getFileName().toString(), Type.RAIL, Role.INK, Type.UI);
-        addHeader(name);
+        addHeader(text(name(preview.path()), Type.RAIL, Role.INK, Type.UI));
         addHeader(text(preview.identity() + (preview.truncated() ? " · first 64 KB" : ""), Type.SMALL,
                 Role.DIM, Type.MONO));
         addHeader(gui.box().width(Length.grow(1f)).height(Length.rem(1f)));
@@ -165,6 +176,10 @@ final class Dock {
                 addBody(text(s, Type.META, Role.DIM, Type.MONO));
             }
         }
+    }
+
+    private static String name(Path p) {
+        return p.getFileName() == null ? p.toString() : p.getFileName().toString();
     }
 
     private Node text(String s, Length size, Role ink, int face) {

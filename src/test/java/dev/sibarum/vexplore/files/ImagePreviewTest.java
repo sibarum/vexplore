@@ -100,6 +100,19 @@ class ImagePreviewTest {
     }
 
     @Test
+    void textNamedLikeAnImageSaysWhyItIsNoPicture(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("photo.png");
+        Files.writeString(f, "not a picture at all");
+        Preview p = Previews.of(f);
+        assertEquals(Tier.TEXT, p.tier());
+        assertEquals("UTF-8 text · not an image", p.identity());
+
+        Path plain = dir.resolve("notes.txt");
+        Files.writeString(plain, "not a picture at all");
+        assertEquals("UTF-8 text", Previews.of(plain).identity(), "one nobody took for a picture is what it is");
+    }
+
+    @Test
     void aFileThatClaimsToBeAnImageAndIsNotFallsToBytes(@TempDir Path dir) throws IOException {
         byte[] b = new byte[64];
         byte[] signature = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
@@ -110,5 +123,6 @@ class ImagePreviewTest {
         Preview p = Previews.of(f);
         assertEquals(Tier.BYTES, p.tier());
         assertNull(p.picture());
+        assertEquals("PNG image · does not decode as an image", p.identity(), "the hex dump says why");
     }
 }

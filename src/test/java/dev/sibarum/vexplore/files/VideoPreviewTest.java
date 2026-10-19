@@ -64,6 +64,26 @@ class VideoPreviewTest {
     void aFileNamedLikeAVideoThatIsNotOneFallsATier(@TempDir Path dir) throws IOException {
         Path f = dir.resolve("notes.mkv");
         Files.writeString(f, "not a video at all");
-        assertEquals(Tier.TEXT, Previews.of(f).tier());
+        Preview p = Previews.of(f);
+        assertEquals(Tier.TEXT, p.tier());
+        assertEquals("UTF-8 text · not a video", p.identity(), "the dock says why there are no frames");
+    }
+
+    @Test
+    void anEmptyOrCutShortVideoSaysWhyItHasNoFrames(@TempDir Path dir) throws IOException {
+        Path empty = Files.createFile(dir.resolve("empty.mp4"));
+        Preview p = Previews.of(empty);
+        assertNull(p.picture());
+        assertTrue(p.identity().startsWith("empty file · "), p.identity());
+
+        byte[] whole;
+        try (InputStream in = VideoPreviewTest.class.getResourceAsStream("/rgb.webm")) {
+            whole = in.readAllBytes();
+        }
+        Path cut = dir.resolve("cut.webm");
+        Files.write(cut, java.util.Arrays.copyOf(whole, 64));
+        Preview q = Previews.of(cut);
+        assertNull(q.picture());
+        assertTrue(q.identity().startsWith("Matroska or WebM video · "), q.identity());
     }
 }

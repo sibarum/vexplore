@@ -71,6 +71,10 @@ class PreviewsTest {
         assertEquals("PDF document", Previews.identify("%PDF-1.7".getBytes(StandardCharsets.US_ASCII)));
         assertEquals("unknown binary", Previews.identify(new byte[]{1, 2, 3, 4}));
         assertEquals("empty file", Previews.identify(new byte[0]));
+        byte[] heic = {0, 0, 0, 24, 'f', 't', 'y', 'p', 'h', 'e', 'i', 'c'};
+        assertEquals("HEIF image", Previews.identify(heic), "a phone's photograph is not a video for sharing its box");
+        byte[] mp4 = {0, 0, 0, 24, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm'};
+        assertEquals("MPEG-4 container (video or audio)", Previews.identify(mp4));
     }
 
     @Test

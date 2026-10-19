@@ -591,7 +591,7 @@ final class Ui {
             table.rows().remark();
         }
 
-        dock.show(doc.preview());
+        dock.show(doc.single(), doc.preview());
 
         if (two) {
             status.text("work", work(doc));
