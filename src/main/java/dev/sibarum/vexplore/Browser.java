@@ -75,11 +75,32 @@ final class Browser {
 
     /** List the folder again, as after something changed it. Selection and picks start over: they described a folder that is gone. */
     void reload() {
+        reload(Set.of());
+    }
+
+    /**
+     * List the folder again, and select whatever of {@code landed} is in it once it is listed: where a drop
+     * put things. The files that arrived when it shows the folder they went into, and that folder's own row
+     * when it shows the one above it. So letting go ends on something visible, not only on rows disappearing.
+     */
+    void reload(Set<Path> landed) {
         Path folder = model.doc().folder();
         if (folder == null) {
             return;
         }
         list(folder, () -> {
+            if (!Objects.equals(model.doc().folder(), folder)) {
+                return;   // gone elsewhere since: what landed is not here
+            }
+            Set<Path> here = new java.util.HashSet<>();
+            for (var e : model.doc().entries()) {
+                if (landed.contains(e.path())) {
+                    here.add(e.path());
+                }
+            }
+            if (!here.isEmpty()) {
+                model.select(Set.copyOf(here));
+            }
         });
     }
 

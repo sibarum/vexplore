@@ -77,7 +77,7 @@ final class FolderPane {
         gui.landmark(Landmarks.OTHER, node);
 
         model.onChange(this::show);
-        actor.onChanged(browser::reload);
+        actor.onChanged(browser::reload);   // with where a drop landed, so this list selects what arrived here
     }
 
     Node node() {
@@ -109,9 +109,19 @@ final class FolderPane {
             gitShown = doc.git();
             table.items(doc.entries());
         }
-        if (doc.selected().isEmpty() && !table.selection().selection().isEmpty() && before != null
-                && before.entries() != doc.entries()) {
-            table.selection().set(Set.of());   // listed again: what was chosen described a folder that is gone
+        // The document's selection, pushed when the list disagrees: emptied by a listing (what was chosen described
+        // a folder that is gone), or set to what a drop just put here. A change that began at the list already agrees.
+        if (before == null || before.entries() != doc.entries() || !before.selected().equals(doc.selected())) {
+            Set<Entry> want = new java.util.HashSet<>();
+            for (Entry e : doc.entries()) {
+                if (doc.selected().contains(e.path())) {
+                    want.add(e);
+                }
+            }
+            if (!table.selection().selection().equals(want)) {
+                table.selection().set(want);
+                Ui.revealFirst(table, doc, want);
+            }
         }
         count.text(doc.loading() ? "reading..." : doc.entries().size() + " items");
     }

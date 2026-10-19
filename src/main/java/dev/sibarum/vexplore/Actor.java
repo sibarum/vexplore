@@ -41,7 +41,8 @@ final class Actor {
     /** The window's undo history: what has been done to the disk is undone there, with everything else. */
     private final History history;
     /** What else is listed again after a change: the second folder, when one is shown. */
-    private final List<Runnable> changed = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<java.util.function.Consumer<Set<Path>>> changed =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
 
     Actor(Gui gui, Model model, Browser browser, Dialogs dialogs, Path trash) {
         this.gui = gui;
@@ -117,8 +118,9 @@ final class Actor {
      *
      * <p>Planned when it runs, not when it is offered: a drop target is asked every frame on the GUI thread and may
      * not read a disk, so what is already at the destination is learnt here, off the frame loop, and left alone as
-     * the rail's plan would leave it. The notice line says how it went, skipped files included. Refused while
-     * anything else is running, like every other operation.
+     * the rail's plan would leave it. The notice line says how it went, skipped files included, and the folders
+     * shown select where things landed ({@link Browser#reload(Set)}). Refused while anything else is running, like
+     * every other operation.
      */
     Change dropping(Plan.Kind kind, List<dev.sibarum.vexplore.files.Entry> held, Path into) {
         List<Path> from = held.stream().map(dev.sibarum.vexplore.files.Entry::path).toList();
@@ -145,16 +147,23 @@ final class Actor {
                               + (plan.skipped().isEmpty() ? "nothing to do" : plan.skipped().getFirst().reason()) + "."
                             : summary(plan, d);
                     model.work(w -> w.finished(text));
-                    afterChange();
+                    // Where it went, for the folders shown to select: the arrivals, and the folder they went into.
+                    Set<Path> landed = new java.util.HashSet<>();
+                    landed.add(into);
+                    d.done().forEach(s -> landed.add(s.to()));
+                    afterChange(Set.copyOf(landed));
                 });
                 return new Undo(done);
             }
         };
     }
 
-    /** Run {@code r} after anything here changes the disk, as well as listing the folder shown again. */
-    void onChanged(Runnable r) {
-        changed.add(r);
+    /**
+     * Hear after anything here changes the disk, as well as listing the folder shown again: with where a drop put
+     * things, for {@link Browser#reload(Set)}, and an empty set for everything else.
+     */
+    void onChanged(java.util.function.Consumer<Set<Path>> c) {
+        changed.add(c);
     }
 
     /** Whether nothing is running: one thing at a time, undo and redo included. */
@@ -318,12 +327,17 @@ final class Actor {
     // ------------------------------------------------------------------ helpers
 
     private void afterChange() {
+        afterChange(Set.of());
+    }
+
+    /** As {@link #afterChange()}, with every folder shown selecting what of {@code landed} it lists. */
+    private void afterChange(Set<Path> landed) {
         Path dest = model.doc().work().destination();
         if (dest != null) {
             destination(dest);
         }
-        browser.reload();
-        changed.forEach(Runnable::run);
+        browser.reload(landed);
+        changed.forEach(c -> c.accept(landed));
     }
 
     private void offload(Runnable r) {

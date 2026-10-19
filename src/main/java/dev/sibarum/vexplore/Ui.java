@@ -566,10 +566,8 @@ final class Ui {
                 } finally {
                     following.set(false);
                 }
-                // One file chosen from outside (another app's "show this file") may be far down a long folder.
-                if (want.size() == 1) {
-                    table.rows().reveal(want.iterator().next());
-                }
+                // Chosen from outside (another app's "show this file", files a drop put here): may be far down.
+                revealFirst(table, doc, want);
             }
         }
 
@@ -594,6 +592,19 @@ final class Ui {
                 : reach > doc.selected().size()
                 ? reach + " in scope · " + Bytes.format(railNow.effect().bytes())
                 : doc.selected().size() + " selected · " + Bytes.format(doc.selectedBytes()));
+    }
+
+    /** Scroll {@code table} to the first of {@code want} in the order shown, if it is not on screen. */
+    static void revealFirst(Table<Entry> table, Doc doc, Set<Entry> want) {
+        if (want.isEmpty()) {
+            return;
+        }
+        for (Entry e : doc.ordered()) {
+            if (want.contains(e)) {
+                table.rows().reveal(e);
+                return;
+            }
+        }
     }
 
     /** The title bar this window uses, for a test to find. */
