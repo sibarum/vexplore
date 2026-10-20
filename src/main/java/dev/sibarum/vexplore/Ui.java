@@ -85,8 +85,8 @@ final class Ui {
     private final Node sortNote;
     private final Dock dock;
     private final RailView rail;
-    private final Node railPane;
-    private final Node railEdge;
+    /** The folders beside the rail, with a divider between them; the folders alone while {@link #two}. */
+    private final SplitPane railSplit;
     /** The second folder, in the rail's place while {@link #two}. */
     private final FolderPane other;
     private final Node twoEdge;
@@ -184,15 +184,17 @@ final class Ui {
                 .size(Length.rem(15.625f)).minFirst(Length.rem(9f)).minSecond(Length.rem(24f));
         gui.landmark(Landmarks.SPLIT, split.node());
 
-        this.railPane = gui.column().width(Length.rem(25f)).height(Length.FILL)
+        Node railPane = gui.column().width(Length.FILL).height(Length.FILL)
                 .background(gui.theme().color(Look.RAIL)).children(rail.node());
         gui.landmark(Landmarks.RAIL, railPane);
-        this.railEdge = gui.box().width(Length.dp(1)).height(Length.FILL)
-                .background(gui.theme().color(Role.LINE));
+        // The rail keeps the width it is dragged to and the folders take the rest. Their least is the tree's and
+        // the list's leasts and the divider between them, so this divider never squeezes the other one.
+        this.railSplit = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, split.node(), railPane)
+                .sized(SplitPane.Pane.SECOND).size(Length.rem(25f))
+                .minFirst(Length.rem(33.5f)).minSecond(Length.rem(18f));
+        gui.landmark(Landmarks.RAIL_SPLIT, railSplit.node());
 
-        Node main = gui.row().width(Length.FILL).height(Length.grow(1f))
-                .children(split.node(), railEdge, railPane);
-        split.node().width(Length.grow(1f));
+        Node main = gui.row().width(Length.FILL).height(Length.grow(1f)).children(railSplit.node());
 
         status.node().width(Length.FILL).height(Length.rem(1.875f)).background(gui.theme().color(Look.CHROME));
         gui.landmark(Landmarks.STATUS, status.node());
@@ -222,8 +224,7 @@ final class Ui {
         if (on && other.folder() == null && model.doc().folder() != null) {
             other.go(model.doc().folder());
         }
-        railEdge.visible(!on);
-        railPane.visible(!on);
+        railSplit.alone(on ? SplitPane.Pane.FIRST : null);
         twoEdge.visible(on);
         other.node().visible(on);
         firstStrip.visible(on);

@@ -14,6 +14,8 @@ final class Landmarks {
     static final String DOCK = "dock";
     static final String SPLIT = "split";
     static final String RAIL = "rail";
+    /** The folders and the rail, with the divider between them. */
+    static final String RAIL_SPLIT = "railsplit";
     static final String SUMMARY = "summary";
     static final String STATUS = "status";
     /** The rail's "based on ..." tag: it names the file the rail was computed for, so a script can await it. */
