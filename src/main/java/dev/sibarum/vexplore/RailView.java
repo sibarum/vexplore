@@ -21,7 +21,9 @@ import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.icons.Icon;
 import dev.vexelray.gui.widget.Button;
+import dev.vexelray.gui.widget.IconButton;
 import dev.vexelray.gui.widget.TextField;
 
 import java.nio.file.Path;
@@ -371,7 +373,8 @@ final class RailView {
         Node column = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
         for (Mark m : work.marks()) {
             Button recall = new Button(gui, m.name()).onPress(() -> actor.recall(m));
-            Button drop = new Button(gui, "×").kind(Button.Kind.GHOST).onPress(() -> actor.unmark(m.name()));
+            IconButton drop = new IconButton(gui, Icon.CLOSE, "Forget " + m.name())
+                    .onPress(() -> actor.unmark(m.name()));
             column.append(gui.row().gap(Length.rem(0.3f)).scroll(false, false)
                     .alignItems(AlignItems.CENTER).children(recall.node(), drop.node()));
         }
