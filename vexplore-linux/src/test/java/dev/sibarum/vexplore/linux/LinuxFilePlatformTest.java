@@ -2,6 +2,8 @@ package dev.sibarum.vexplore.linux;
 
 import dev.sibarum.vexplore.spi.FilePlatform.Place;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
@@ -57,6 +59,7 @@ class LinuxFilePlatformTest {
 
     /** One mount is one volume, wherever in the tree; a destination still to be made is on its parent's. */
     @Test
+    @EnabledOnOs(value = OS.LINUX, disabledReason = "/proc is a file system of its own only on Linux")
     void aVolumeIsAFileSystemNotARoot(@TempDir Path dir) throws Exception {
         Path a = Files.createDirectories(dir.resolve("a"));
         assertEquals(true, platform.sameVolume(a, dir.resolve("b/not-yet")));
