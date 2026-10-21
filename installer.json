@@ -3,7 +3,7 @@
   "name": "Vexplore",
   "publisher": "sibarum",
   "description": "A file explorer that suggests instead of asking.",
-  "version": "0.1.1",
+  "version": "0.1.2-SNAPSHOT",
 
   "repo": "sibarum/vexelray-dist",
   "branch": "main",
