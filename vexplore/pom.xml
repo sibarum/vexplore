@@ -276,7 +276,7 @@
                         </execution>
                     </executions>
                 </plugin>
-                <!-- FFmpeg beside the executable, for the dock's video slideshow. ffmpeg-wrapper's libraries are not
+                <!-- FFmpeg beside the executable, for the dock's video slideshow. ffmpeg-wrapper-windows's libraries are not
                      resources of the image (125 MB), so they are taken out of its jar (into target/ffmpeg-wrapper,
                      then flattened into target/ffmpeg by ffmpeg-zip above), where its loader looks beside a
                      vexplore.exe run from target/. The licence and the source pointer that FFmpeg's LGPL asks for
@@ -291,7 +291,7 @@
                             <phase>prepare-package</phase>
                             <goals><goal>unpack-dependencies</goal></goals>
                             <configuration>
-                                <includeArtifactIds>ffmpeg-wrapper</includeArtifactIds>
+                                <includeArtifactIds>ffmpeg-wrapper-windows</includeArtifactIds>
                                 <includes>natives/windows-x86_64/**</includes>
                                 <outputDirectory>${project.build.directory}/ffmpeg-wrapper</outputDirectory>
                                 <overWriteReleases>true</overWriteReleases>
