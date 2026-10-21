@@ -25,7 +25,7 @@
         <vexelray-codec.version>0.1.2-SNAPSHOT</vexelray-codec.version>
         <!-- imagelib's static library and the linker arguments beside it, staged by imagelib-wrapper's
              native/build.sh. Only the native image reads them; a JVM run extracts the DLL from the jar. -->
-        <imagelib.static.dir>${project.basedir}/../imagelib-wrapper/native/dist/static/windows-x86_64</imagelib.static.dir>
+        <imagelib.static.dir>${project.basedir}/../imagelib-wrapper/imagelib-wrapper-windows/native/static/windows-x86_64</imagelib.static.dir>
         <junit.version>5.11.4</junit.version>
 
         <app.mainClass>dev.sibarum.vexplore.Vexplore</app.mainClass>
