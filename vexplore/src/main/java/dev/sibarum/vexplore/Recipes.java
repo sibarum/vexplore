@@ -133,7 +133,7 @@ final class Recipes {
      * folder on this computer: a remote one is not an argument a new start can take).
      */
     private static void updates(Gui gui, Model model, Windows windows) {
-        Updates.of(Apps.registryDir(), Vexplore.APP).ifPresent(u -> {
+        Apps.registryDir().flatMap(dir -> Updates.of(dir, Vexplore.APP)).ifPresent(u -> {
             UpdateNotice notice = new UpdateNotice(gui, u, () -> windows.main().close(), () -> {
                 Path folder = model.doc().folder();
                 return folder == null || folder.getFileSystem() != FileSystems.getDefault()
