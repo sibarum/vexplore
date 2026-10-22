@@ -17,6 +17,8 @@ the framework's own `docs/TODO.md`, and the reusable parts go into `vexelray-gui
   [a Java references explorer](docs/ideas/java-references.md).
 - **What the framework did to us** — [docs/framework-notes.md](docs/framework-notes.md), and the framework-side
   account in `vexelray-framework/docs/TODO.md`, *Found by Vexplore*.
+- **What each milestone showed** — [docs/retrospective.md](docs/retrospective.md), the pass over those notes at the
+  end of each milestone.
 
 ![Screen 01: select, condition, action](docs/screenshots/01-select-condition-action.png)
 
