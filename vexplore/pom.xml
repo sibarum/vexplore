@@ -282,6 +282,27 @@
                                 </target>
                             </configuration>
                         </execution>
+                        <!-- The recording encoder (see ffmpeg-record-beside) laid out flat in target/ffmpeg-record, and
+                             zipped for installer.json, which unpacks it into the install's own ffmpeg-record folder.
+                             Fixed times, so the same libraries make the same zip and an installer that already has
+                             its hash skips the download. -->
+                        <execution>
+                            <id>ffmpeg-record-zip</id>
+                            <phase>prepare-package</phase>
+                            <goals><goal>run</goal></goals>
+                            <configuration>
+                                <target>
+                                    <delete dir="${project.build.directory}/ffmpeg-record"/>
+                                    <copy todir="${project.build.directory}/ffmpeg-record" flatten="true">
+                                        <fileset dir="${project.build.directory}/ffmpeg-wrapper-record/natives/record/windows-x86_64"/>
+                                    </copy>
+                                    <delete file="${project.build.directory}/vexplore-ffmpeg-record-windows-x86_64.zip"/>
+                                    <zip destfile="${project.build.directory}/vexplore-ffmpeg-record-windows-x86_64.zip"
+                                         basedir="${project.build.directory}/ffmpeg-record"
+                                         modificationtime="2026-01-01T00:00:00Z"/>
+                                </target>
+                            </configuration>
+                        </execution>
                     </executions>
                 </plugin>
                 <!-- FFmpeg beside the executable, for the dock's video slideshow. ffmpeg-wrapper-windows's libraries are not
@@ -302,6 +323,22 @@
                                 <includeArtifactIds>ffmpeg-wrapper-windows</includeArtifactIds>
                                 <includes>natives/windows-x86_64/**</includes>
                                 <outputDirectory>${project.build.directory}/ffmpeg-wrapper</outputDirectory>
+                                <overWriteReleases>true</overWriteReleases>
+                                <overWriteSnapshots>true</overWriteSnapshots>
+                            </configuration>
+                        </execution>
+                        <!-- The camera's video recording, beside the executable as FFmpeg is: ffmpeg-wrapper-record-windows's
+                             encoder (AV1 into Matroska, 14 MB) is not a resource of the image either, and its loader
+                             looks for it in an ffmpeg-record folder beside the executable. Flattened by
+                             ffmpeg-record-zip. -->
+                        <execution>
+                            <id>ffmpeg-record-beside</id>
+                            <phase>prepare-package</phase>
+                            <goals><goal>unpack-dependencies</goal></goals>
+                            <configuration>
+                                <includeArtifactIds>ffmpeg-wrapper-record-windows</includeArtifactIds>
+                                <includes>natives/record/windows-x86_64/**</includes>
+                                <outputDirectory>${project.build.directory}/ffmpeg-wrapper-record</outputDirectory>
                                 <overWriteReleases>true</overWriteReleases>
                                 <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
