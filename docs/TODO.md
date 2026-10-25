@@ -212,6 +212,15 @@ the list's GIT column and the status line's branch show the answer. What is left
 
 ## Details found while building
 
+- [ ] **Hovering writes to the tree over 100 times a second.** Moving the pointer around the window, and doing
+      nothing else, makes more than a hundred GUI mutations a second. Hover should cost a write when what is shown
+      changes (a row lit, a tooltip), not one per pointer event, and an idle window should make none. Pix had the
+      same fault and the fixes are in `vex-suite-common`'s `PictureViewer`: keep what each node was last written
+      and write it again only when it differs (`4110c71`, 400–600 a second down to the two that move), write
+      nothing that cannot be seen (`0c7fc12`, a faded bar's clock and seek bar), and send what changes together as
+      one batch, so a frame is one publish rather than several. Find the writers first: `@Trace` sites as in
+      `36b51cf` put each one on the probe's trace lane with the cause that ran it. Suspects are the rows' hover
+      state, `Lens`'s hover ease, and the rail, which rebuilds on every change (below).
 - [ ] **A menu from a button has no API.** The title bar's Open menu (`OpenMenu`) asks the installed
       `MenuPresenter` directly with a `ClickEvent` made up at the button's bottom-left, because core opens menus
       only on a right click. A `Gui.menu(node, items)` or a menu-button widget belongs upstream (framework TODO), and
