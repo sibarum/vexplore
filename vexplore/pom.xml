@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.sibarum</groupId>
         <artifactId>vexplore-parent</artifactId>
-        <version>0.1.2-SNAPSHOT</version>
+        <version>0.1.2</version>
     </parent>
 
     <artifactId>vexplore</artifactId>
@@ -21,12 +21,12 @@
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <vexelray-framework.version>0.1.2-SNAPSHOT</vexelray-framework.version>
-        <vexelray-gui.version>0.1.2-SNAPSHOT</vexelray-gui.version>
-        <vexelray.version>0.1.2-SNAPSHOT</vexelray.version>
-        <tactroller.version>1.2-SNAPSHOT</tactroller.version>
-        <vex-suite-common.version>0.1.2-SNAPSHOT</vex-suite-common.version>
-        <vexelray-codec.version>0.1.2-SNAPSHOT</vexelray-codec.version>
+        <vexelray-framework.version>0.1.2</vexelray-framework.version>
+        <vexelray-gui.version>0.1.2</vexelray-gui.version>
+        <vexelray.version>0.1.2</vexelray.version>
+        <tactroller.version>1.2</tactroller.version>
+        <vex-suite-common.version>0.1.2</vex-suite-common.version>
+        <vexelray-codec.version>0.1.2</vexelray-codec.version>
         <!-- imagelib's static library and the linker arguments beside it, staged by imagelib-wrapper's
              native/build.sh. Only the native image reads them; a JVM run extracts the DLL from the jar. -->
         <imagelib.static.dir>${project.basedir}/../../imagelib-wrapper/imagelib-wrapper-windows/native/static/windows-x86_64</imagelib.static.dir>
