@@ -414,8 +414,8 @@ final class Ui {
      * case the menu is about every selected row, in the order shown.
      *
      * <p><b>Opening is immediate; acting is staged.</b> Open does what a double-click does ({@link Routes}), named for
-     * where it goes; View, Open in Pix (for a video), Open in Vex (for text) and Open with default app are the other
-     * ways in. Move, Copy,
+     * where it goes; View, Open in Pix (for a video), Open in VexelRay IDE (for text) and Open with default app are
+     * the other ways in. Move, Copy,
      * Archive, Delete and Mark put the files and the action on the Suggestion Rail, exactly as choosing the Action chip
      * would, so the summary card says what will happen ("9 files, 6.5 GB, nothing has moved yet") and its button does
      * it: an action shows its effect before it runs, whichever door it came in by. Hence the ellipsis on each.
@@ -444,7 +444,8 @@ final class Ui {
                 if (clicked.kind() == Kind.IMAGE && !way.label().equals(Routes.IN_PIX)) {
                     menu.item("View", () -> view(clicked.path()));
                 }
-                // Said even when Pix is not installed, as Open in Vex is, so the way to play a video is visible.
+                // Said even when Pix is not installed, as Open in VexelRay IDE is, so the way to play a video is
+                // visible.
                 if (clicked.kind() == Kind.VIDEO && !way.label().equals(Routes.IN_PIX)) {
                     menu.item(Routes.IN_PIX, opener.pixInstalled(), () -> opener.play(clicked.path()));
                 }

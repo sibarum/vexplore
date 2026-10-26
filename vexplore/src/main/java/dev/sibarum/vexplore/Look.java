@@ -15,7 +15,7 @@ import static dev.sibarum.suite.view.SuiteLook.token;
  * <h2>Violet is "you chose this", amber is "this is why you are seeing this"</h2>
  * <b>Violet</b> ({@code accent}, about 258 degrees) is the palette's {@code accent} <em>and</em> its {@code action}:
  * a chosen chip, focus, and the one filled button on a screen are all the user's own choice, so they share a hue.
- * Vex owns cyan in the suite; the accent stays violet so the two windows are told apart at a glance.
+ * VexelRay IDE owns cyan in the suite; the accent stays violet so the two windows are told apart at a glance.
  * <b>Amber</b> ({@code anchor}) is not in the palette at all. It marks provenance only — the "based on" label, the
  * fresh file, a name that conflicts — and is never a button fill. Rose ({@code danger}) is destructive and nothing
  * else.

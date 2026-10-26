@@ -17,7 +17,7 @@ import java.util.function.Predicate;
  * the menu's label is the route's own, so what a row says it will do and what it does cannot drift apart.
  *
  * <p><b>The first route that takes the entry and is ready wins</b>, and the order is the policy: a folder is browsed
- * into, a picture or a video goes to Pix, text to Vex, and everything else to the shell's own open, exactly as Explorer would do
+ * into, a picture or a video goes to Pix, text to VexelRay IDE, and everything else to the shell's own open, exactly as Explorer would do
  * it. A route whose application is not installed is not ready, so its entries fall to the next; so is one whose
  * application is installed but would not start. The last route takes everything and is always ready, so every
  * entry opens somewhere. A picture or video is asked first because the name decides it and costs nothing, where "is it text"
@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 final class Routes {
 
     static final String IN_PIX = "Open in Pix";
-    static final String IN_VEX = "Open in Vex";
+    static final String IN_VEX = "Open in VexelRay IDE";
     static final String DEFAULT = "Open";
 
     /**
@@ -60,7 +60,7 @@ final class Routes {
                 }))).toList();
     }
 
-    /** Vexplore's own: browse a folder, Pix for a picture or a video, Vex for text, the shell for the rest. */
+    /** Vexplore's own: browse a folder, Pix for a picture or a video, VexelRay IDE for text, the shell for the rest. */
     static Routes standard(Executor lane, Opener opener, Consumer<Path> browse) {
         return new Routes(lane, List.of(
                 new Route(DEFAULT, Entry::folder, () -> true, p -> {

@@ -28,7 +28,7 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       Vexplore keeps no session of its own yet, so what is left is upstream: window placement is the framework's
       `WindowMemory` and shares `Settings` with everything else (*Settings and the session* in the framework TODO).
       Marks, once they survive a restart (below), are session state and follow the same rule.
-- [ ] ***Open with* on a row.** The row menu (`Ui.rowMenu`) has Open, View, Open in Vex, the staged actions and
+- [ ] ***Open with* on a row.** The row menu (`Ui.rowMenu`) has Open, View, Open in VexelRay IDE, the staged actions and
       Copy path / name. *Open with* would be Windows' own chooser (`rundll32 shell32.dll,OpenAs_RunDLL <file>`);
       unbuilt, and unverified from a native exe. *Show in Explorer* (`explorer /select,<file>`) is the same kind of
       call.
@@ -116,7 +116,7 @@ process and a new window**. The framework side (finding a sibling, the helper) i
       the window's place could go through `WindowMemory` as the main window's does.
 - [x] **The dock's picture is the control, not a Pop out button.** `Lens` draws a mat and an arrow around it,
       never over it, that ease to the accent with the words for where it goes on hover or focus.
-- [ ] **Viewing the other tiers from the dock.** Only a picture is a control. Viewing text is the editor (Vex), which
+- [ ] **Viewing the other tiers from the dock.** Only a picture is a control. Viewing text is the editor (VexelRay IDE), which
       the dock already offers, so this may never be wanted.
 - [ ] **The viewer has no zoom or pan.** It fits the picture to the window and never enlarges a raster. 1:1 and a
       drag to pan are the next thing an image viewer is asked for. The lit redesign (the *Vexplore Viewer, lit* row
@@ -192,7 +192,7 @@ the list's GIT column and the status line's branch show the answer. What is left
       after it is built: a framework change, to go in the framework's TODO.
 - [ ] **The Git column does not sort.** `Order` shares each column's comparator with the suggestion engine and
       sees only entries; the status sits beside them in the `Doc`. "Changed first" is the sort this column is for.
-- [ ] **Status is read when a folder is listed, and only then.** A `git add` at a prompt, or an edit in Vex, shows
+- [ ] **Status is read when a folder is listed, and only then.** A `git add` at a prompt, or an edit in VexelRay IDE, shows
       at the next navigation. The `WatchService` the *fresh file* item above needs is the same one; the watcher
       should also look at `.git/index` and `HEAD`, which change without any file in the folder changing.
 - [ ] **The rail does not know about git yet.** *Select*: unstaged, staged, untracked, conflicted, changed in the
@@ -204,7 +204,7 @@ the list's GIT column and the status line's branch show the answer. What is left
       the terminal emulator becoming a library (`mainframe/docs/terminal-library.md`).
 - [ ] **Git in the native `.exe` is unexercised.** It is a `ProcessBuilder`, which needs no metadata, but nothing
       has been run there.
-- [ ] **Vex opens at a line.** The references explorer and *Open diff in Vex* both need `text-editor <file>:<line>`
+- [ ] **VexelRay IDE opens at a line.** The references explorer and *Open diff in VexelRay IDE* both need `text-editor <file>:<line>`
       (or `--line`), agreed between the two apps the way `pix <file>` was. The change is in the text editor.
 - [ ] **The Java references explorer** ([ideas/java-references.md](ideas/java-references.md)), and the provider
       contract built by writing it: `Entry`, `Folders` and `Routes` moved from `Path` to a node only as far as it

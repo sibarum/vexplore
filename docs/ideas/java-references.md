@@ -2,10 +2,10 @@
 
 Status: **idea**, 2026-10-11. This is the first provider under the [providers](providers.md) contract, chosen
 because everything it needs already exists. [Concordance Indexer](../../../concordance-indexer) builds the index,
-and the text editor (Vex) already reads that same index.
+and the text editor (VexelRay IDE) already reads that same index.
 
 Open a Maven project in Vexplore and it can be browsed as code instead of as files: modules, packages, types,
-members. A declaration is a folder holding everywhere it is used. A use is a file that opens in Vex at its line.
+members. A declaration is a folder holding everywhere it is used. A use is a file that opens in VexelRay IDE at its line.
 The Suggestion Rail stops proposing where to move things. Instead it proposes **what to filter out**, because what
 a references list has too much of is rows.
 
@@ -18,7 +18,7 @@ a references list has too much of is rows.
 - **It is not a tree of names, which is the point.** Disk and zip are both paths. An index is a graph: a method is
   inside a type, and also used from forty places in other types. If the contract survives a graph, it will survive
   a web page.
-- **The suite already shares it.** Vex holds a Concordance index of the open folder for go-to-declaration
+- **The suite already shares it.** VexelRay IDE holds a Concordance index of the open folder for go-to-declaration
   (`text-editor-vexel-demo`, `ProjectIndex.java` and `Outline.java`). The two apps would read the same project
   through the same library, so they agree about what a symbol is and where it is.
 
@@ -50,7 +50,7 @@ The folders of a declaration come straight from index queries:
 | Field | *Used by* | `usagesOf(symbol)` |
 | *Used by* | One row per `Reference`, in source order | already sorted by file, line and column |
 
-A **reference row is a leaf**. *Open* starts Vex at that line, and the Preview Dock shows the lines around it with
+A **reference row is a leaf**. *Open* starts VexelRay IDE at that line, and the Preview Dock shows the lines around it with
 the use marked. A **declaration** opens at its own line the same way.
 
 The list's columns:
@@ -77,7 +77,7 @@ So the three columns of the rail mean something new here:
 - **Select** reaches rows: every use in this module, every use in tests, every call from one type.
 - **Condition** narrows by a rule: **only in files that also name the owner type**, only calls (not reads), only
   outside this type, not in generated sources.
-- **Action** does something to what is left: hide, keep only, copy as a list, open each in Vex.
+- **Action** does something to what is left: hide, keep only, copy as a list, open each in VexelRay IDE.
 
 Each chip states its effect first, as the design asks for every action: *Hide 14 uses in tests — 17 left*. A
 filter is a view, so undoing one costs nothing and it never touches a file. Stacked filters show in the breadcrumb,
@@ -107,21 +107,21 @@ commit*, *changed on this branch*. They come from intersecting each row's `Sourc
 so they need no change to Concordance. See [git.md](git.md#concordance-history-aware), which also covers making
 Concordance itself history-aware.
 
-## Synergy with Vex
+## Synergy with VexelRay IDE
 
-The two apps already start each other as separate processes (*Open in Vex*, and Vex's *Open in Vexplore*). This
+The two apps already start each other as separate processes (*Open in VexelRay IDE*, and VexelRay IDE's *Open in Vexplore*). This
 provider gives that link a second meaning:
 
-- **Vexplore → Vex: open at a line.** Every reference row opens in Vex at the use. Vex can't be told a line from
+- **Vexplore → VexelRay IDE: open at a line.** Every reference row opens in VexelRay IDE at the use. VexelRay IDE can't be told a line from
   the command line yet (`TextEditor.main` passes arguments straight to the framework). `text-editor <file>:<line>`,
-  or a `--line` option, is the one change Vex needs. It should be agreed between the two apps the way `pix <file>`
+  or a `--line` option, is the one change VexelRay IDE needs. It should be agreed between the two apps the way `pix <file>`
   was.
-- **Vex → Vexplore: find usages as a folder.** Vex's go-to-declaration already finds a symbol under the caret.
+- **VexelRay IDE → Vexplore: find usages as a folder.** VexelRay IDE's go-to-declaration already finds a symbol under the caret.
   *Find usages in Vexplore* would start `vexplore --symbol <qualified> <project>` and open straight on that
   declaration's *Used by*, with the filters. A references list is a list, and Vexplore is the suite's list
-  application, so Vex doesn't have to grow one.
+  application, so VexelRay IDE doesn't have to grow one.
 - **One index on disk, not two.** Concordance's `ProjectIndex` saves and loads (`save(cacheFile)`, `load(cacheFile,
-  root)`) and brings itself up to date by stat and hash. Vex's wrapper currently rebuilds each time. If both apps
+  root)`) and brings itself up to date by stat and hash. VexelRay IDE's wrapper currently rebuilds each time. If both apps
   load and save the same cache file, whichever opens the project second starts warm. Where that file lives and how
   two processes share it (write beside it, then atomically replace) is the agreement to make, probably in
   Concordance itself so neither app owns it.
@@ -143,13 +143,13 @@ From Vexplore:
 - A way in. Either a route on a folder that contains a `pom.xml` (*Browse as Java*, beside *Open*), or a mount, so
   the project shows both ways. Starting with the route is simpler.
 - Dependencies on `concordance-index` and `concordance-project`, built in at compile time: the first row of the
-  modules table in [providers.md](providers.md#modules-with-a-lifecycle). Vex already carries the same libraries,
+  modules table in [providers.md](providers.md#modules-with-a-lifecycle). VexelRay IDE already carries the same libraries,
   so its native-image configuration for them is the place to start. Whether it is complete for every path Vexplore
   would take is unchecked.
 
 From Concordance, eventually and not first:
 
-- **Where a declaration ends.** The index records where each one starts (Vex's `Outline` notes this). A preview
+- **Where a declaration ends.** The index records where each one starts (VexelRay IDE's `Outline` notes this). A preview
   that shows a whole method needs the end too.
 - **A resolver**, which turns the "likely" filter into an exact one.
 

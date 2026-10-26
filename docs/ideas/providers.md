@@ -33,7 +33,7 @@ A sketch to argue with, not an API:
 | **Container** | Its children. Blocking, run off the frame loop, cancellable | `Folders.list` | entries under a prefix | the page's parts | members |
 | **Content** | Its bytes, and their length if known | the file | the entry | the response body | the source, from `Source.read` |
 | **Columns** | Which columns it has and how each sorts | Name, Size, Modified, Type | the same | Tab order, Area, Fold, … | Kind, Line |
-| **Actions** | What its menu offers, as routes | Open, Open in Pix/Vex, Move, Delete | Extract | Open in browser, Copy URL | Go to line |
+| **Actions** | What its menu offers, as routes | Open, Open in Pix/VexelRay IDE, Move, Delete | Extract | Open in browser, Copy URL | Go to line |
 | **Suggestions** | What the rail may offer, or nothing | today's rail | none | see the page idea | none |
 | **Writable** | Plans and undoable operations | `Operations` | maybe later | never | never |
 

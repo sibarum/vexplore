@@ -106,7 +106,7 @@ Rail, which has a **remote panel**:
 **Uploading** is Copy to… (or Move to…) from a folder on this computer: the remote folder you were last in is
 offered in step 4 as "on <host>, where you were", for as long as that host stays connected.
 
-Opening a remote file (Enter, Open in Vex, Pix) downloads it to `~/.vexplore/remote/<host>/…` first and opens the
+Opening a remote file (Enter, Open in VexelRay IDE, Pix) downloads it to `~/.vexplore/remote/<host>/…` first and opens the
 copy, fetching again only when the server's size or time differ. Saving that copy does not change the server.
 
 For tests and captures, `vexplore.sftp.server=<path to sftp-server>` serves every host from a local `sftp-server`
@@ -117,7 +117,7 @@ instead of `ssh`; Git for Windows ships one at `usr/lib/ssh/sftp-server.exe`, an
 Enter or a double-click on a file opens it. Text and source (whatever the Preview Dock shows as text) go to the
 suite's text editor, started as `text-editor <file>` in a new window, and pictures (named like what imagelib
 decodes) and videos to Pix, as `pix <file>`; everything else, and anything whose application is not installed, goes to the
-shell's own open, as in Explorer. The dock's header has *Open in Vex* for a text file, and says *Vex not installed*
+shell's own open, as in Explorer. The dock's header has *Open in VexelRay IDE* for a text file, and says *VexelRay IDE not installed*
 instead when it is not; for a picture the picture itself is the control: a click on it, or Enter while it has the
 focus, views it in Pix, or in Vexplore's own viewer without Pix; a video's slideshow plays it in Pix, or in the default app. Its mat and the pop-out icon off its corner say so, and
 answer the pointer with the words for where it goes.

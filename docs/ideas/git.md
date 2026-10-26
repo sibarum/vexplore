@@ -52,7 +52,7 @@ These are exactly the "Select / Condition / Action" shapes the rail already has.
 - Stage · Unstage
 - **Discard changes**, which is recoverable here (below), not as git does it
 - Add to `.gitignore`, with the plan saying which pattern and which file
-- Open diff in Vex · Show history of this file (opens the history provider filtered to it)
+- Open diff in VexelRay IDE · Show history of this file (opens the history provider filtered to it)
 
 **Recoverable by default still holds, and git makes it harder.** `git restore` and `git checkout -- <file>` throw
 away uncommitted work with no undo. Vexplore's *Discard* first copies the working file to Vexplore's own trash, as
@@ -66,7 +66,7 @@ deletion will show as a change*, so nobody is surprised.
 **Out of scope, on purpose:** commit, push, pull, merge, rebase. Vexplore is where you find and sort the files; it
 isn't a git client. Staging is the edge of it, because staging is itself a selection. A commit message box would
 be the first step into somebody else's application. If it is ever wanted, it belongs in its own suite app, which
-Vexplore starts the way it starts Vex.
+Vexplore starts the way it starts VexelRay IDE.
 
 ## History as folders
 
@@ -85,7 +85,7 @@ vexplore/  (repository)
 ```
 
 A file in a commit is a leaf whose bytes are `git show <rev>:<path>`, so the Preview Dock and *Save as file* work
-on it unchanged. *Open in Vex* saves it to a temporary read-only file. *Restore this version* is the one action
+on it unchanged. *Open in VexelRay IDE* saves it to a temporary read-only file. *Restore this version* is the one action
 that writes, and it goes through a plan and Vexplore's trash like *Discard*.
 
 **Two Folders mode** (in the design, not yet built) gets a new kind of side: a commit. Working tree against
@@ -94,7 +94,7 @@ identical, or different. Only the source of one side is new.
 
 ## How Vexplore talks to git
 
-Recommended: **the `git` executable**, run as a process, the way Vexplore already starts Pix and Vex.
+Recommended: **the `git` executable**, run as a process, the way Vexplore already starts Pix and VexelRay IDE.
 
 | Way | For | Against |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ git in its pseudoconsole, with Vexplore typing into it. That is the wrong way ro
 
 - Vexplore has to parse what git prints. Through a terminal, output arrives with VT escapes and line wrapping,
   stdout and stderr merged, and NUL-separated formats (`-z`) are not safe. Pipes give exact bytes.
-- The feature would then depend on MainFrame being installed and open. The suite's rule (Pix, Vex) is that a
+- The feature would then depend on MainFrame being installed and open. The suite's rule (Pix, VexelRay IDE) is that a
   missing application removes an option, never a feature.
 - Closing the console must not kill an operation halfway through.
 
@@ -154,11 +154,11 @@ MainFrame installed. That is the better default. MainFrame's feed tab remains fo
 terminal you already have open.
 
 This is not git-specific. Anything in the suite that runs an external command could feed a console the same way:
-Vexplore's own shell opens, a Concordance index build, Vex running a build. The feed tab belongs in MainFrame as a
+Vexplore's own shell opens, a Concordance index build, VexelRay IDE running a build. The feed tab belongs in MainFrame as a
 general feature. Git is only its first user.
 
 **Where it lives:** a small `git` module in `vex-suite-common`, holding status, log, show and diff as records, with
-no UI. Vexplore uses it first. Vex would use it next, for a changed-lines gutter and to turn its *git* chip into a
+no UI. Vexplore uses it first. VexelRay IDE would use it next, for a changed-lines gutter and to turn its *git* chip into a
 branch name. Concordance could use it for what follows.
 
 ## Concordance, history-aware
@@ -198,7 +198,7 @@ the same problem `git log --follow` solves badly for files. It is worth keeping 
 yet.
 
 Step 1 is enough for the two suggestions that prompted this page, and it can ship with the references explorer.
-Step 2 is a real Concordance feature that Vex would use as much as Vexplore: go to declaration *as of `main`*,
+Step 2 is a real Concordance feature that VexelRay IDE would use as much as Vexplore: go to declaration *as of `main`*,
 and find usages *added on this branch*.
 
 ## Open questions
