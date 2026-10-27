@@ -303,3 +303,83 @@ so a `Select`'s options are not chosen by one. A `Table` reaches it through `row
 Not a framework matter but worth recording: the design says nothing may cover the file list, and a context menu does,
 for as long as the user holds it open. It is the user's own request at the user's pointer, which is what the rule
 exists to protect, so it is kept.
+
+## The v0.2 port inventory
+
+Written 2026-10-27, before the port, so that what Vexplore needs is on the table while the API is still moving. VexelRay
+0.2 is the message model (`Documents/Spike/ROADMAP.md`): every part talks by messages, a widget says what happened on a
+topic, slow work is a `@Job`, and application code never runs on the main thread. Checked against the spike's `v0.2`
+branches as they stood: `vexelray-gui` at `3a3ddb9` (phase 3, steps 1 to 7) and `vexelray-framework` at `96af105`.
+Phases 4 (the processor's checks, `Outbox`) and 5 (the shell) are not built, so what they replace is the roadmap's
+plan, not code. **Vexplore is not on the roadmap's phase 8 list** (scheduler, calculator, text editor, mainframe); it
+should be, after the text editor, since it reaches more of the widget library than the others.
+
+Line numbers are `vexplore/src/main/java/dev/sibarum/vexplore/` at the commit that adds this section.
+
+### Removed outright
+
+| What | Call sites | What replaces it |
+| --- | --- | --- |
+| `Gui.offload()` | `Actor:348`, `Browser:122`, `Destinator:96`, `Opener:68, 77, 89, 111, 140`, `Previewer:138`, `Ui:261` | A `@Job` per kind of disk work: a request topic and a reply topic, the reply landing at the next tick. Each lambda becomes a request record and a reply record. `Model.listed` is already the reply half for a listing |
+| `Gui.offload()` passed as an `Executor` | `FolderPane:45`, `Ui:126` (`Routes.standard`), so `Routes:47, 54, 64, 93, 104` | `Routes` stops taking an `Executor`; opening a file becomes a request to the job that does it |
+| `TreeView.Source` | `Ui:320` (`roots`, `label`, `hasChildren`, `children`) | `new TreeView<>(gui, "places")`, which asks on `TreeView.CHILDREN_WANTED` and is answered on `TreeView.CHILDREN` with `Entry(item, label, icon, branch, acceptsChildren)`. `children` lists the disk, so the answer is a job's. `hasChildren`'s rule for hosts (not opened until connected) moves into `branch` |
+| `SelectionModel.onChange` | `FolderPane:66`, `Ui:394` | `Table.SELECTED` (state: the last selection in a frame), heard with `gui.mailbox(Table.SELECTED, table.address(), …)`. `chosen` is `Set<Object>`, so the `Entry` type is cast back |
+| `Button.onPress` | `Dock:126`, `RailView:190, 192, 366, 376, 378, 441, 456, 472, 546, 550` | `Button.PRESSED`, an edge carrying the button's address. Every button needs a name unique in its tree; `RailView:376–378` names one per mark, so the mark's name goes into the address |
+| `Button.onToggle` | `RailView:536, 639, 656`, `Ui:155` | `Button.TOGGLED`, an edge with `pressed`. `Button.show` still sets a chip without announcing it |
+| `Breadcrumb.onNavigate` | `FolderPane:48`, `Ui:133` | `Breadcrumb.NAVIGATED`, carrying the item |
+| `TextField.onSubmit` | `RailView:188, 314, 328, 491` | `TextField.SUBMITTED`, carrying the text. Three of the four fields are the rail's and are rebuilt, so their names have to stay stable across rebuilds |
+| `ListView.onActivate` (via `table.rows()`) | `FolderPane:69`, `Ui:400` | `ListView.ACTIVATED`, addressed to the table's rows |
+| `TreeView.onSelect` | `Ui:353` | `TreeView.SELECTED` (state). If a click should navigate but an arrow key should not, `TreeView.CLICKED` is the one |
+| `Table.onSort` | `Ui:402` | `Table.SORTED`, carrying column and direction |
+
+### Still there in the spike, owed to T7.2's walk
+
+The spike keeps these as the widget library's own and says a view may lose them when T7.2's API walk decides what a
+view can reach. Each has a message form already; moving to it now costs nothing later.
+
+| What | Call sites | The message form |
+| --- | --- | --- |
+| `Gui.shortcut(Key, Runnable, Modifier...)` | `Recipes:155–160` (the zoom keys) | `Gui.shortcut(chord, sender, message)`. The zoom itself is the GUI's own, so this may stay the library's |
+| `Gui.claim(node, chord, scope, Runnable)` | `Lens:85, 86` | `Gui.claim(node, chord, scope, sender, message)` |
+| `Gui.onClick` | `Lens:84`, `OpenMenu:79` | `Gui.hear(node, NodeEvent.CLICK, stage)` |
+| `Gui.onState` | `Lens:87`, `OpenMenu:80` | `Gui.hear(node, NodeEvent.STATE, stage)`, last per node in a frame |
+| `Gui.onResize` | `Lens:80` | `Gui.hear(node, NodeEvent.RESIZE, stage)`, heard a frame after the layout that made it (FN-16's picture would lag a frame on a resize) |
+| `Gui.onResizeUi` | `OpenMenu:78` | The same; the `Ui` and plain pairs are to be merged |
+| `MenuItem.of(…, Runnable)` | `OpenMenu:104, 106, 111, 115, 123, 125` | `Menu`'s `item(label, sender, message)` with `Gui.menu(node, menu)` |
+| `ListView.onContextMenu` | `Ui:399` (the row menu, FN-28) | None yet: the menu source is a function, owed with T7.2 |
+| `ListView.draggable`, `droppable` | `Drops:56, 57` | None yet. `droppable`'s receiver runs in the frame and asks `Actor` for a plan; the roadmap built no declared drop zone because no witness dropped onto anything but a library container. **Vexplore is that witness** |
+| `Gui.undo(History)` | `RailView:366` | Unchanged so far; the undo feedback goes with the shell in phase 5 |
+| `Gui.modifiers()` (a `State`) | `Recipes:119` | Unchanged in the spike. Held modifiers are input, so probably a state topic once phase 4 lands |
+
+### The shell, phase 5 (planned, not built)
+
+| What | Call sites | What the roadmap plans |
+| --- | --- | --- |
+| `Dialogs.openFolder(start, then, cancelled)` | `Actor:317, 325` | `PickFile` / `Picked` topics |
+| `Window.onOpened`, `onClosed` | `Viewer:81, 87` | Open, close and focus published as messages |
+
+### Vexplore's own threading, which phase 4 would refuse
+
+Phase 4 makes the processor refuse `volatile`, `Atomic*`, `java.util.concurrent` and functional-interface fields in a
+component. Today every one of these exists because a handler or an offload thread writes what the frame reads.
+
+- **`synchronized`:** `Destinator:52, 86`, `Dock:81`, `FolderPane:102`, `Hosts:56`, `Model:134` (FN-2's gate),
+  `Previewer:79, 113, 149, 174`, `RailView:97`, `Ui:546`.
+- **`volatile`:** `Destinator:32`, `FolderPane:40`, `Lens:60–68` (eight), `OpenMenu:55`, `Previewer:57, 58`,
+  `Ui:98, 100, 108, 111`, `Viewer:51`.
+- **`java.util.concurrent`:** `Actor:19, 46`, `Lens:24`, `Routes:10`.
+- **The model's listeners:** `Model.onChange` over `State.onCommit` (`Model:133`), heard at `Destinator:37`,
+  `FolderPane:79`, `Previewer:67`, `Recipes:115`, `Viewer:74`. In 0.2 `Model` is a component and the document is a
+  state topic, so FN-2's lock and version check go: one logic lane cannot deliver out of order. FN-20's thread-local
+  guard should go too, once a pushed selection is confirmed not to come back on `Table.SELECTED`.
+- **Not Vexplore's to port:** `remote/` (`RemoteFileSystem`, `RemoteProvider`, `Sftp`) keeps its locks and its reader
+  thread; it is I/O behind a job, the roadmap's "infrastructure, not an offence". `PictureViewer.Host`
+  (`Viewer:58`) is `vex-suite-common`'s, and moves when the suite does.
+
+### What can be done before the merge
+
+None of the message APIs exist on `develop`, so nothing above can be written against them yet. What survives the
+port, written now: each offload lambda turned into a function from a request record to a reply record, landed
+through `Model` the way `listed` is; and the tree's rows built as plain data from a `Place`, so the switch from
+`Source` to `CHILDREN` is small. Do not move Vexplore's poms to `0.2.0-SNAPSHOT` before the merge: the spike installs
+`vexelray-framework` and `vexelray-gui` at that version into the shared `~/.m2`.
