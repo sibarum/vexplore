@@ -3,7 +3,7 @@ package dev.sibarum.vexplore.core;
 import dev.vexelray.framework.api.Configuration;
 
 /**
- * What this module is made of: the {@link Editor} and the jobs that touch the disk.
+ * What this module is made of: the {@link Explorer} and the jobs that touch the disk.
  *
  * <p>The annotation processor sees only the sources of the module it is compiling, so when {@code -gui} compiles,
  * everything here is a class file it would never construct. This list is how it hears of them: {@code -gui}'s
@@ -11,7 +11,7 @@ import dev.vexelray.framework.api.Configuration;
  * here as if it were its own, and checks every message between them. A new component or job in this module goes on
  * this list, or nothing builds it.
  */
-@Configuration(components = Editor.class,
-        jobs = {FindPath.class, ReadSession.class, ListFolder.class, WriteSession.class})
+@Configuration(components = Explorer.class,
+        jobs = {FindPath.class, ReadSession.class, WriteSession.class})
 public final class Core {
 }

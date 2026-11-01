@@ -15,11 +15,20 @@ package dev.sibarum.vexplore;
  */
 final class Landmarks {
 
-    /** The navigator's path bar: type a folder to show it, or a file to show the folder it is in. */
+    /** The top bar's breadcrumb: the folder shown, as a chain to step back along. */
+    static final String CRUMBS = "crumbs";
+
+    /** The path field, in the breadcrumb's place while Ctrl+L has it: type a folder, or a file to show its folder. */
     static final String PATH = "path";
 
-    /** The navigator's tree. */
-    static final String TREE = "navigator";
+    /** The tree of places, at the left. */
+    static final String TREE = "tree";
+
+    /** The file list. */
+    static final String LIST = "list";
+
+    /** The Suggestion Rail, at the right. */
+    static final String RAIL = "rail";
 
     /** The status line, and its slot. */
     static final String STATUS = "status";

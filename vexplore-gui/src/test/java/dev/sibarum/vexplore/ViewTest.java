@@ -23,19 +23,18 @@ import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The whole application, built headless by the generated wiring (no window, no GPU) and driven through the same
  * messages a user's gestures send.
  *
- * <p>{@code VexelApplication.tree} runs the wiring as far as the tree and starts the components, so the editor and the
+ * <p>{@code VexelApplication.tree} runs the wiring as far as the tree and starts the components, so the explorer and the
  * jobs run on their own lanes here, exactly as in the window. The view runs in frames, and there is no loop to run
  * them, so the test runs them while it waits ({@code VexelApplication.frame}): this thread is the GUI thread. No window
  * opens, so the framework never says {@code WindowOpened} for the main one: no session is restored and no settings are
  * written, and this test leaves the user's own settings alone.
  *
- * <p>The test listens on the bus as one more subscriber, which is how it sees what the editor told the view. Every
+ * <p>The test listens on the bus as one more subscriber, which is how it sees what the explorer told the view. Every
  * part answers in its own time, so the test waits for what it asked for, running frames, rather than sleeping.
  */
 class ViewTest {
@@ -45,8 +44,7 @@ class ViewTest {
 
     private Shell shell;
     private VexploreAppWiring wiring;
-    private Navigator nav;
-    /** Every status line the editor sent, in order. */
+    /** Every status line the explorer sent, in order. */
     private final List<Object> said = new CopyOnWriteArrayList<>();
 
     @BeforeEach
@@ -57,7 +55,6 @@ class ViewTest {
         // comes. Taken back as late as WINDOW, so handing them over after the tree is built is in time.
         shell.dialogs(new Refusing());
         shell.bus().subscribe(Messages.STATUS_TOPIC, said::add);
-        nav = wiring.ui().navigator();
         cuts = Cuts.watch(shell.gui());
     }
 
@@ -112,32 +109,33 @@ class ViewTest {
         shell.bus().publish(Messages.GO_TOPIC, new Go(path.toString()));
     }
 
-    @Test
-    void itStartsWithNoFolderShown() {
-        assertNull(nav.folder());
+    private Path shown() {
+        return wiring.ui().shown();
     }
 
-    /** The tree asks for the folder shown, a job reads it, and the view answers the tree with its rows. */
     @Test
-    void showingAFolderListsItInTheTree() throws Exception {
-        Path file = Files.writeString(dir.resolve("a.txt"), "a").toAbsolutePath().normalize();
-        Files.createDirectory(dir.resolve("sub"));
-        go(dir);
-        eventually("a row for the file", () -> nav.hasRow(file));
-        assertTrue(nav.isFolder(dir.resolve("sub").toAbsolutePath().normalize()), "the listing said which is a folder");
+    void itStartsWithNoFolderShown() {
+        assertNull(shown());
+    }
+
+    @Test
+    void aTypedFolderIsShownInTheBreadcrumb() throws Exception {
+        Path sub = Files.createDirectory(dir.resolve("sub")).toAbsolutePath().normalize();
+        go(sub);
+        eventually("the folder", () -> sub.equals(shown()));
     }
 
     @Test
     void aTypedFileShowsTheFolderItIsIn() throws Exception {
         Path file = Files.writeString(dir.resolve("a.txt"), "a");
         go(file);
-        eventually("the folder", () -> dir.toAbsolutePath().normalize().equals(nav.folder()));
+        eventually("the folder", () -> dir.toAbsolutePath().normalize().equals(shown()));
     }
 
     @Test
     void nothingAtATypedPathIsSaidOnTheStatusLine() throws Exception {
         go(dir.resolve("gone"));
         eventually("the status line", () -> !said.isEmpty());
-        assertNull(nav.folder(), "nothing was shown");
+        assertNull(shown(), "nothing was shown");
     }
 }

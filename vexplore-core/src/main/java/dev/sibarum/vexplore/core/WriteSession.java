@@ -8,7 +8,7 @@ import java.nio.file.Path;
 
 /**
  * Keep the session for next time, on the offload lane: the settings store writes a file. Run only for its effect, so
- * it has no reply. The {@link Editor} sends one only when the session differs from the last it sent.
+ * it has no reply. The {@link Explorer} sends one only when the session differs from the last it sent.
  */
 @Job
 public final class WriteSession {

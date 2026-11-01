@@ -15,8 +15,8 @@ import dev.vexelray.framework.shell.VexelApplication;
  * order are all done for you.
  *
  * <p>What this application builds — a file navigator, which becomes the explorer — is in two modules. This one,
- * {@code -gui}, is the view: {@link Recipes}, one method per part, and the {@link View}, which shows what the editor
- * decides. {@code -core} is the controller: the editor, which decides, and the jobs that touch the disk. They talk by
+ * {@code -gui}, is the view: {@link Recipes}, one method per part, and the {@link View}, which shows what the explorer
+ * decides. {@code -core} is the controller: the explorer, which decides, and the jobs that touch the disk. They talk by
  * messages and nothing else ({@code Messages}, in {@code -core}). {@code VexploreAppWiring}, which builds all of it
  * in order, is generated from them and from the {@code @VexelApp} on {@code VexploreApp} while this module
  * compiles — so the facts below are stated once, here, and the wiring reads them.

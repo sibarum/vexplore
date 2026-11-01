@@ -32,12 +32,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The controller, alone: no window and no jobs. The {@link Editor} owns an inbox on a tick of this test's, as it will
+ * The controller, alone: no window and no jobs. The {@link Explorer} owns an inbox on a tick of this test's, as it will
  * own one on the framework's, and each test publishes what the view or a job would and runs the tick, then reads what
- * the editor sent. The jobs' replies are published by hand, which is what makes the interesting orders (a remembered
+ * the explorer sent. The jobs' replies are published by hand, which is what makes the interesting orders (a remembered
  * folder that has gone, a path with nothing at it) as easy to test as the common one.
  */
-class EditorTest {
+class ExplorerTest {
 
     @TempDir
     Path dir;
@@ -45,7 +45,7 @@ class EditorTest {
     private Fatal previous;
     private Atchung bus;
     private Tick tick;
-    /** Everything the editor sent, in order. */
+    /** Everything the explorer sent, in order. */
     private final List<Object> sent = new ArrayList<>();
 
     @BeforeEach
@@ -54,7 +54,7 @@ class EditorTest {
         Atchung.onFatal(Fatal.THROW);
         bus = Atchung.create();
         tick = bus.tick(null);
-        new Editor(tick.inbox("editor"));
+        new Explorer(tick.inbox("explorer"));
         Inbox heard = tick.inbox("heard");
         for (Topic<?> t : List.of(Messages.SHOW_FOLDER_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC,
                 Messages.RECALL_TOPIC, Messages.REMEMBER_TOPIC)) {

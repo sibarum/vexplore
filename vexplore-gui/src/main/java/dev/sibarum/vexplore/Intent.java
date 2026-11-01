@@ -15,16 +15,16 @@ record Intent(Command command) {
 
     /** Each command is a method on the view, so there is no switch to keep in step with this list. */
     enum Command {
-        FOCUS_PATH {
+        EDIT_PATH {
             @Override
             void on(View view) {
-                view.focusPath();
+                view.editPath();
             }
         },
-        FOCUS_TREE {
+        CLOSE_PATH {
             @Override
             void on(View view) {
-                view.focusTree();
+                view.closePath();
             }
         },
         ZOOM_IN {

@@ -1,15 +1,15 @@
 # Working in Vexplore
 
 Vexplore is a VexelRay desktop application, generated from `vexelray-framework`'s `vexel-desktop` template. It
-started as the template's reference application, a small tabbed text editor with a file navigator, and is being
-turned into something else. [README.md](README.md) is the tour: read its *How it is put together* section before
-changing anything, and `Messages.java` before adding a part.
+started as the template's reference application, a small tabbed text editor, and is being rebuilt into the file
+explorer the design describes, in the order [docs/rebuild.md](docs/rebuild.md) gives. [README.md](README.md) is the
+tour: read its *How it is put together* section before changing anything, and `Messages.java` before adding a part.
 
 ## Where things are
 
-- **Two modules.** `vexplore-core` is the controller: `Editor.java`, which makes every decision as declared steps
+- **Two modules.** `vexplore-core` is the controller: `Explorer.java`, which makes every decision as declared steps
   on one state, and the jobs that touch the disk. `vexplore-gui` is the view and the framework integration:
-  `View.java`, a `@View` on the GUI thread that shows what the editor decides and tells it what the person did, and
+  `View.java`, a `@View` on the GUI thread that shows what the explorer decides and tells it what the person did, and
   everything about the window. Run every `mvn` command from this folder, the parent of both.
 - **The parts talk by messages, and nothing else.** Every message is a record in `-core`'s `Messages.java`. A part
   never holds another part across lanes (the processor refuses it), so a new feature is a message, a mailbox
@@ -21,12 +21,12 @@ changing anything, and `Messages.java` before adding a part.
   it, the components and the jobs by an annotation processor while `-gui` compiles. Nobody writes it, so never create
   or edit a file of that name. After a build it is in `vexplore-gui/target/generated-sources/annotations/`, and it
   shows what is built in which phase.
-- **The editor's state changes only by its steps.** Everything it knows is one immutable `Editor.State` on a ledger,
-  and a step is a static method `(state, message, out) → next state`, declared in `Editor`'s constructor and run on
+- **The explorer's state changes only by its steps.** Everything it knows is one immutable `Explorer.State` on a ledger,
+  and a step is a static method `(state, message, out) → next state`, declared in `Explorer`'s constructor and run on
   each message it hears (`.on(topic, step)`). A step sends through its `Out` and never touches the disk, waits,
   or reads anything but its state and its message: the processor refuses one that does, and says what to do instead.
-  A new decision is a new step; a new thing the editor is in the middle of is a field of `State`, not a field of
-  `Editor`. Something that waits on the person or the disk is a chain (the template's closing was the example, in
+  A new decision is a new step; a new thing the explorer is in the middle of is a field of `State`, not a field of
+  `Explorer`. Something that waits on the person or the disk is a chain (the template's closing was the example, in
   history before the rebuild's M0): its step holds the run and a later step resumes it.
 - **`-core`'s `Core.java` lists its components and jobs.** The processor compiling `-gui` cannot see `-core`'s
   sources, so a component or job missing from that list is never built, with no error. Add every new one there. A
@@ -52,7 +52,7 @@ them even when a shortcut looks harmless:
 - **Nothing reflects.** No `Class.forName`, no runtime annotation reads, no reflective serialization. This compiles to
   a GraalVM native image, and the framework's wiring is generated at compile time so that nothing needs reflection.
 - **Nothing in the frame loop allocates, logs or blocks.** No disk, no network, no locks there.
-- **Vulkan, the window and present stay on the main thread.** The editor runs on the logic lane, the view (a
+- **Vulkan, the window and present stay on the main thread.** The explorer runs on the logic lane, the view (a
   `@View`) on the GUI thread in each frame, and disk work is a job on the offload lane. The view only shows and tells:
   a widget says what it did as a message, and a chord or menu item is declared with the message it sends, so no code
   of yours runs at a click. README's *Threading, in one paragraph* is the whole model. Jobs are in no order at all,

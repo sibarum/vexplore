@@ -1,72 +1,77 @@
 package dev.sibarum.vexplore;
 
+import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.style.Oklab;
 import dev.vexelray.gui.core.style.Palette;
 import dev.vexelray.gui.core.style.Relief;
+import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.core.style.Shading;
 import dev.vexelray.gui.core.style.Theme;
 
 /**
- * The palette, as anchors.
+ * Colour, decided once, from the Vexplore design system's tokens (its {@code tokens.json}; the token names are
+ * written beside each value here so a search for one finds both).
  *
- * <h2>A palette is a construction, not a list of colours</h2>
+ * <h2>The suite's palette, copied until the suite is ported</h2>
  *
- * <p>{@link Palette} takes a handful of anchors and derives the rest: surfaces are an even ladder from the page
- * at a fixed lightness step, and text is the ink blended towards the page at a fixed rate. That is the point --
- * every surface in the application stays in step with every other one for free, and a design change is a
- * number here rather than fifteen hex codes spread across the tree.
+ * <p>The anchors are {@code vex-suite-common}'s {@code SuiteLook}, which Vexplore and Rasterware share. That module is
+ * out of the v0.2 build until its viewer is ported, so they are copied here, value for value; when it is back, this
+ * takes {@code SuiteLook.THEME} again and keeps only the tokens below. 0.1 measured them against the handoff's colours
+ * (its framework notes, FN-6): the design system came after the handoff and replaces its teal with violet, because
+ * VexelRay IDE owns cyan in the suite.
  *
- * <p>So when a design has fifteen authored colours, the first job is to <b>measure them in Oklab</b> and find
- * out how many decisions they actually are. Usually far fewer, and the ones that do not fit the construction
- * are the interesting ones -- declare those as roles of your own, at their measured values, and note the gap
- * rather than absorbing it. A theme that silently rounds a designer's colour is a theme nobody can check.
+ * <h2>Violet is "you chose this", amber is "this is why you are seeing this"</h2>
  *
- * <p>What is here is a neutral dark starting point, and it is meant to be replaced. The two families are:
- * a cool near-black page with a neutral ink, and one accent. Anything the framework does not name --
- * a rule that has to read against a panel, an accent at its brightest -- goes at the bottom as its own role.
+ * <p><b>Violet</b> ({@code accent}) is the palette's accent <em>and</em> its action: a chosen chip, focus and the one
+ * filled button are all the person's own choice, so they share a hue. <b>Amber</b> ({@code anchor}) is not in the
+ * palette: it marks provenance only (a fresh file, "based on", a conflict) and is never a fill of a control. Rose
+ * ({@code danger}) is destructive and nothing else.
+ *
+ * <h2>Where the ladder lands</h2>
+ *
+ * <p>The surface ladder starts at {@code bg-0} and steps 0.03 in Oklab lightness, so rung 1 is {@code bg-1}, 2 is
+ * {@code card}, 3 is {@code raised}, 4 is {@code line}. The ink fades from {@code text-hi} so that rung 1 is
+ * {@code text-dim} and rung 2 {@code text-disabled}. The tokens between rungs are roles of their own, below.
  */
 final class Look {
 
-    // ---------------------------------------------------------------- anchors
+    // ---------------------------------------------------------------- anchors, from the tokens
 
-    /** The page: the colour behind everything, and what the frame clears to. */
-    private static final Oklab PAGE = Oklab.polar(0.2141, 0.0278, -82.48);
+    private static final Oklab PAGE = of(0x0e0c14);      // bg-0
+    private static final Oklab INK = of(0xece8f5);       // text-hi
+    private static final Oklab VIOLET = of(0xb08fff);    // accent
+    private static final Oklab DANGER = of(0xe06a7a);    // danger
 
-    /** Primary text. Neutral, so it does not tint every label in the application. */
-    private static final Oklab INK = Oklab.polar(0.9352, 0.0054, -73.70);
+    /** Lightness per rung. */
+    private static final double STEP = 0.03;
+    /** text-hi to text-dim is 0.387 of the way to the page; the next rung lands on text-disabled. */
+    private static final double FADE = 0.387;
+    private static final double SHADOW_ALPHA = 0.55;
 
-    /** The one chromatic decision: a hover wash, a selected row, a focus ring. */
-    private static final Oklab ACCENT = Oklab.polar(0.6600, 0.1245, -70.45);
+    /** Shadows are drawn in the ground itself (the visual guide's drag shadow is "in bg-0"). */
+    static final Palette PALETTE = new Palette(PAGE, STEP, INK, FADE, VIOLET, VIOLET, DANGER, PAGE, SHADOW_ALPHA);
 
-    /** The fill of a filled control, and the border of anything the accent has claimed. */
-    private static final Oklab ACTION = Oklab.polar(0.4801, 0.1041, -70.46);
+    static final Theme THEME = Theme.of(PALETTE, Shading.ON_DARK, Relief.STANDARD, false, false);
 
-    /** The accent's chroma taken round to red, so a confirmation dialog belongs to this palette. */
-    private static final Oklab DANGER = Oklab.polar(0.5894, 0.1448, 18.40);
+    // ---------------------------------------------------------------- tokens the ladders do not reach
 
-    /** Shadows: near-black, at the page's hue rather than a neutral grey. */
-    private static final Oklab DEPTH = Oklab.polar(0.1236, 0.0130, -86.65);
+    /** {@code chrome}: the top bar, the tree and the status bar; darker than {@code bg-1}, which no rung above is. */
+    static final Role CHROME = token(0x13101a);
 
-    /** How far one surface is from the next. Two steps from the page is a panel. */
-    private static final double STEP = 0.0271;
+    /** {@code bg-1}: the file list's body. */
+    static final Role LIST = token(0x15121d);
 
-    /** How fast the ink fades towards the page: text(1) is DIM, text(2) is FAINT. */
-    private static final double FADE = 0.202;
+    /** {@code rail}: the Suggestion Rail. */
+    static final Role RAIL = token(0x16131f);
 
-    /** How dark a shadow is. */
-    private static final double SHADOW_ALPHA = 0.60;
+    private static Role token(int rgb) {
+        Color c = Color.rgb(rgb);
+        return p -> c;
+    }
 
-    static final Palette PALETTE =
-            new Palette(PAGE, STEP, INK, FADE, ACCENT, ACTION, DANGER, DEPTH, SHADOW_ALPHA);
-
-    /**
-     * Lit surfaces on, letterpress off.
-     *
-     * <p>The edge light is what gives a dark panel its glint. Letterpress is the opposite call: it buys
-     * contrast for white-on-fill labels by spending crispness, which small text can least afford. Both are
-     * decisions to make against a real design rather than defaults to leave alone.
-     */
-    static final Theme THEME = Theme.of(PALETTE, Shading.ON_DARK, Relief.STANDARD, true, false);
+    private static Oklab of(int rgb) {
+        return Oklab.of(Color.rgb(rgb));
+    }
 
     private Look() {
     }

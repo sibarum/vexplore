@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.vexelray.canvas.Color;
+import dev.vexelray.gui.core.style.Oklab;
 import dev.vexelray.gui.core.style.Role;
 import org.junit.jupiter.api.Test;
 
@@ -51,6 +52,24 @@ class LookTest {
     void theAccentIsNotTheInk() {
         assertNotEquals(Look.THEME.color(Role.INK), Look.THEME.color(Role.ACCENT),
                 "the accent should be a colour, not the text shade");
+    }
+
+    /**
+     * The design system's tokens the ladder is meant to land on, each within 0.01 of Oklab lightness: rung 1 is
+     * {@code bg-1}, 2 is {@code card}, 3 is {@code raised}; the ink's first fade is {@code text-dim}. A token that
+     * drifts from its rung is a decision to make, not a rounding to absorb.
+     */
+    @Test
+    void theLadderLandsOnTheTokens() {
+        assertNear(0x15121d, Look.PALETTE.surface(1), "bg-1");
+        assertNear(0x1c1827, Look.PALETTE.surface(2), "card");
+        assertNear(0x221d2f, Look.PALETTE.surface(3), "raised");
+    }
+
+    private static void assertNear(int token, Color rung, String name) {
+        double want = Oklab.of(Color.rgb(token)).l();
+        double got = Oklab.of(rung).l();
+        assertTrue(Math.abs(want - got) < 0.01, name + ": the rung is " + got + ", the token " + want);
     }
 
     /** Rough perceived brightness -- enough to order two shades, which is all these assertions need. */

@@ -9,12 +9,11 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 ## Next
 
 The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
-[rebuild.md](rebuild.md). Its questions for the author come first.
+[rebuild.md](rebuild.md). M0 is done.
 
-- [ ] **M0: the template becomes an explorer.** The editor deleted, the handoff's regions in place, `Look.java`'s
-      palette anchors on the handoff's colours, measured in Oklab (see the note in that file about which authored
-      colours the construction can reproduce and which have to be declared).
-- [ ] **M1 to M8** and packaging, as [rebuild.md](rebuild.md) lists them.
+- [ ] **M1: browsing, read only**, in the shape [shape.md](shape.md) sketches: the places tree, the list, the
+      breadcrumb's and the status line's counts, Enter to open.
+- [ ] **M2 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later
 

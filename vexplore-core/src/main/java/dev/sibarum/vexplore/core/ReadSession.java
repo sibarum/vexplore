@@ -15,9 +15,9 @@ import java.util.Optional;
 /**
  * Read back what the last session remembered, and what the command line named, on the offload lane.
  *
- * <p>A job because the settings store is a file, and the {@link Editor}'s steps make no effects. It is also where a
+ * <p>A job because the settings store is a file, and the {@link Explorer}'s steps make no effects. It is also where a
  * remembered string becomes a path: one that is not a path any more is left out, because the person moved it and an
- * explorer should not complain about it, and every path is made absolute here, so the editor never asks where the
+ * explorer should not complain about it, and every path is made absolute here, so the explorer never asks where the
  * application started. That is in the reply too ({@code started}), for a session that showed no folder.
  */
 @Job

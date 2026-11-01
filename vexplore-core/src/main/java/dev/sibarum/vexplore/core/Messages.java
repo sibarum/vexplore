@@ -11,9 +11,9 @@ import java.util.Optional;
  *
  * <h2>Message passing is how the parts talk</h2>
  *
- * <p>The application is three kinds of part, and none of them holds another. The {@link Editor} decides; it owns the
+ * <p>The application is three kinds of part, and none of them holds another. The {@link Explorer} decides; it owns the
  * session, and changes it only by running its own declared steps. The view, in the {@code -gui} module, shows; it
- * owns the widgets. The jobs ({@link FindPath}, {@link ReadSession}, {@link WriteSession}, {@link ListFolder}) touch
+ * owns the widgets. The jobs ({@link FindPath}, {@link ReadSession}, {@link WriteSession}) touch
  * the disk, on the job lane. Each sends a record on a topic and the others hear it on their own lane, so no state is
  * shared and nothing needs a lock.
  *
@@ -34,15 +34,15 @@ public final class Messages {
     private Messages() {
     }
 
-    // ------------------------------------------------------------------ the view asks the editor
+    // ------------------------------------------------------------------ the view asks the explorer
 
-    /** The path bar was submitted, or the navigator asked to show a folder: what the text names is the editor's call. */
+    /** The path bar was submitted, or the navigator asked to show a folder: what the text names is the explorer's call. */
     public static final Topic<Go> GO_TOPIC = Topic.edge(Go.class);
 
     public record Go(String text) {
     }
 
-    // ------------------------------------------------------------------ the editor tells the view
+    // ------------------------------------------------------------------ the explorer tells the view
 
     /** Point the navigator at a folder, or list it again. */
     public static final Topic<ShowFolder> SHOW_FOLDER_TOPIC = Topic.edge(ShowFolder.class);
@@ -56,7 +56,7 @@ public final class Messages {
     public record Status(String message, boolean alert) {
     }
 
-    // ------------------------------------------------------------------ the editor and the jobs
+    // ------------------------------------------------------------------ the explorer and the jobs
 
     /** Why a path is being looked at, carried through the job so its answer can be acted on. */
     public enum Why {
@@ -105,32 +105,11 @@ public final class Messages {
     }
 
     /**
-     * Keep the session for next time ({@link WriteSession}): the folder shown. A value, so the editor tells whether it
+     * Keep the session for next time ({@link WriteSession}): the folder shown. A value, so the explorer tells whether it
      * changed with {@code equals}.
      */
     public static final Topic<Remember> REMEMBER_TOPIC = Topic.edge(Remember.class);
 
     public record Remember(Optional<Path> folder) {
-    }
-
-    // ------------------------------------------------------------------ the view and its jobs
-
-    /** List one level of the navigator's tree ({@link ListFolder}): the folder shown's, or a folder in it. */
-    public static final Topic<Listing> LISTING_TOPIC = Topic.edge(Listing.class);
-
-    /** {@code roots}: the level is the tree's top, the folder shown, rather than a folder opened in it. */
-    public record Listing(String tree, Path dir, boolean roots) {
-    }
-
-    /** One entry of a level: where it is, what its row says, and whether it opens. */
-    public record Item(Path path, String name, boolean folder) {
-    }
-
-    public static final Topic<Listed> LISTED_TOPIC = Topic.edge(Listed.class);
-
-    public record Listed(String tree, Path dir, boolean roots, List<Item> items) {
-        public Listed {
-            items = List.copyOf(items);
-        }
     }
 }

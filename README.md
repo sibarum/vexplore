@@ -2,10 +2,10 @@
 
 A file explorer that suggests instead of asking.
 
-A VexelRay desktop application, generated from the `vexel-desktop` template: a small text editor with tabs, a file
-navigator and Markdown in colour. It is the reference implementation of this stack, so every seam the framework
-offers is wired in the tree you are reading — and it is a working editor, so it is also something to change into
-whatever you are actually building.
+A VexelRay desktop application, being rebuilt on VexelRay 0.2 from the `vexel-desktop` template. The design
+([docs/design/README.md](docs/design/README.md)) is the requirement; [docs/rebuild.md](docs/rebuild.md) is the plan and
+the order the features come back in, and [docs/shape.md](docs/shape.md) the shape they come back into. **Where it
+stands:** M0, the window in the design's regions with the breadcrumb working and the tree, list and rail empty.
 
 ## Run it
 
@@ -23,7 +23,7 @@ the navigator shows the working directory.
 mvn compile exec:exec "-Dapp.args=C:/notes"               # open a folder (or files) named on the command line
 mvn compile exec:exec -Dapp.args=120                      # 120 frames and quit
 mvn compile exec:exec -Dautomation=0                      # a driving socket on a free port (see Taking a screenshot)
-mvn test                                                  # the editor, the jobs, Markdown, the real tree headless
+mvn test                                                  # the explorer, the jobs, the real tree headless
 ```
 
 ## A native executable
@@ -61,7 +61,7 @@ only the entries that name this program.
 `vexplore-gui/src/main/rc/vexplore.ico` is the application's mark, and it is one file read three ways: the window and its
 taskbar button wear it (`@VexelApp(icon = Vexplore.ICON)`; the pom puts it on the class path), and so does the
 title bar the framework draws; the `.exe` links it (`src/main/rc/vexplore.rc`), and so Explorer, a shortcut and a
-pinned button show it too. It starts as the framework's "new app" mark, whose source is `vexplore.svg` beside it.
+pinned button show it too. It is the suite icon canvas's Vexplore, whose source is `vexplore.svg` beside it.
 
 A second window — a viewer, a settings window — wears the window mark, on the taskbar and in its title bar, with
 nothing to write: declare it in a recipe with `windows.named(...)`, and the framework builds its tree and claims it
@@ -82,38 +82,27 @@ groups the button with other Java programs, and pinning it pins Java. The native
 
 | Keys | Does |
 | --- | --- |
-| Ctrl+L | the path bar: type a folder to show it, a file to open it, a new name to create it; Enter goes |
-| Ctrl+S | save |
-| Ctrl+W | close the tab (asks if it is unsaved) |
-| Ctrl+Tab, Ctrl+PageDown / Ctrl+Shift+Tab, Ctrl+PageUp | next / previous tab |
-| Ctrl+Shift+E | put the keyboard in the navigator |
-| Ctrl+F | find in the file (Enter / Shift+Enter step, Escape closes) |
-| Ctrl+Z / Ctrl+Y | undo / redo |
+| Ctrl+L | the path field, in the breadcrumb's place: type a folder to show it, or a file to show its folder; Enter goes, Esc puts the breadcrumb back |
 | Ctrl+= / Ctrl+- / Ctrl+0 | zoom |
 
-Selecting a file in the navigator opens it — a click, or walking the tree with the arrow keys, which keep the
-keyboard in the tree. A tab's menu has Save, Close, Close others, Close all and Reveal in navigator. A bullet in
-front of a tab's name means unsaved changes; closing anything unsaved asks first, and so does quitting.
-
-There is no file dialog, by choice: the path bar is the whole of "open", and it works the same in a test as in use. The
-framework brings native pickers (a `PickFile` message, answered by `Picked`) for a project that wants them.
+A click on a breadcrumb segment goes to that folder. `vexplore <path>` shows that folder, or the folder a file is in;
+with no path it shows the folder it showed last.
 
 ## How it is put together
 
 Two modules under this folder, split where the dependency edge falls, and four kinds of part that never hold each
-other: **components** (logic, reached only by messages: the editor runs on the framework's logic lane), **views**
+other: **components** (logic, reached only by messages: the explorer runs on the framework's logic lane), **views**
 (presentation, run on the GUI thread in each frame, `@View`), **jobs** (slow work on the offload lane, a request in
-and a reply out), and **recipes** (a part built once and handed to whoever takes it). The parts talk by messages, and every message is in one file. Read these in this order.
+and a reply out), and **recipes** (a part built once and handed to whoever takes it). The parts talk by messages, and
+every message is in one file. Read these in this order.
 
 **`vexplore-core`, the controller.** It builds against no widget, so its tests need no window.
 
 | File | What belongs in it |
 | --- | --- |
 | `Messages.java` | **every message the parts send each other**, grouped by who sends it to whom, each record beside its topic. A record crosses as itself, so it holds only immutable values; a list it holds is copied in its constructor. |
-| `Editor.java` | **the controller**: every decision (what a typed path names, whether a file is already open, when closing needs a question, what the status line says, what comes back next time) as a declared step on one immutable state, held by a ledger. Each message it hears runs one step; closing is a chain of them that waits on the person and the disk without anything waiting on a thread. It needs no lock, because only its steps change its state and they run one at a time. |
-| `Doc.java` | the shape of the session (which files, which in front, which unsaved, which folder) as one immutable value, part of the editor's state. |
-| `ReadFile.java`, `WriteFile.java`, `FindPath.java`, `CreateFile.java`, `ReadSession.java`, `WriteSession.java`, `ListFolder.java`, `MarkText.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
-| `TextFile.java`, `Markdown.java` | the policy between bytes and text, and Markdown as spans: pure functions. |
+| `Explorer.java` | **the controller**: every decision (which folder to show, what a typed path names, what comes back next time) as a declared step on one immutable state, held by a ledger. Each message it hears runs one step. It needs no lock, because only its steps change its state and they run one at a time. |
+| `FindPath.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
 | `Core.java` | the list of this module's component and jobs. The processor compiling `-gui` sees only `-gui`'s sources, so this list, named among `VexploreApp`'s starters, is how the wiring hears of them. A new component or job goes on it. |
 
 **`vexplore-gui`, the view and the framework integration.**
@@ -121,17 +110,16 @@ and a reply out), and **recipes** (a part built once and handed to whoever takes
 | File | What belongs in it |
 | --- | --- |
 | `Recipes.java` | **what this module builds.** One `@Provides` method per part; `VexploreAppWiring`, which builds them and the components and jobs in order, is generated while it compiles. A part's phase is the latest phase of anything it takes, so there is none to declare. |
-| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the editor, its jobs and the widgets as messages; the editor's messages shown (`AddTab` is a tab) and the person's gestures told (`Open`, `Close`, `Save`). It decides nothing. |
+| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`ShowFolder` is the breadcrumb) and the person's gestures told (`Go`). It decides nothing. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
-| `Ui.java` | the window. Holds no state; it shows what the view hands it. |
-| `Workspace.java`, `Buffer.java` | the tab bar and one `Buffer` per tab: a `TextField`, its spans, its save bookkeeping. |
-| `Navigator.java` | the path bar and the file tree. The tree asks for each level by message, and the view asks `ListFolder`, so the disk is read off the frame. |
+| `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |
 
 `Vexplore.java` is the entry point and the constants, and nothing else. The application edge — input, the
 clipboard, window memory, the clock, the frame loop with its wakes and its pacing, the dialogs, the command line and
 the shutdown order — is `vexelray-framework`'s. `Look.java`, `Type.java` and `Landmarks.java` are the three
-vocabularies: colour, size, and the names an automation script is allowed to depend on.
+vocabularies: colour (the design system's tokens), size (the handoff's regions in rem), and the names an automation
+script is allowed to depend on.
 
 ### Phases
 
@@ -152,32 +140,25 @@ Open `vexplore-gui/target/generated-sources/annotations/.../VexploreAppWiring.ja
 ### Threading, in one paragraph
 
 The GUI loop runs on the main thread, which owns Vulkan, the window and present, and nothing of this application's
-runs there but the view, which is presentation and nothing else (threading.md, T7.4). The editor runs on the
+runs there but the view, which is presentation and nothing else (threading.md, T7.4). The explorer runs on the
 framework's logic lane and the view on the GUI thread, in each frame's widget tick; each handles one message at a
-time and owns its state outright, so there is no lock anywhere in the application. The editor's state is changed only
-by its declared steps, which the processor reads: a step that touches the disk, waits or reaches outside itself does
-not compile. A widget says what it did as a message, which the view hears in the frame the input arrived, and a key
-chord or a menu item is declared with the message it sends, so nothing of the application's runs at the click. Every
-read and write of a file is a job on the offload lane, so a slow disk is a slow reply and never a frozen window (the
+time and owns its state outright, so there is no lock anywhere in the application. The explorer's state is changed
+only by its declared steps, which the processor reads: a step that touches the disk, waits or reaches outside itself
+does not compile. A widget says what it did as a message, which the view hears in the frame the input arrived, and a
+key chord or a menu item is declared with the message it sends, so nothing of the application's runs at the click.
+Every touch of the disk is a job on the offload lane, so a slow disk is a slow reply and never a frozen window (the
 lanes are named in the framework's `docs/threading.md`).
 
 Two things follow from messages, and both are written where they bite. **One sender's messages to one receiver keep
-their order**: so the view says a tab went unsaved before it asks to close it, and the editor already knows when the
-`Close` arrives. **Jobs are in no order at all**: so the restored session asks for one file at a time. The processor
-checks every message it can see: a mailbox's payload is deeply immutable, a topic carries one type, and no cycle of
-sends can block.
-
-### Spans
-
-`Markdown.spans` is a pure function from text to `Span`s (foreground, background, underline). After each edit
-the view asks `MarkText` for them on the offload lane, and applies the answer only if the field still says the text it
-was computed for. The text is never changed; the field draws the colours and moves each span with its text as you type. A `.txt` file gets none.
+their order.** **Jobs are in no order at all**: so a step that sends two requests never counts on which answer comes
+first. The processor checks every message it can see: a mailbox's payload is deeply immutable, a topic carries one
+type, and no cycle of sends can block.
 
 ### Motion
 
 The widgets animate only when handed a ramp, and without one they cut — so leaving the clock out costs no error,
-only a stiffer window. `Motion` makes the ramps from the framework's clock: the tabs slide, folders open, and a cue
-rings a tab you asked to open that was already open, or the status line when something was refused.
+only a stiffer window. `Motion` makes the ramps from the framework's clock, and a cue rings the status line when
+something was refused.
 
 ## The stack
 
@@ -188,7 +169,7 @@ happened at least once. If the build cannot resolve them, that is why.
 | --- | --- |
 | `vexelray-framework-api`, `vexelray-gui-core` | all `-core` builds against: the framework's annotations, and the values (a span, a colour, the settings store) and the bus that are safe from any thread |
 | `vexelray-framework-shell`, `-automation`, `-processor` | the application edge, the driving socket, and the processor that checks both modules and writes the wiring |
-| `vexelray-gui-widget` | the widgets: `Tabs`, `TreeView`, `TextField`, `SplitPane`, `StatusBar`, `Cues` |
+| `vexelray-gui-widget` | the widgets: `Breadcrumb`, `TreeView`, `Table`, `TextField`, `SplitPane`, `StatusBar`, `Cues` |
 | `vexelray-gui-krono` | the clock: every transition and cue |
 | `vexelray-gui-automation` | driving the running app the way a person does — a debugging instrument |
 | `tactroller-atchung` | keyboard and pointer input onto an atchung bus (brings `atchung-core`) |
@@ -241,8 +222,8 @@ ottermate --zoom 1.5 --dpi 2 --size 1600x900 shot big.png --launch ...   # pixel
 ottermate --size 36emx20em shot smallest.png --launch ...                # the minimum, in em
 ```
 
-The landmarks in `Landmarks.java` are the names a script uses: `await status.file notes.md` waits for a file to be in
-front, and `await path <folder>` for the navigator to be showing one. `ottermate help` lists every verb.
+The landmarks in `Landmarks.java` are the names a script uses: `await path <folder>` waits for a folder to be
+shown, and `click crumbs` reaches the breadcrumb. `ottermate help` lists every verb.
 
 ## Logging
 

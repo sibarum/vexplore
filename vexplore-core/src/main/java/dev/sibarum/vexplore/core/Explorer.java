@@ -25,7 +25,7 @@ import java.util.Optional;
 
 /**
  * The controller: every decision the application makes, as declared steps on one state, reached only by messages.
- * What is left of the template's editor once its files and tabs are gone: which folder the navigator shows, what the
+ * What the template's editor became once its files and tabs were gone: which folder is shown, what the
  * path bar names, and the folder brought back from the last session.
  *
  * <h2>A state, and the steps that change it</h2>
@@ -54,13 +54,13 @@ import java.util.Optional;
  * its messages arrive and where its steps run, on one thread with every other such component and never two at once.
  * So it declares no {@code @Subscribe}: what it hears is the list above, declared again as {@code @Hears} for the
  * processor, which cannot read a constructor (the lane checks at startup that the two agree). {@link Core} lists it, so
- * {@code -gui}'s generated wiring builds it; {@code EditorTest} builds it on a tick of its own, which is the same
+ * {@code -gui}'s generated wiring builds it; {@code ExplorerTest} builds it on a tick of its own, which is the same
  * thing without a window.
  */
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class})
 @Publishes({ShowFolder.class, Status.class, Find.class, Recall.class, Remember.class})
-public final class Editor {
+public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
     static final int CAPACITY = 256;
@@ -68,7 +68,7 @@ public final class Editor {
     // ------------------------------------------------------------------ the state
 
     /**
-     * Everything the editor knows, in one value.
+     * Everything the explorer knows, in one value.
      *
      * @param folder  the folder the navigator shows, or none yet
      * @param started the folder the application started in, shown when there is no other
@@ -102,22 +102,22 @@ public final class Editor {
 
     private final Ledger<State> ledger;
 
-    public Editor(Inbox inbox) {
+    public Explorer(Inbox inbox) {
         Ledger.Builder<State> b = Ledger.of(State.initial());
 
-        Step<State, WindowOpened> begin = b.step("begin", Editor::begin);
-        Step<State, Recalled> recalled = b.step("recalled", Editor::recalled);
-        Step<State, Go> go = b.step("go", Editor::go);
-        Step<State, Found> found = b.step("found", Editor::found);
+        Step<State, WindowOpened> begin = b.step("begin", Explorer::begin);
+        Step<State, Recalled> recalled = b.step("recalled", Explorer::recalled);
+        Step<State, Go> go = b.step("go", Explorer::go);
+        Step<State, Found> found = b.step("found", Explorer::found);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
                 .on(Messages.GO_TOPIC, go)
                 .on(Messages.FOUND_TOPIC, found);
-        ledger = b.build(inbox, "editor", CAPACITY);
+        ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
-    /** The editor's state, as last committed: for reading, from any thread. */
+    /** The explorer's state, as last committed: for reading, from any thread. */
     public State state() {
         return ledger.state().value();
     }

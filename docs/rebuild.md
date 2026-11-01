@@ -63,12 +63,14 @@ tabs, `Buffer`, `Markdown` and text-file jobs go: text is the IDE's, as it was i
 Each milestone ends with its retrospective section, as `CLAUDE.md` asks. It follows 0.1's plan, with 0.1's first two
 milestones split so the window is useful early. **(ruled 2026-11-01)** The order stands.
 
-**M0. The template becomes an explorer.** Delete the editor (tabs, buffers, Markdown, the text jobs); the layout's
-regions in place and empty; `Look` on the handoff's colours (teal is selection, amber is Vexplore suggesting),
-`Type` on Instrument Sans and IBM Plex Mono. **(ruled 2026-11-01)** Two steps, not one. First the deletion: the editor's parts go
-and nothing new comes in, leaving the navigator over an empty window, building and green. Then the new shape
-(`Explorer`'s `State`, the M1 messages, `Recipes`) proposed as a sketch of the records and steps, and built once
-agreed. Each reviews on its own, and a wrong shape is caught before the code is written against it.
+**M0. The template becomes an explorer.** *Done 2026-11-01.* Delete the editor (tabs, buffers, Markdown, the text
+jobs); the layout's regions in place and empty; `Look` on the design system's tokens, which replaced the handoff's
+colours (violet is the person's choice, amber is Vexplore suggesting; [shape.md](shape.md) says why);
+`Type` on the atlas's faces, since the design's Instrument Sans and IBM Plex Mono cannot be added
+(framework-notes FN-1). **(ruled 2026-11-01)** Two steps, not one. First the deletion: the editor's parts go and nothing
+new comes in, leaving the navigator over an empty window, building and green. Then the new shape (`Explorer`'s
+`State`, the M1 messages, `Recipes`) proposed as a sketch of the records and steps, and built once agreed. Each
+reviews on its own, and a wrong shape is caught before the code is written against it.
 
 **M1. Browsing, read only.** The tree of the user's folders and drives (`TreeView`, lazy), the breadcrumb, the list
 with its columns, sort and range selection, the status line. Enter opens: a folder navigates, a file goes to `Launch`.
