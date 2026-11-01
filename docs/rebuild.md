@@ -6,7 +6,7 @@ here. 0.1's README and code (`git show 47d0016:README.md`) say what 0.1 did, and
 (`git show 9ea1c65:docs/framework-notes.md`, *The v0.2 port inventory*) says which APIs went. This file says what the
 0.2 version is made of, in what order it comes back, and what it waits on.
 
-The decisions marked **(ask)** are the author's. Everything else is a proposal to be corrected.
+The author's rulings are marked **(ruled)**, with the date.
 
 ## The rule for the port
 
@@ -45,7 +45,7 @@ in a job. Measure it at fifty thousand before deciding otherwise.
 | `PlanAction` | `@Job` | reads the destination to say what an action would do, collide with, or leave alone |
 | `RunAction` | `@Source` | carries out a plan, sends progress as it goes, stops on a stop message; its reply is the journal entry |
 | `Undo` | `@Job` | reverses a journal entry |
-| `ReadPreview` | `@Job` | the dock's tiers: bytes, text, and a still picture as a `Feed`, as Rasterware's `ReadPicture` does |
+| `ReadPreview` | `@Job` | the dock's tiers: bytes, text, and a picture's thumbnail as a `Feed`, as Rasterware's `ReadThumbnail` does |
 | `WatchFolder` | `@Source` | one per shown folder, a `WatchService` telling the explorer what arrived |
 | `GitStatus` | `@Job` | `vex-suite-common-git`'s `Git.status`, crossed as `Status.text()` |
 | `Launch` | `@Job` | finds Rasterware or the IDE through `Apps.find` and starts it, or the shell's own open |
@@ -60,13 +60,15 @@ tabs, `Buffer`, `Markdown` and text-file jobs go: text is the IDE's, as it was i
 
 ## The order
 
-Each milestone ends with its retrospective section, as `CLAUDE.md` asks. Proposed to follow 0.1's plan, with 0.1's
-first two milestones split so the window is useful early. **(ask)** whether this order stands.
+Each milestone ends with its retrospective section, as `CLAUDE.md` asks. It follows 0.1's plan, with 0.1's first two
+milestones split so the window is useful early. **(ruled 2026-11-01)** The order stands.
 
 **M0. The template becomes an explorer.** Delete the editor (tabs, buffers, Markdown, the text jobs); the layout's
 regions in place and empty; `Look` on the handoff's colours (teal is selection, amber is Vexplore suggesting),
-`Type` on Instrument Sans and IBM Plex Mono. `Messages` and `Recipes` change shape here, so this slice is proposed in
-code before it is made.
+`Type` on Instrument Sans and IBM Plex Mono. **(ruled 2026-11-01)** Two steps, not one. First the deletion: the editor's parts go
+and nothing new comes in, leaving the navigator over an empty window, building and green. Then the new shape
+(`Explorer`'s `State`, the M1 messages, `Recipes`) proposed as a sketch of the records and steps, and built once
+agreed. Each reviews on its own, and a wrong shape is caught before the code is written against it.
 
 **M1. Browsing, read only.** The tree of the user's folders and drives (`TreeView`, lazy), the breadcrumb, the list
 with its columns, sort and range selection, the status line. Enter opens: a folder navigates, a file goes to `Launch`.
@@ -82,24 +84,32 @@ yet.
 *Choose folder…*. Marks kept across runs through the session jobs, which 0.1 never did.
 
 **M4. The Preview Dock and the row menu.** Tier 4 (hex, strings, entropy) first, since it is the floor, then text,
-then still images. The row menu through `ListView.action` / `CHOSEN`. A picture's hand-off goes to Rasterware.
+then pictures. The row menu through `ListView.action` / `CHOSEN`. **(ruled 2026-11-01)** A picture or a video shows
+only as its thumbnail in the dock, and opening its preview hands it to Rasterware. Vexplore has no viewer of its own,
+now or once the suite's is ported.
 
 **M5. Fresh files.** `WatchFolder`; a row that landed in the last few seconds tagged *new* in amber, never selected.
 
 **M6. Two Folders and the drag.** Two lists sharing a `PayloadType`, a drop between them through `ListView.LANDED`,
 copied or moved by drive and key, undoable. Then the design's part 0.1 never built: a status per row and suggestions
-from the comparison, with the rail beside both lists rather than swapped out. **(ask)** what "identical" means:
-size and time, or a hash.
+from the comparison, with the rail beside both lists rather than swapped out.
+
+**(ruled 2026-11-01)** What "identical" means, in two tiers. The listing decides first, for free: same size and same modified time
+is *identical*, a different size is *different*, and the newer side is named. Same size with a different time is
+*probably identical* and shown as such, not guessed. Content is read only where it changes what an action does: the
+rows a suggestion would skip as identical, or a conflict about to be resolved, are hashed by a `@Source` with a count
+and a cancel before the card offers the action. So a folder of videos never pays for hashing it was not about to act
+on, and nothing is skipped on a guess.
 
 **M7. Git.** The GIT column and the branch in the status line, asked after the listing so it never holds the rows up.
 
-**M8. Remote folders.** SFTP through the person's own `ssh`, as 0.1. One connection per host is what `@Destination`
-was ruled for: a part that is both `@Source` (what the server answers) and `@Destination` (what is asked of it), keyed
-by host. **(ask)** whether this comes back at all in the rebuild, or waits for the providers idea
-([ideas/providers.md](ideas/providers.md)).
-
 **Last. Packaging.** The native builds, the ffmpeg-record zip, `installer.json`'s `appId`, the scenes in
 `docs/scenes` rewritten against the new landmarks.
+
+**After the rebuild: remote folders.** **(ruled 2026-11-01)** SFTP waits for the providers idea
+([ideas/providers.md](ideas/providers.md)) rather than coming back as 0.1 had it. When it comes, one connection per
+host is what `@Destination` was ruled for: a part that is both `@Source` (what the server answers) and `@Destination`
+(what is asked of it), keyed by host.
 
 ## What it waits on
 
@@ -113,14 +123,11 @@ taken to the framework rather than worked around for long.
 | **Chips that wrap** | no wrap in `FlexLayout`; `Node.wrap` planned and paused | two chips to a row, counted, as 0.1 did |
 | **Progress** | no widget | a count in the rail's notice line, from `RunAction` |
 | **Greying a row menu's action per row** | trees have it, lists do not | an action that would do nothing says so on the card |
-| **Video, animated images, the suite's viewer** | the codec's players wait on the frame contract's step 5; `PictureViewer` and `Filmstrip` are out of vex-suite-common's build | the first frame only; a picture opens in Rasterware, and there is no viewer of Vexplore's own **(ask)**: bring it back when the suite's is ported, or leave viewing to Rasterware for good |
+| **Video, animated images, the suite's viewer** | the codec's players wait on the frame contract's step 5; `PictureViewer` and `Filmstrip` are out of vex-suite-common's build | nothing to wait for: the dock shows a thumbnail (a video's first frame) and Rasterware plays and views (ruled above) |
 | **A marked tree row** (destination counts, screen 02) | the tree has ticks, not fills | the counts on the rail only |
 
-## Questions for the author
+## The author's rulings
 
-1. Does the order above stand, or should Two Folders or previews come earlier?
-2. Remote folders in the rebuild, or after providers?
-3. Vexplore's own image viewer: back when the suite's is ported, or Rasterware only?
-4. "Identical" in Two Folders: size and time, or content?
-5. M0 changes `Messages`, `Recipes` and the state's shape at once. Propose it as one change, or the deletion first
-   and the new shape after?
+All of 2026-11-01: the order stands; remote folders after providers; pictures as thumbnails, viewed in Rasterware;
+"identical" in two tiers, content hashed only for the rows an action is about to act on (M6); M0 in two steps, the
+deletion and then the new shape as a sketch before it is built (M0).
