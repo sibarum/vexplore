@@ -8,10 +8,13 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 
 ## Next
 
-- [ ] Decide what this application is. It starts as an editor because an editor reaches every seam; keep the parts
-      yours needs and delete the rest. `Messages` is the place to start, since every way the parts talk is a record there.
-- [ ] Replace the palette anchors in `Look.java` with the design's, measured in Oklab. See the note in that file
-      about which authored colours the construction can reproduce and which have to be declared.
+The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
+[rebuild.md](rebuild.md). Its questions for the author come first.
+
+- [ ] **M0: the template becomes an explorer.** The editor deleted, the handoff's regions in place, `Look.java`'s
+      palette anchors on the handoff's colours, measured in Oklab (see the note in that file about which authored
+      colours the construction can reproduce and which have to be declared).
+- [ ] **M1 to M8** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later
 

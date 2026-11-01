@@ -41,7 +41,7 @@ Two rules would hold the contract together:
 
 - **Common semantics are the framework's, and they're defined once.** *Save as file* turns any **Content** into a
   real file, and the menu offers it on every leaf without any provider writing it. That is also how everything
-  reaches the suite: *Open in Pix* on a picture inside a zip or a page means saving it to a temporary file and then
+  reaches the suite: *Open in Rasterware* on a picture inside a zip or a page means saving it to a temporary file and then
   taking the disk route. *Copy reference* (a path, a URL or a qualified name) and *Open in…* are common in the same
   way.
 - **Writable is a capability, not an assumption.** Move, Delete and undo exist only where a provider says so. A
@@ -52,7 +52,7 @@ Two rules would hold the contract together:
 The contract doesn't belong in Concordance, which is a static source index (see
 [the page idea](web-page-as-folder.md#where-concordance-indexer-fits)). It doesn't belong in Vexplore either:
 Vexplore is a framework witness, and its reusable parts go upstream. The contract is suite-level, in
-`vex-suite-common` or a module of its own. Then the text editor's file pane or Pix's folder strip could browse the
+`vex-suite-common` or a module of its own. Then the text editor's file pane or Rasterware's folder strip could browse the
 same providers.
 
 **Two providers that aren't disk should exist before the contract is called finished.** The first is
