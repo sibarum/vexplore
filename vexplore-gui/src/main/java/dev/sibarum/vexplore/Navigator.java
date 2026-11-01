@@ -1,6 +1,5 @@
 package dev.sibarum.vexplore;
 
-import dev.sibarum.vexplore.core.ListFolder;
 import dev.sibarum.vexplore.core.Messages.Item;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
@@ -9,7 +8,6 @@ import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
-import dev.vexelray.gui.widget.Cue;
 import dev.vexelray.gui.widget.MenuAction;
 import dev.vexelray.gui.widget.TextField;
 import dev.vexelray.gui.widget.TreeView;
@@ -25,10 +23,9 @@ import java.util.Set;
  *
  * <h2>The path bar is the whole of "open"</h2>
  *
- * <p>There is no file dialog, by choice, though the framework offers native ones ({@code Dialogs}). The bar
- * stands in for all three of them: type a folder and the tree shows it, type a file and it opens, type a name that
- * is not there yet and it is created. Ctrl+L puts the keyboard in it; Enter goes. It is an ordinary single-line
- * {@link TextField}, named {@code path}, and its {@code SUBMITTED} message is the whole of its wiring.
+ * <p>Type a folder and the tree shows it; type a file and the tree shows the folder it is in. Ctrl+L puts the keyboard
+ * in it; Enter goes. It is an ordinary single-line {@link TextField}, named {@code path}, and its {@code SUBMITTED}
+ * message is the whole of its wiring.
  *
  * <h2>The tree asks, and is answered</h2>
  *
@@ -37,20 +34,17 @@ import java.util.Set;
  * entries ({@link #children}). What a row is drawn from comes with the answer, so drawing calls nothing, and whether a
  * row is a folder is known from the listing that drew it, never by looking at the disk again on the GUI thread.
  *
- * <p>Selecting a file opens it: a click, or walking the tree with the arrow keys, which keeps the keyboard in the tree
- * so the walk carries on. Enter opens a folder in place. Rows move rather than jump when a folder opens, because the
+ * <p>Enter opens a folder in place. Rows move rather than jump when a folder opens, because the
  * tree is handed {@link Motion#arrival}. There is one tree for the life of the window, and showing another folder
  * refreshes it, which asks again for every level it has listed.
  */
 final class Navigator {
 
     /** The rows' menu actions, by the id {@code TreeView.CHOSEN} carries back. */
-    static final String OPEN = "open";
     static final String SHOW = "show-folder";
     static final String COPY_PATH = "copy-path";
 
     private final Gui gui;
-    private final Motion motion;
     private final TextField path;
     private final TreeView<Path> tree;
     private final Node root;
@@ -58,19 +52,15 @@ final class Navigator {
     private final Set<Path> folders = new HashSet<>();
     /** The folder shown, or null for none yet. */
     private Path folder;
-    /** The file a reveal is walking to, to ring when the walk lands. */
-    private Path revealing;
 
     Navigator(Gui gui, Motion motion) {
         this.gui = gui;
-        this.motion = motion;
 
         path = new TextField(gui, "").name("path");
         path.node().width(Length.FILL).font(Type.UI).textSize(Type.SMALL);
         gui.landmark(Landmarks.PATH, path.node());
 
         tree = new TreeView<Path>(gui, "files").motion(motion.arrival)
-                .action(MenuAction.of(OPEN, "›", "Open"))
                 .action(MenuAction.of(SHOW, "»", "Show this folder"))
                 .action(MenuAction.of(COPY_PATH, "Copy path"));
         tree.node().width(Length.FILL).height(Length.grow(1f));
@@ -131,7 +121,7 @@ final class Navigator {
         for (Item item : listed.items()) {
             if (item.folder()) {
                 folders.add(item.path());
-                entries.add(TreeView.Entry.branch(item.path(), item.name()).hides(OPEN));
+                entries.add(TreeView.Entry.branch(item.path(), item.name()));
             } else {
                 entries.add(TreeView.Entry.leaf(item.path(), item.name()).hides(SHOW));
             }
@@ -157,32 +147,6 @@ final class Navigator {
     /** Open a folder's row in place. */
     void expand(Path item) {
         tree.expand(item);
-    }
-
-    /**
-     * Unfold the tree down to {@code file} and select its row; when the walk lands, {@link #revealed} rings it, since
-     * a row the walk scrolled to is one the eye has not found yet. A file outside the folder is left alone: there is
-     * no way down to it from here.
-     */
-    boolean reveal(Path file) {
-        List<Path> chain = ListFolder.chain(folder, file);
-        if (chain.isEmpty()) {
-            return false;
-        }
-        revealing = chain.getLast();
-        tree.revealPath(chain);
-        return true;
-    }
-
-    /** A walk ended: ring its row if it was the reveal's and it got there. */
-    void revealed(Object item, boolean reached) {
-        if (reached && item.equals(revealing)) {
-            Node row = tree.rowNode(revealing);
-            if (row != null) {
-                motion.cues.play(row, Cue.ring(gui.theme().color(Role.ACCENT), 1));
-            }
-            revealing = null;
-        }
     }
 
     /** Put the keyboard in the path bar, everything in it selected so typing replaces it. */

@@ -10,29 +10,20 @@ package dev.sibarum.vexplore;
  *
  * <p>Where you can, carry <em>state in the accessible name</em>. {@code await <landmark> <text>} is how a driver
  * waits for the application to be ready, and it needs no hook when readiness is declared somewhere the read-model
- * can already see. {@link #STATUS_FILE} works that way: its name is the front tab's title, dot and all, so
- * {@code await status.file notes.md} waits for a file to open and {@code await status.file •} for it to go
- * unsaved.
+ * can already see. {@link #PATH} works that way: its text is the folder shown, so {@code await path Downloads} waits
+ * for a folder to be shown.
  */
 final class Landmarks {
 
-    /** The tab bar and its pages. */
-    static final String TABS = "tabs";
-
-    /** What the editor area shows when no file is open. */
-    static final String EMPTY = "empty";
-
-    /** The navigator's path bar: type a folder to show it, a file to open it, a new name to create it. */
+    /** The navigator's path bar: type a folder to show it, or a file to show the folder it is in. */
     static final String PATH = "path";
 
     /** The navigator's tree. */
     static final String TREE = "navigator";
 
-    /** The status line, and its three slots. */
+    /** The status line, and its slot. */
     static final String STATUS = "status";
-    static final String STATUS_FILE = "status.file";
     static final String STATUS_MESSAGE = "status.message";
-    static final String STATUS_POSITION = "status.position";
 
     private Landmarks() {
     }

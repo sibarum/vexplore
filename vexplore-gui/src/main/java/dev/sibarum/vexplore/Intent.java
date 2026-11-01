@@ -15,30 +15,6 @@ record Intent(Command command) {
 
     /** Each command is a method on the view, so there is no switch to keep in step with this list. */
     enum Command {
-        SAVE_FRONT {
-            @Override
-            void on(View view) {
-                view.saveFront();
-            }
-        },
-        CLOSE_FRONT {
-            @Override
-            void on(View view) {
-                view.closeFront();
-            }
-        },
-        NEXT_TAB {
-            @Override
-            void on(View view) {
-                view.cycle(1);
-            }
-        },
-        PREVIOUS_TAB {
-            @Override
-            void on(View view) {
-                view.cycle(-1);
-            }
-        },
         FOCUS_PATH {
             @Override
             void on(View view) {

@@ -20,9 +20,6 @@ public final class WriteSession {
     }
 
     public void run(Remember r) {
-        settings.putString(ReadSession.FOLDER, r.folder().map(Path::toString).orElse(""))
-                .putList(ReadSession.FILES, r.files().stream().map(Path::toString).toList())
-                .putString(ReadSession.FRONT, r.front().map(Path::toString).orElse(""))
-                .save();
+        settings.putString(ReadSession.FOLDER, r.folder().map(Path::toString).orElse("")).save();
     }
 }

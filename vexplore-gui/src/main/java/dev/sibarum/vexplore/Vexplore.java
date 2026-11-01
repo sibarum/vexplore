@@ -14,7 +14,7 @@ import dev.vexelray.framework.shell.VexelApplication;
  * its wakes and its pacing, installing the dialogs, parsing the command line and closing everything in the right
  * order are all done for you.
  *
- * <p>What this application builds — a text editor with tabs and a file navigator — is in two modules. This one,
+ * <p>What this application builds — a file navigator, which becomes the explorer — is in two modules. This one,
  * {@code -gui}, is the view: {@link Recipes}, one method per part, and the {@link View}, which shows what the editor
  * decides. {@code -core} is the controller: the editor, which decides, and the jobs that touch the disk. They talk by
  * messages and nothing else ({@code Messages}, in {@code -core}). {@code VexploreAppWiring}, which builds all of it
@@ -22,8 +22,8 @@ import dev.vexelray.framework.shell.VexelApplication;
  * compiles — so the facts below are stated once, here, and the wiring reads them.
  *
  * <pre>
- * Vexplore                     the editor, on the folder it was last showing (or the working directory)
- * Vexplore &lt;path&gt;...          open these: a folder becomes the navigator's root, a file a tab
+ * Vexplore                     the folder it was last showing (or the working directory)
+ * Vexplore &lt;path&gt;              show this folder, or the folder this file is in
  * Vexplore &lt;frames&gt;            run a fixed number of frames and quit (a script, not a session)
  * Vexplore --key=value         override a setting for this launch
  * </pre>

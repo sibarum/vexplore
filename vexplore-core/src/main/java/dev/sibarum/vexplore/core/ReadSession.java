@@ -17,15 +17,13 @@ import java.util.Optional;
  *
  * <p>A job because the settings store is a file, and the {@link Editor}'s steps make no effects. It is also where a
  * remembered string becomes a path: one that is not a path any more is left out, because the person moved it and an
- * editor should not complain about it, and every path is made absolute here, so the editor never asks where the
+ * explorer should not complain about it, and every path is made absolute here, so the editor never asks where the
  * application started. That is in the reply too ({@code started}), for a session that showed no folder.
  */
 @Job
 public final class ReadSession {
 
     static final String FOLDER = "session.folder";
-    static final String FILES = "session.files";
-    static final String FRONT = "session.front";
 
     private final Settings settings;
     private final Launch launch;
@@ -36,8 +34,7 @@ public final class ReadSession {
     }
 
     public Recalled run(Recall r) {
-        return new Recalled(path(settings.getString(FOLDER, "")), paths(settings.getList(FILES)),
-                path(settings.getString(FRONT, "")), paths(launch.rest()), Path.of("").toAbsolutePath());
+        return new Recalled(path(settings.getString(FOLDER, "")), paths(launch.rest()), Path.of("").toAbsolutePath());
     }
 
     private static List<Path> paths(List<String> texts) {
