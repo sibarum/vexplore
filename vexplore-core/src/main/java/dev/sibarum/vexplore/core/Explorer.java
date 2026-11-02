@@ -44,11 +44,15 @@ import dev.sibarum.vexplore.core.Messages.Run;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Start;
+import dev.sibarum.vexplore.core.Messages.Stirred;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Undo;
+import dev.sibarum.vexplore.core.Messages.Unwatch;
+import dev.sibarum.vexplore.core.Messages.Unwatched;
+import dev.sibarum.vexplore.core.Messages.Watch;
 import dev.sibarum.vexplore.core.Messages.Why;
 import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.sibarum.vexplore.core.Suggestions.Pick;
@@ -56,6 +60,7 @@ import dev.sibarum.vexplore.core.Suggestions.Rail;
 import dev.sibarum.vexplore.core.Work.Dock;
 import dev.sibarum.vexplore.core.Work.Entry;
 import dev.sibarum.vexplore.core.Work.Running;
+import dev.sibarum.vexplore.core.Work.Watched;
 import dev.sibarum.vexplore.core.Work.Way;
 import dev.vexelray.framework.api.Component;
 import dev.vexelray.framework.api.Hears;
@@ -119,11 +124,11 @@ import java.util.Set;
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class,
-        Menu.class})
+        Menu.class, Stirred.class, Unwatched.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
-        Previewing.class, Docked.class, Handing.class})
+        Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -177,7 +182,19 @@ public final class Explorer {
                     started, armed, last, work);
         }
 
-        /** A folder's rows landed: nothing is picked in it yet, and of what was selected, only what is still there. */
+        /**
+         * The folder shown, asked for again because it changed on the disk: the selection and the rail's pick are
+         * kept, since the person did nothing. A download writing beside a pick half made never undoes it.
+         */
+        State stirring() {
+            return new State(folder, asked + 1, Set.of(), rows, today, zone, selected, pick, rail, started, armed,
+                    last, work);
+        }
+
+        /**
+         * A folder's rows landed: of what was selected, only what is still there. The pick is whatever asking left:
+         * none for a new folder or after a run, and the one being made when the folder only changed.
+         */
         State withRows(Listed l) {
             Set<Path> still = new HashSet<>();
             for (Row r : l.rows()) {
@@ -185,8 +202,8 @@ public final class Explorer {
                     still.add(r.path());
                 }
             }
-            return new State(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still, Pick.NONE,
-                    Rail.EMPTY, started, armed, last, work);
+            return new State(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still, pick, rail, started,
+                    armed, last, work);
         }
 
         State withSelected(Set<Path> value) {
@@ -265,6 +282,8 @@ public final class Explorer {
         Step<State, OpenIn> openIn = b.step("openIn", Explorer::openIn);
         Step<State, HandedOff> handedOff = b.step("handedOff", Explorer::handedOff);
         Step<State, Menu> menu = b.step("menu", Explorer::menu);
+        Step<State, Stirred> stirred = b.step("stirred", Explorer::stirred);
+        Step<State, Unwatched> unwatched = b.step("unwatched", Explorer::unwatched);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -290,7 +309,9 @@ public final class Explorer {
                 .on(Messages.PREVIEWED_TOPIC, previewed)
                 .on(Messages.OPEN_IN_TOPIC, openIn)
                 .on(Messages.HANDED_OFF_TOPIC, handedOff)
-                .on(Messages.MENU_TOPIC, menu);
+                .on(Messages.MENU_TOPIC, menu)
+                .on(Messages.STIRRED_TOPIC, stirred)
+                .on(Messages.UNWATCHED_TOPIC, unwatched);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -428,7 +449,51 @@ public final class Explorer {
             bytes += next.selected().contains(r.path()) ? r.size() : 0L;
         }
         out.send(Messages.SUMMARY_TOPIC, new Summary(l.rows().size(), next.selected().size(), bytes));
-        return dock(suggest(next, true, out), out);
+        return dock(suggest(watch(next, l, out), true, out), out);
+    }
+
+    /**
+     * Watch the folder whose rows just landed, unless it already is. Asked when they land rather than when they are
+     * asked for, so a folder that cannot be read is not watched; and then the one before it, no longer shown, is not.
+     */
+    private static State watch(State s, Listed l, Out out) {
+        Optional<Path> was = s.work().watched().folder();
+        if (l.problem() != null) {
+            if (was.isEmpty()) {
+                return s;
+            }
+            out.send(Messages.UNWATCH_TOPIC, new Unwatch());
+            return s.withWork(s.work().withWatched(Watched.NONE));
+        }
+        if (was.equals(Optional.of(l.folder()))) {
+            return s;
+        }
+        out.send(Messages.WATCH_TOPIC, new Watch(l.folder()));
+        return s.withWork(s.work().withWatched(new Watched(Optional.of(l.folder()))));
+    }
+
+    /**
+     * The folder shown changed on the disk: list it again, keeping the selection and the pick. Said of a folder no
+     * longer shown, or while another is being asked for, it is dropped, as a stale listing is.
+     */
+    private static State stirred(State s, Stirred m, Out out) {
+        if (!s.folder().equals(Optional.of(m.folder())) || !s.work().watched().folder().equals(s.folder())) {
+            return s;
+        }
+        State next = s.stirring();
+        out.send(Messages.LISTING_TOPIC, new Listing(next.asked(), m.folder()));
+        return next;
+    }
+
+    /**
+     * The watch ended. On the folder still watched (it was moved or removed), it is no longer: the listing its last
+     * {@link Stirred} asked for says so, and a folder shown again is watched again.
+     */
+    private static State unwatched(State s, Unwatched u, Out out) {
+        if (!s.work().watched().folder().equals(Optional.of(u.folder()))) {
+            return s;
+        }
+        return s.withWork(s.work().withWatched(Watched.NONE));
     }
 
     /**

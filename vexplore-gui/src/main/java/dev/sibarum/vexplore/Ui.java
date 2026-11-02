@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The window, in the handoff's regions: the framework's title bar; the top bar, a breadcrumb of the folder shown; the
@@ -217,7 +218,14 @@ final class Ui {
         }
         crumbs.path(chain);
         path.text(s.folder().toString());
+        // A row is a value, so a file that grew since the last listing is a new one, and the list would let it go. The
+        // folder listed again keeps what was selected, by path, where it stands.
+        Set<Path> held = list.selection().selection().stream().map(Row::path).collect(Collectors.toSet());
         list.items(s.rows());
+        List<Row> kept = s.rows().stream().filter(r -> held.contains(r.path())).toList();
+        if (!kept.isEmpty() && s.select().isEmpty()) {
+            list.selection().set(kept);
+        }
         List<Row> select = s.rows().stream().filter(r -> s.select().contains(r.path())).toList();
         if (!select.isEmpty()) {
             list.selection().set(select);

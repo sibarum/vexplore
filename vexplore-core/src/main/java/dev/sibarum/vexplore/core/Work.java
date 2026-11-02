@@ -24,12 +24,13 @@ import java.util.Optional;
  * @param aim     where a move or a copy would go
  * @param marks   the marks kept, newest first
  * @param dock    the preview asked for the dock
+ * @param watched the folder watched, and what landed in it lately
  */
 record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
-            Aim aim, List<Mark> marks, Dock dock) {
+            Aim aim, List<Mark> marks, Dock dock, Watched watched) {
 
     static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of(),
-            Dock.NONE);
+            Dock.NONE, Watched.NONE);
 
     Work {
         journal = Map.copyOf(journal);
@@ -123,40 +124,40 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withTrash(Path value) {
-        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock);
+        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock, watched);
     }
 
     /** Run {@code r} starts; its number is the next. */
     Work starting(Running r) {
-        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock);
+        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock, watched);
     }
 
     Work at(int done) {
-        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks, dock);
+        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks, dock, watched);
     }
 
     /** The run is over, and entry {@code number} is now {@code entry}. */
     Work landed(long number, Entry entry) {
         Map<Long, Entry> next = new HashMap<>(journal);
         next.put(number, entry);
-        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks, dock);
+        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks, dock, watched);
     }
 
     /** The run is over, and nothing is recorded: it did nothing. */
     Work idle() {
-        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock);
+        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock, watched);
     }
 
     Work withAim(Aim value) {
-        return new Work(trash, runs, running, entries, journal, value, marks, dock);
+        return new Work(trash, runs, running, entries, journal, value, marks, dock, watched);
     }
 
     Work withMarks(List<Mark> value) {
-        return new Work(trash, runs, running, entries, journal, aim, value, dock);
+        return new Work(trash, runs, running, entries, journal, aim, value, dock, watched);
     }
 
     Work withDock(Dock value) {
-        return new Work(trash, runs, running, entries, journal, aim, marks, value);
+        return new Work(trash, runs, running, entries, journal, aim, marks, value, watched);
     }
 
     /**
@@ -166,6 +167,19 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     record Dock(long ticket, Optional<Path> path) {
 
         static final Dock NONE = new Dock(0L, Optional.empty());
+    }
+
+    Work withWatched(Watched value) {
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, value);
+    }
+
+    /**
+     * The folder {@link WatchFolder} was asked to watch, or none. What it says of any other folder is about one no
+     * longer shown.
+     */
+    record Watched(Optional<Path> folder) {
+
+        static final Watched NONE = new Watched(Optional.empty());
     }
 
     /** Whether run {@code run} is the one in flight. */

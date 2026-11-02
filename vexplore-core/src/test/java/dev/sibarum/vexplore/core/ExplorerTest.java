@@ -80,7 +80,7 @@ class ExplorerTest {
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
-                Messages.HANDING_TOPIC)) {
+                Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -684,5 +684,71 @@ class ExplorerTest {
         assertFalse(desktop.alert());
         tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.RASTERWARE, "gone"));
         assertTrue(took(Status.class).getFirst().alert());
+    }
+
+    // ------------------------------------------------------------------ the folder watched
+
+    private void stir(Path folder) {
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(folder));
+    }
+
+    @Test
+    void aFolderIsWatchedOnceItsRowsLandAndNotWhenItCannotBeRead() {
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
+        assertTrue(seen(Messages.Watch.class).isEmpty(), "not before its rows land");
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
+        assertEquals(List.of(new Messages.Watch(dir)), took(Messages.Watch.class));
+        stir(dir);
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
+        assertTrue(took(Messages.Watch.class).isEmpty(), "already watched");
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("locked")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("locked"), List.of(), "Access is denied", TODAY,
+                ZoneOffset.UTC));
+        assertTrue(seen(Messages.Watch.class).isEmpty(), "what cannot be read is not watched");
+        assertEquals(1, took(Messages.Unwatch.class).size(), "and the folder left is not either");
+    }
+
+    @Test
+    void aStirListsTheFolderAgainAndKeepsTheSelectionAndThePick() {
+        showing(dir, video("a.mp4", 10), video("b.mov", 20), file("notes.txt", 5));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
+        sent.clear();
+        stir(dir);
+        Listing again = asked();
+        assertEquals(dir, again.folder());
+        tell(Messages.LISTED_TOPIC, new Listed(again.ticket(), dir, List.of(video("a.mp4", 4096), video("b.mov", 20),
+                file("notes.txt", 5), video("c.mkv", 30)), null, TODAY, ZoneOffset.UTC));
+        assertEquals(Set.of(path("a.mp4"), path("b.mov"), path("c.mkv")), reached(took(Suggested.class).getLast()),
+                "the pick stands, and reaches the video that landed");
+    }
+
+    @Test
+    void aStirFromAFolderNoLongerShownIsDropped() {
+        Path a = path("a");
+        Path b = path("b");
+        showing(a);
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(b));
+        sent.clear();
+        stir(a);
+        stir(b);
+        assertTrue(seen(Listing.class).isEmpty(), "a left, and b not watched until its rows land");
+        tell(Messages.LISTED_TOPIC, new Listed(2L, b, List.of(), null, TODAY, ZoneOffset.UTC));
+        sent.clear();
+        stir(a);
+        assertTrue(seen(Listing.class).isEmpty(), "the folder left");
+        stir(b);
+        assertEquals(b, asked().folder());
+    }
+
+    @Test
+    void aWatchThatEndedOnTheFolderShownIsAskedAgainWhenItIsShownAgain() {
+        showing(dir);
+        tell(Messages.UNWATCHED_TOPIC, new Messages.Unwatched(dir, "it was moved or removed"));
+        stir(dir);
+        assertTrue(seen(Listing.class).isEmpty(), "no longer watched");
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
+        assertEquals(List.of(new Messages.Watch(dir)), took(Messages.Watch.class));
     }
 }

@@ -478,6 +478,33 @@ public final class Messages {
     public record Ran(long run, Done done) {
     }
 
+    /**
+     * Watch the folder shown ({@link WatchFolder}). Unkeyed, so a new one stops the last: one folder is watched, the one
+     * shown.
+     */
+    public static final Topic<Watch> WATCH_TOPIC = Topic.edge(Watch.class);
+
+    public record Watch(Path folder) {
+    }
+
+    /** Watch nothing: the folder asked for could not be read, and the one before it is no longer shown. */
+    public static final Topic<Unwatch> UNWATCH_TOPIC = Topic.edge(Unwatch.class);
+
+    public record Unwatch() {
+    }
+
+    /** Why the watch on {@code folder} ended: stopped, or {@code problem} (the folder went), else null. */
+    public static final Topic<Unwatched> UNWATCHED_TOPIC = Topic.edge(Unwatched.class);
+
+    public record Unwatched(Path folder, String problem) {
+    }
+
+    /** Something in {@code folder} changed on the disk: list it again. Sent once a burst is over, not per file. */
+    public static final Topic<Stirred> STIRRED_TOPIC = Topic.edge(Stirred.class);
+
+    public record Stirred(Path folder) {
+    }
+
     /** Read back what the last session remembered, and what the command line named ({@link ReadSession}). */
     public static final Topic<Recall> RECALL_TOPIC = Topic.edge(Recall.class);
 

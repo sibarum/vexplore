@@ -446,3 +446,76 @@ Slice 4, the row menu, built 2026-11-02:
 - **An action chosen when it is already picked stays picked**, where its chip pressed again would let it go. One the
   rail does not offer for the selection (Rename, with several) is said rather than silently dropped. The menu lists
   every action whatever is selected, because a list's actions are declared once.
+
+## The messages M5 adds
+
+Proposed 2026-11-02, before any of it is written. M5 is fresh files, as rebuild.md has it: `WatchFolder`, and a row
+that landed in the last few seconds tagged *new* in amber, never selected. Screen 02 of the handoff is the picture: a
+file that landed seconds ago, tagged, while nothing about the selection or the rail moves. Two slices:
+
+1. **The list follows the disk.** `WatchFolder` watches the folder shown, and a change there lists it again, the
+   selection kept. A file that appears, goes or grows in another program shows without navigating away and back.
+2. **What landed is tagged.** A file created in the folder, or renamed or moved into it, is tagged `new` in amber
+   after its name for a while, then the tag fades. Never selected, never marked, and it moves no row: the tag is a
+   word in the name's cell, not a fill (amber is never a fill, `Look.ANCHOR`).
+
+### Time is the watcher's
+
+A step cannot read the clock, and there is no tick a component can hear (I looked: `Source`, `Job`, `BeforeFrame`,
+nothing). So the tag's end is told, not computed: **`WatchFolder` keeps the window.** It already waits on the disk on a
+thread of its own; it waits with a timeout (`WatchService.poll`), and when a file's window has passed it says the
+fresh set again without it. The explorer holds the set it was last told and never compares times. A test drives it
+with a fake clock passed to the run's loop.
+
+**How long:** 20 seconds is proposed. The handoff's picture says "landed 5 seconds ago", which is when it was drawn,
+not how long the tag lasts; five seconds is gone before a person has looked round from the program that saved it.
+The number is one constant, and yours to set.
+
+### The messages
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Watch(Path folder)` → `Unwatched(Path folder, String problem)` | `WatchFolder`, a `@Source`, unkeyed | watch this folder; a new `Watch` stops the last run, so there is one watched folder, the one shown. The reply says why the run ended: stopped, or the folder went (`problem`) |
+| `Unwatch()` | the source's stop | the folder shown is no folder (the drives, *This PC*): nothing to watch |
+| `Stirred(Path folder)` | edge, from the source | something in the folder changed: list it again. Sent once a burst has been quiet for 200 ms, at most once a second, so a download writing for a minute is one listing a second, not thousands |
+| `Freshness(Path folder, Set<Path> fresh)` | state, from the source | what landed in the window, sent when it grows or something leaves it |
+| `Fresh(Set<Path> paths)` | state, to the view | the rows to tag: the explorer's word, for the folder shown only |
+
+`Explorer.State` gains `fresh`, the set last told for the folder shown, emptied on navigating. The explorer sends
+`Watch` when a listing of a new folder lands (not when it is asked, so a folder that cannot be read is not watched),
+and `Unwatch` for one that is not a folder. A `Stirred` or `Freshness` for a folder no longer shown is dropped, as a
+stale listing is. A re-listing asks with the current selection as its `select`, so it is kept; a selected file
+that went is no longer selected, as the list would have it.
+
+### The tag, against the list
+
+`ListView` has one marked set and its look (the rail's reach uses it), and no second: a row cannot carry a tag of
+the application's own that the list redraws. Writing that up as **FN-12, a list row has one mark and no tag**, at
+the moment of the workaround: the name's face draws a `new` word in every row, hidden, and the view shows it on the
+rows `Fresh` names, among those realized, and on a row as it is realized. So the view keeps the set it was told,
+which it reads in the face, as it keeps the dock's feeds. The word is shown and hidden, so it fades in and out, and
+`Cuts` sees no cut.
+
+### Not in M5
+
+- **Telling Vexplore's own work from another program's.** A file Vexplore moved or copied into the folder shown is
+  tagged too: the watcher cannot tell who wrote it. The explorer could leave out what its last run made, but a
+  journal and a watch land in no order, so it waits until it is wanted.
+- **Fresh in the tree** (a folder that holds something new). Only the folder shown is watched.
+- **Suggestions from fresh files** (*the three that just landed*). The rail's Select has no *new* yet; worth asking
+  once the tag is seen.
+- **Two Folders' second list** is M6's, and watches its own folder then.
+
+## What M5 built differently
+
+Slice 1, the list follows the disk, built 2026-11-02:
+
+- **The watched folder is `Work.Watched`**, beside `Work.Dock`, as the dock's state went, not a field of `State`.
+- **A change keeps the pick, not only the selection.** `withRows` no longer puts the pick down itself: asking for
+  a new folder and the listing after a run already did, so a listing asked because the folder stirred
+  (`State.stirring`) keeps the rail as it was, and a video that lands joins *All videos here* while it is picked.
+- **The list keeps its selection by path.** A row is a value, so a file that grew between two listings is another
+  row, and the list's `retainAll` would let it go. `Ui.show` reselects what was selected by path, where it stands,
+  without scrolling to it.
+- **A folder moved or removed while shown** ends the run with a last `Stirred`, so the listing it asks says why it
+  cannot be read, and the explorer no longer counts it watched. Shown again, it is watched again.

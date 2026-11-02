@@ -111,6 +111,7 @@ every message is in one file. Read these in this order.
 | `ListFolder.java`, `ListPlaces.java`, `ListLevel.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
 | `Plan.java`, `Done.java`, `Operations.java` | what an action would do, what it did, and carrying it out: nothing overwritten, a delete into Vexplore's own trash, and an undo that is the reverse plan. |
 | `RunAction.java` | **the source** that carries out a plan, forward or back, on a thread of its own, with a count and a Stop. |
+| `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk. |
 | `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
 | `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
