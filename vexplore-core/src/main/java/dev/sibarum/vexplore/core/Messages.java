@@ -372,6 +372,33 @@ public final class Messages {
     public record Started(Path file, String problem) {
     }
 
+    /** The dock's Open in Rasterware: the file it previews, handed on. */
+    public static final Topic<OpenIn> OPEN_IN_TOPIC = Topic.edge(OpenIn.class);
+
+    public record OpenIn() {
+    }
+
+    /**
+     * Hand a file to Rasterware where it is installed, else to the desktop's opener ({@code -gui}'s {@code HandOff}).
+     * Its own reply, not {@link Started}: two jobs answering one record would share one topic, and the explorer could
+     * not tell which had opened it.
+     */
+    public static final Topic<Handing> HANDING_TOPIC = Topic.edge(Handing.class);
+
+    public record Handing(Path file) {
+    }
+
+    /**
+     * What a hand-off came to: {@code to} is what opened it, {@link #RASTERWARE} or {@link #DESKTOP}, and
+     * {@code problem} is why nothing did, or null.
+     */
+    public static final Topic<HandedOff> HANDED_OFF_TOPIC = Topic.edge(HandedOff.class);
+
+    public record HandedOff(Path file, String to, String problem) {
+        public static final String RASTERWARE = "Rasterware";
+        public static final String DESKTOP = "desktop";
+    }
+
     /** A folder nearby that already holds files of a kind: a place a move or a copy probably wants. */
     public record Dest(Path path, String reason, int count) {
     }

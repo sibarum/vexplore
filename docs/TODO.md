@@ -12,8 +12,8 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 [rebuild.md](rebuild.md). M0 to M3 are done.
 
 - [ ] **M4: the Preview Dock and the row menu**, in the four slices of [shape.md](shape.md)'s *The messages M4
-      adds*. Slices 1 and 2, the dock with tiers 4 (bytes) and 3 (text), and the thumbnails of slice 3 are done;
-      next is Open in Rasterware, then the row menu.
+      adds*. Slices 1 to 3 are done: the dock with tiers 4 (bytes), 3 (text) and 1 (thumbnails, with Open in
+      Rasterware); next is the row menu, slice 4, then the retrospective.
 - [ ] **M5 to M8** and packaging, as [rebuild.md](rebuild.md) lists them. M8 is the redesign: one of the three
       directions on the *Vexplore Redesign* canvas, chosen first.
 

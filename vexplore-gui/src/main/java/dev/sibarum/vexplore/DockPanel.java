@@ -10,6 +10,7 @@ import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.widget.Button;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,8 +40,11 @@ final class DockPanel {
     /** Cells in the entropy bar: one for each quarter of a bit per byte. */
     private static final int CELLS = 32;
 
-    /** The most a picture takes, in rem: the dock's height on a first run less its header, and most of its width. */
-    private static final float PICTURE_H = 15f;
+    /**
+     * The most a picture takes, in rem: the dock's height on a first run less its header and Open in Rasterware under
+     * it, and most of its width.
+     */
+    private static final float PICTURE_H = 12f;
     private static final float PICTURE_W = 36f;
 
     private final Node node;
@@ -56,6 +60,7 @@ final class DockPanel {
     private final List<Node> cells = new ArrayList<>();
     private final Node strings;
     private final Node picture;
+    private final Button open;
 
     DockPanel(Gui gui) {
         name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
@@ -96,7 +101,12 @@ final class DockPanel {
 
         picture = gui.box().corner(Length.rem(0.25f)).visible(false);
         gui.landmark(Landmarks.DOCK_PICTURE, picture);
-        Node stage = gui.row().width(Length.FILL).justify(Justify.CENTER).children(picture);
+        // Vexplore has no viewer of its own: a picture or a video is viewed in the suite's.
+        open = new Button(gui, "Open in Rasterware").name(Landmarks.DOCK_OPEN);
+        open.node().visible(false);
+        gui.landmark(Landmarks.DOCK_OPEN, open.node());
+        Node stage = gui.column().width(Length.FILL).gap(Length.rem(0.6f)).alignItems(AlignItems.CENTER)
+                .children(picture, open.node());
 
         Node content = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(0.8f))
                 .scroll(true, true).clip(true).children(note, stage, measure, body);
@@ -108,6 +118,11 @@ final class DockPanel {
 
     Node node() {
         return node;
+    }
+
+    /** Whether {@code address} is Open in Rasterware. */
+    boolean open(String address) {
+        return open.address().equals(address);
     }
 
     /** Show what the explorer says the dock holds. */
@@ -137,6 +152,7 @@ final class DockPanel {
         }
         // Hidden with its picture still on it, so it fades out rather than going blank first.
         picture.visible(feed != null);
+        open.node().visible(feed != null);
         measure.visible(bytes);
         if (bytes) {
             entropy.text(String.format(Locale.ROOT, "Entropy %.1f bits per byte", p.entropy()));

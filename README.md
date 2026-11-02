@@ -127,7 +127,8 @@ every message is in one file. Read these in this order.
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Columns.java` | the list's columns, drawn from a row alone. |
-| `DockPanel.java` | the Preview Dock under the list: one file's preview, or a note; every node built once. |
+| `DockPanel.java` | the Preview Dock under the list: one file's preview, or a note; every node built once. A picture or a video has Open in Rasterware under it. |
+| `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, and says which. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |
 | `RailPanel.java` | the Suggestion Rail: its chips and card, every node built once and relabelled. A chip pressed is said as its row and place. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |

@@ -381,7 +381,7 @@ row the selection, as the list does), and, from slice 3, `OpenIn()` for the dock
 
 | Request → reply | Part | Does |
 | --- | --- | --- |
-| `Handing(Path file)` → `Started(Path file, String problem)` | `HandOff`, a job, slice 3 | Rasterware where installed, else the desktop's opener; in `-gui`, because `Apps` is the framework shell's |
+| `Handing(Path file)` → `HandedOff(Path file, String to, String problem)` (was `Started`; see below) | `HandOff`, a job, slice 3 | Rasterware where installed, else the desktop's opener; in `-gui`, because `Apps` is the framework shell's |
 
 ### Not in M4
 
@@ -414,7 +414,7 @@ Slice 2, tier 3, built 2026-11-02:
 - **The text's lines and the dump's rows are one pool of sixty nodes**, drawn in ink for a text and dimmer for a dump.
   No message changed: `Preview.Tier` gained `TEXT`.
 
-Slice 3, tier 1, thumbnails, built 2026-11-02 (Open in Rasterware still to come):
+Slice 3, tier 1, thumbnails and Open in Rasterware, built 2026-11-02:
 
 - **`Preview` gained `Optional<Feed> picture`, as sketched, and nothing else**: the feed knows its own size, which is
   all the dock needs to draw it at its aspect. Tier 1 is two tags, `PICTURE` and `VIDEO`.
@@ -422,6 +422,13 @@ Slice 3, tier 1, thumbnails, built 2026-11-02 (Open in Rasterware still to come)
   FFmpeg sees only what looks like a container. One that promised a picture and gave none falls a tier with the
   decoder's reason beside what it is (`unknown binary · not a video`), as 0.1 said it.
 - **Decoded at 640 px on its longer side**, which the codec scales to as it decodes; drawn whole, at its aspect, at
-  most 15 by 36 rem, and never larger than its own pixels at the root's 16 px.
+  most 12 by 36 rem, so Open in Rasterware fits under it, and never larger than its own pixels at the root's 16 px.
 - **The view gives the feeds back**: it keeps the picture shown and the one it replaced, which may still be
   crossfading out, and closes the one before. A preview dropped as stale was never drawn and needs no closing.
+- **Open in Rasterware has its own reply, `HandedOff(Path file, String to, String problem)`**, not the sketch's
+  `Started`. `OpenFile` already answers `Started`, and a record is one topic, so the explorer could not have told the
+  two jobs apart, nor said that the desktop's opener stood in. `to` is `Rasterware` or `desktop`; the status says
+  `Opened a.png in Rasterware`, or that Rasterware isn't installed and the desktop's own program opened it.
+- **The button is under the picture, shown only with one**, and sends `OpenIn()`; the explorer hands on the file in
+  the dock, so the view names nothing. `HandOff` is in `-gui`, beside the view, since `Apps` is the framework
+  shell's, and asks for Rasterware as `pix`, its installer id until the suite's commands are renamed together.

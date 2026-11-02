@@ -263,6 +263,11 @@ final class Ui {
         return rail.go(address);
     }
 
+    /** Whether {@code address} is the dock's Open in Rasterware. */
+    boolean openIn(String address) {
+        return dock.open(address);
+    }
+
     /** Whether {@code address} is the card's Stop. */
     boolean stop(String address) {
         return rail.stop(address);

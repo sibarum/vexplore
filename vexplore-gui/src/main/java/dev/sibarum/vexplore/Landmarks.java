@@ -74,6 +74,9 @@ final class Landmarks {
     /** A picture's thumbnail, or a video's poster frame. */
     static final String DOCK_PICTURE = "dock.picture";
 
+    /** Open in Rasterware, under a picture or a poster frame. */
+    static final String DOCK_OPEN = "dock.open";
+
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
     static final String STATUS_COUNTS = "status.counts";

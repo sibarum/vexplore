@@ -13,6 +13,7 @@ import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
+import dev.sibarum.vexplore.core.Messages.OpenIn;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.PlacesWanted;
@@ -103,6 +104,7 @@ final class View {
     private final Sender<Rename> rename;
     private final Sender<RecallMark> recallMark;
     private final Sender<ForgetMark> forgetMark;
+    private final Sender<OpenIn> openIn;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
@@ -115,7 +117,7 @@ final class View {
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
-         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark,
+         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenIn> openIn,
          Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children,
          Sender<Intent> intents) {
         this.gui = gui;
@@ -134,6 +136,7 @@ final class View {
         this.rename = rename;
         this.recallMark = recallMark;
         this.forgetMark = forgetMark;
+        this.openIn = openIn;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -280,6 +283,8 @@ final class View {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {
             stop.send(new Stop());
+        } else if (ui.openIn(m.button())) {
+            openIn.send(new OpenIn());
         } else if (ui.choose(m.button())) {
             Path shown = ui.shown();
             pickFile.send(PickFile.folder(PICK_FOLDER, shown == null ? "" : shown.toString()));

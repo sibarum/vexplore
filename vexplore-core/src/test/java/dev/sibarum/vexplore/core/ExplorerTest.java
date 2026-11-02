@@ -79,7 +79,8 @@ class ExplorerTest {
                 Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
-                Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC)) {
+                Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
+                Messages.HANDING_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -630,5 +631,27 @@ class ExplorerTest {
         assertTrue(seen(Messages.Previewing.class).isEmpty());
         tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of()));
         assertEquals("Select one file to see it here", took(Messages.Docked.class).getLast().note());
+    }
+
+    @Test
+    void openInHandsOnTheFileInTheDockAndNothingWithNone() {
+        showing(dir, file("a.png", 10), file("b.png", 20));
+        tell(Messages.OPEN_IN_TOPIC, new Messages.OpenIn());
+        assertTrue(seen(Messages.Handing.class).isEmpty(), "nothing in the dock");
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.png"))));
+        tell(Messages.OPEN_IN_TOPIC, new Messages.OpenIn());
+        assertEquals(List.of(new Messages.Handing(path("a.png"))), took(Messages.Handing.class));
+    }
+
+    @Test
+    void aHandOffSaysWhatOpenedIt() {
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.RASTERWARE, null));
+        assertEquals("Opened a.png in Rasterware", took(Status.class).getFirst().message());
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.DESKTOP, null));
+        Status desktop = took(Status.class).getFirst();
+        assertEquals("Rasterware isn't installed, so a.png opened in the desktop's own program", desktop.message());
+        assertFalse(desktop.alert());
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.RASTERWARE, "gone"));
+        assertTrue(took(Status.class).getFirst().alert());
     }
 }

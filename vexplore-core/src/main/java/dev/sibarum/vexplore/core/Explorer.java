@@ -14,6 +14,8 @@ import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Found;
 import dev.sibarum.vexplore.core.Messages.Go;
+import dev.sibarum.vexplore.core.Messages.HandedOff;
+import dev.sibarum.vexplore.core.Messages.Handing;
 import dev.sibarum.vexplore.core.Messages.Is;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
@@ -21,6 +23,7 @@ import dev.sibarum.vexplore.core.Messages.Mark;
 import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
+import dev.sibarum.vexplore.core.Messages.OpenIn;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
 import dev.sibarum.vexplore.core.Messages.Planning;
@@ -114,11 +117,11 @@ import java.util.Set;
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
-        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class})
+        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
-        Previewing.class, Docked.class})
+        Previewing.class, Docked.class, Handing.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -257,6 +260,8 @@ public final class Explorer {
         Step<State, RecallMark> recallMark = b.step("recallMark", Explorer::recallMark);
         Step<State, ForgetMark> forgetMark = b.step("forgetMark", Explorer::forgetMark);
         Step<State, Previewed> previewed = b.step("previewed", Explorer::previewed);
+        Step<State, OpenIn> openIn = b.step("openIn", Explorer::openIn);
+        Step<State, HandedOff> handedOff = b.step("handedOff", Explorer::handedOff);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -279,7 +284,9 @@ public final class Explorer {
                 .on(Messages.RENAME_TOPIC, rename)
                 .on(Messages.RECALL_MARK_TOPIC, recallMark)
                 .on(Messages.FORGET_MARK_TOPIC, forgetMark)
-                .on(Messages.PREVIEWED_TOPIC, previewed);
+                .on(Messages.PREVIEWED_TOPIC, previewed)
+                .on(Messages.OPEN_IN_TOPIC, openIn)
+                .on(Messages.HANDED_OFF_TOPIC, handedOff);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -779,6 +786,29 @@ public final class Explorer {
             return s;
         }
         out.send(Messages.DOCKED_TOPIC, new Docked(Optional.of(p.preview()), ""));
+        return s;
+    }
+
+    /**
+     * The dock's Open in Rasterware: the file it previews, handed on. Vexplore has no viewer of its own, so a picture
+     * or a video is viewed in Rasterware. With no file in the dock (the selection moved on under the pointer) nothing is.
+     */
+    private static State openIn(State s, OpenIn o, Out out) {
+        s.work().dock().path().ifPresent(p -> out.send(Messages.HANDING_TOPIC, new Handing(p)));
+        return s;
+    }
+
+    /** What a hand-off came to, and what opened it: the desktop's opener is said, since Rasterware was asked. */
+    private static State handedOff(State s, HandedOff h, Out out) {
+        String name = ListFolder.name(h.file());
+        if (h.problem() != null) {
+            refuse(out, "Can't open " + name + ": " + h.problem());
+        } else if (HandedOff.RASTERWARE.equals(h.to())) {
+            out.send(Messages.STATUS_TOPIC, new Status("Opened " + name + " in Rasterware", false));
+        } else {
+            out.send(Messages.STATUS_TOPIC, new Status("Rasterware isn't installed, so " + name
+                    + " opened in the desktop's own program", false));
+        }
         return s;
     }
 

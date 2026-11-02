@@ -13,7 +13,7 @@ import dev.vexelray.os.NativePlatform;
  *
  * <p>The engine's seam, reached past the framework, whose own use of it (the About window's links) is not public
  * (framework-notes FN-4). Named for what it does rather than {@code Launch} as docs/shape.md had it, which is the
- * framework's command line ({@code dev.vexelray.framework.core.Launch}). Rasterware and VexelRay IDE come with M4.
+ * framework's command line ({@code dev.vexelray.framework.core.Launch}). Rasterware is {@code -gui}'s {@code HandOff}.
  */
 @Job
 public final class OpenFile {
