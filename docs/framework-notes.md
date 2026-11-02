@@ -153,3 +153,16 @@ its own for what a form toolkit calls an initial value.
 
 **For the framework:** `TextField.initial(String)`, applied when the field is shown and ignored while it is, or a way
 to read a node's visibility. Every form in a panel that is re-shown from a model meets it.
+
+## FN-11 · A list's row menu cannot grey or hide an action, as a tree's can 🔬
+
+The row menu (M4, slice 4) is Open and the rail's actions, declared once with `ListView.action`. Rename is for one
+file, so with several selected it should be greyed, as the rail drops its chip. A `TreeView.Entry` carries `hidden`
+and `greyed` for exactly this ("Rename on a header, Extract on what is not an archive"), and `MenuActions.offer`
+takes both sets, but `ListView` passes `Set.of()` for each, so every row's menu is the whole list whatever is
+selected. Vexplore lists Rename always, and the explorer says `Rename is not offered for these` when it is chosen
+with several: the person is told after choosing it rather than shown before.
+
+**For the framework:** what a tree's entry has, for a list: a function from the item (and the selection, since a
+right click on a selected row is about all of it) to the ids hidden and greyed, consulted as the menu opens. Any
+list whose menu holds an action for one item meets it.

@@ -31,6 +31,57 @@ reasons and the full method.
 
 ## Milestones
 
+## M4 · the Preview Dock and the row menu · 2026-11-02
+
+One finding (FN-11), small: a list's row menu is the same for every row, where a tree's can grey an action, so
+Rename is listed with several selected and refused when chosen. The rest of M4 went where the stack said it would.
+The codecs gave a picture and a video's poster frame as a `Feed` that the dock crossfades, `Apps.spawn` found the
+installed Rasterware, and `ListView.action` gave the menu its selection, its landmarks and its message with no code
+of the application's at the right click. Nothing in the dock needed a node built or removed after the first frame.
+
+### The shapes
+
+| | The promise | What happened | How it looked |
+| --- | --- | --- | --- |
+| FN-11 | A widget's item menu offers what applies to the item | A list's menu is declared once and offers everything | Rename on the menu with three files selected, refused when chosen |
+
+### What would stop each
+
+11. A list's menu consults the item and the selection for the ids hidden and greyed as it opens, as a tree's entry
+    already carries them (FN-11).
+
+### My own mistakes
+
+- **The sketch reused a reply type.** shape.md had `HandOff` answer `Started`, which `OpenFile` already answers; a
+  record is one topic, so the explorer could not have told them apart. It was approved that way and caught only when
+  the slice was built, and it cost the person a second decision. The rule: before a sketch names a reply, check
+  whether any other part already sends that record.
+- **A catch that blamed the wrong program.** `HandOff`'s first draft caught the desktop opener's failure in the same
+  block as Rasterware's spawn and said Rasterware had failed. Split before the first build, but only because it was
+  read back. Each fallback gets its own `try`.
+- **A test that heard nothing.** `ExplorerTest` records only the topics it subscribes to, and the first `Handing`
+  test failed because `HANDING_TOPIC` was not among them. A new topic the explorer sends goes on that list in the
+  same edit.
+- **Layout seen only in the screenshot, again.** The picture's limit was the dock's whole height, so Open in
+  Rasterware sat half below the edge; and an import placed by a one-line substitution landed out of order. As in M3,
+  the screenshot and the diff found what the build could not.
+- **Scripts that assumed.** One counted rows instead of waiting for the dock's name, one pressed keys after a click
+  had moved the focus to a button, and one waited on `crumbs`, whose name is empty, instead of `path`. Each cost a
+  run. The rule from M3 holds: wait on a landmark that names what is wanted, and look at `Landmarks.java` before
+  writing the wait.
+- **Rasterware's own window was never seen.** `ottermate --launch` ends the whole process tree, and the Rasterware it
+  spawned with it; the run proves the spawn and the status, not that Rasterware showed the picture.
+
+### What to keep exactly as it is
+
+- **The dock never builds a node after the first frame.** Sixty lines, thirty-two cells, one picture box and one
+  button, rewritten and shown or hidden: tiers 4, 3 and 1 changed nothing the Cuts check could catch.
+- **A preview is decoded only when the name or the first bytes promise one**, and falls a tier saying why when it
+  does not, so a renamed file never surprises and a text file never reaches FFmpeg.
+- **One reply per job.** `HandedOff` says what opened the file, which is what let the status say the fallback.
+- **The menu picks; the card carries out.** Every way into an action ends at the same card and the same button, so
+  there is one place that states the effect before anything happens.
+
 ## M3 · actions · 2026-11-02
 
 One finding (FN-10), and it is small: a field has no initial value, so filling it once took a message of its own.
