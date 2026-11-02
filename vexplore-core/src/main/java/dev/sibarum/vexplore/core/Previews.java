@@ -4,6 +4,11 @@ import dev.sibarum.vexplore.core.Preview.Tier;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -13,8 +18,9 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The preview ladder, from the floor up: 0.1's, a tier at a time (docs/shape.md, M4). For now a folder is a folder,
- * and every file is the bytes it is: a hex dump, the strings inside it, and how random it looks.
+ * The preview ladder, from the floor up: 0.1's, a tier at a time (docs/shape.md, M4). A folder is a folder, a file
+ * that decodes as text is its first lines, and every other file is the bytes it is: a hex dump, the strings inside it,
+ * and how random it looks.
  *
  * <p><b>A bounded read, and nothing executed.</b> {@link #SAMPLE} bytes from the start of the file, through a plain
  * input stream, are all that is read. The file is never mapped, and never opened by another program.
@@ -29,6 +35,15 @@ public final class Previews {
 
     /** Bytes shown in the hex dump, sixteen to a row. */
     static final int DUMP = 16 * 16;
+
+    /** Lines of a text the dock is given. */
+    static final int TEXT_LINES = 60;
+
+    /** Characters of a text line kept: past this a line is cut, since nobody reads that far across in a preview. */
+    static final int LINE_WIDTH = 240;
+
+    /** A tab, as the spaces it is drawn as: the atlas has no glyph for one. */
+    private static final String TAB = "    ";
 
     private static final int MIN_STRING = 6;
     private static final int MAX_STRINGS = 8;
@@ -57,10 +72,57 @@ public final class Previews {
         }
     }
 
-    /** The same, from bytes already in hand: what the tests use. */
+    /** The same, from bytes already in hand: what the tests use. Text if it decodes as text, its bytes if not. */
     static Preview of(Path path, byte[] sample, long size) {
+        boolean truncated = size > sample.length;
+        String text = decode(sample, truncated);
+        if (text != null) {
+            String identity = sample.length == 0 ? "empty file" : "UTF-8 text";
+            return new Preview(path, Tier.TEXT, identity, size, lines(text), entropy(sample), List.of(), truncated);
+        }
         return new Preview(path, Tier.BYTES, identify(sample), size, dump(sample), entropy(sample), strings(sample),
-                size > sample.length);
+                truncated);
+    }
+
+    /**
+     * The sample as text, or null if it is not: 0.1's rule. Text is valid UTF-8 with no control characters but the
+     * whitespace ones. A character cut in half by the end of the sample is no evidence against it, so when the read
+     * stopped short of the file's end an incomplete tail is forgiven.
+     */
+    static String decode(byte[] sample, boolean truncated) {
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT);
+        ByteBuffer in = ByteBuffer.wrap(sample);
+        CharBuffer out = CharBuffer.allocate(sample.length + 1);
+        CoderResult r = decoder.decode(in, out, !truncated);
+        if (r.isError() || in.hasRemaining() && !truncated) {
+            return null;
+        }
+        out.flip();
+        String s = out.toString();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x20 && c != '\n' && c != '\r' && c != '\t' && c != '\f' || c == 0x7f) {
+                return null;
+            }
+        }
+        return s;
+    }
+
+    /** The first {@link #TEXT_LINES} lines, without their line ends, tabs drawn as spaces and long lines cut. */
+    static List<String> lines(String text) {
+        List<String> lines = new ArrayList<>();
+        int start = 0;
+        for (int i = 0; i <= text.length() && lines.size() < TEXT_LINES; i++) {
+            if (i == text.length() || text.charAt(i) == '\n') {
+                if (i > start || i < text.length()) {
+                    String line = text.substring(start, i).replace("\r", "").replace("\t", TAB);
+                    lines.add(line.length() > LINE_WIDTH ? line.substring(0, LINE_WIDTH) : line);
+                }
+                start = i + 1;
+            }
+        }
+        return lines;
     }
 
     private static long count(Path dir) throws IOException {

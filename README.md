@@ -114,7 +114,7 @@ every message is in one file. Read these in this order.
 | `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
 | `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
-| `Preview.java`, `Previews.java`, `ReadPreview.java` | the Preview Dock's ladder: what one file is, from a bounded read of its first bytes, and the job that reads it. Nothing in a file is executed. |
+| `Preview.java`, `Previews.java`, `ReadPreview.java` | the Preview Dock's ladder: what one file is (its first lines if it is text, its bytes if not), from a bounded read, and the job that reads it. Nothing in a file is executed. |
 | `Kind.java`, `Bytes.java`, `Dates.java` | what a file is, a size and a time in a person's words: no disk and no widget, so they live here. |
 | `Core.java` | the list of this module's component and jobs. The processor compiling `-gui` sees only `-gui`'s sources, so this list, named among `VexploreApp`'s starters, is how the wiring hears of them. A new component or job goes on it. |
 

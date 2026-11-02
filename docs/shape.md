@@ -404,3 +404,12 @@ Slice 1, the dock and tier 4, built 2026-11-02:
   and never a width.
 - **What the bytes say comes first, and the dump under it**: entropy, its reading and the strings found, then the
   dump, which scrolls. With the dump first, a dock of sixteen rows pushed the summary out of sight.
+
+Slice 2, tier 3, built 2026-11-02:
+
+- **0.1's rule for text, unchanged**: valid UTF-8 and no control characters but whitespace, with a character cut in
+  half by the end of the sample forgiven only when the file goes on past it. An empty file is an empty text.
+- **Sixty lines, each cut at 240 characters, tabs as four spaces**: the atlas has no glyph for a tab. A long line is
+  clipped at the dock's edge rather than wrapped, so a line on screen is a line in the file.
+- **The text's lines and the dump's rows are one pool of sixty nodes**, drawn in ink for a text and dimmer for a dump.
+  No message changed: `Preview.Tier` gained `TEXT`.

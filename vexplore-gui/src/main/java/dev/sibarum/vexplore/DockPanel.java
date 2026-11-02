@@ -22,7 +22,8 @@ import java.util.Locale;
  *
  * <p>As the rail: a preview that changes rewrites what the nodes say and whether they show, and never builds or
  * removes one, so nothing changes in one frame. The body is a pool of lines as long as the longest a tier gives. The
- * entropy bar is a row of cells lit or not, so a new file changes colours, which fade, and never a width.
+ * entropy bar is a row of cells lit or not, so a new file changes colours, which fade, and never a width. A text's
+ * lines and a hex dump's rows are the same nodes; a text is drawn in ink, the dump dimmer.
  *
  * <h2>Nothing in it is executed</h2>
  *
@@ -30,8 +31,8 @@ import java.util.Locale;
  */
 final class DockPanel {
 
-    /** Lines the body holds: the hex dump's sixteen rows. */
-    private static final int LINES = 16;
+    /** Lines the body holds: as many as a text gives, which is more than the hex dump's sixteen rows. */
+    private static final int LINES = 60;
 
     /** Cells in the entropy bar: one for each quarter of a bit per byte. */
     private static final int CELLS = 32;
@@ -70,6 +71,7 @@ final class DockPanel {
             lines.add(line);
             body.append(line);
         }
+        gui.landmark(Landmarks.DOCK_LINE, lines.getFirst());
 
         entropy = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.INK).wordWrap(false);
         reading = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(false);
@@ -107,11 +109,14 @@ final class DockPanel {
         about.text(p == null ? "" : about(p));
         tag.text(p == null ? "" : p.tier().tag());
         boolean bytes = p != null && p.tier() == Preview.Tier.BYTES && !p.lines().isEmpty();
-        body.visible(bytes);
+        boolean text = p != null && p.tier() == Preview.Tier.TEXT;
+        body.visible((bytes || text) && !p.lines().isEmpty());
         for (int i = 0; i < LINES; i++) {
-            boolean there = bytes && i < p.lines().size();
-            lines.get(i).text(there ? p.lines().get(i) : "");
-            lines.get(i).visible(there);
+            boolean there = (bytes || text) && i < p.lines().size();
+            Node line = lines.get(i);
+            line.text(there ? p.lines().get(i) : "");
+            line.textColor(text ? Role.INK : Role.DIM);
+            line.visible(there);
         }
         measure.visible(bytes);
         if (bytes) {

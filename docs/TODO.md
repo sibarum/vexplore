@@ -12,7 +12,8 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 [rebuild.md](rebuild.md). M0 to M3 are done.
 
 - [ ] **M4: the Preview Dock and the row menu**, in the four slices of [shape.md](shape.md)'s *The messages M4
-      adds*. Slice 1, the dock and tier 4 (bytes), is done; next is tier 3, text.
+      adds*. Slices 1 and 2, the dock with tiers 4 (bytes) and 3 (text), are done;
+      next is tier 1, pictures and videos, with Open in Rasterware.
 - [ ] **M5 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later

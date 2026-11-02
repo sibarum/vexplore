@@ -64,6 +64,42 @@ class PreviewsTest {
     }
 
     @Test
+    void aFileThatDecodesAsTextIsItsFirstLines() throws Exception {
+        Path f = Files.writeString(dir.resolve("notes.md"), "# Kiln\r\n\tcone 6\n\nhold 10 min · ±5°\n");
+        Preview p = Previews.of(f);
+        assertEquals(Tier.TEXT, p.tier());
+        assertEquals("UTF-8 text", p.identity());
+        assertEquals(List.of("# Kiln", "    cone 6", "", "hold 10 min · ±5°"), p.lines(),
+                "no line ends, tabs as spaces, and no line after the last newline");
+        assertTrue(p.strings().isEmpty());
+    }
+
+    @Test
+    void aControlCharacterOrBadUtf8MakesItBytes() {
+        byte[] nul = "plain\u0000text".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(Tier.BYTES, Previews.of(dir.resolve("a"), nul, nul.length).tier());
+        byte[] bad = {'o', 'k', (byte) 0xC3, 'x'};
+        assertEquals(Tier.BYTES, Previews.of(dir.resolve("b"), bad, bad.length).tier());
+    }
+
+    @Test
+    void aCharacterCutByTheSampleIsForgivenOnlyWhenTheFileGoesOn() {
+        byte[] cut = {'c', 'a', 'f', (byte) 0xC3};
+        assertEquals(Tier.TEXT, Previews.of(dir.resolve("a"), cut, 100).tier(), "the rest of it is past the sample");
+        assertEquals(Tier.BYTES, Previews.of(dir.resolve("b"), cut, cut.length).tier(), "the file ends there");
+    }
+
+    @Test
+    void aLongTextIsCutToWhatTheDockShows() {
+        String text = ("x".repeat(Previews.LINE_WIDTH + 50) + "\n").repeat(Previews.TEXT_LINES + 20);
+        List<String> lines = Previews.lines(text);
+        assertEquals(Previews.TEXT_LINES, lines.size());
+        assertEquals(Previews.LINE_WIDTH, lines.getFirst().length());
+        byte[] none = new byte[0];
+        assertEquals("empty file", Previews.of(dir.resolve("e"), none, 0).identity());
+    }
+
+    @Test
     void aFileThatIsNotThereIsSaidNotThrown() {
         Preview p = Previews.of(dir.resolve("gone.bin"));
         assertTrue(p.identity().startsWith("unreadable: "));

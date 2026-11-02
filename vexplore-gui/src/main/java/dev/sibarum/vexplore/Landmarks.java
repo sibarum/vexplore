@@ -68,6 +68,9 @@ final class Landmarks {
     static final String DOCK_TAG = "dock.tag";
     static final String DOCK_NOTE = "dock.note";
 
+    /** The body's first line: a text's first line, or the hex dump's first row. */
+    static final String DOCK_LINE = "dock.line";
+
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
     static final String STATUS_COUNTS = "status.counts";
