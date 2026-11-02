@@ -93,7 +93,8 @@ strings, entropy) first, since it is the floor, then text, then pictures. The ro
 `CHOSEN`. **(ruled 2026-11-01)** A picture or a video shows only as its thumbnail in the dock, and opening its preview
 hands it to Rasterware. Vexplore has no viewer of its own, now or once the suite's is ported.
 
-**M5. Fresh files.** `WatchFolder`; a row that landed in the last few seconds tagged *new* in amber, never selected.
+**M5. Fresh files.** *Done 2026-11-02, in two slices ([shape.md](shape.md)).* `WatchFolder`; a row that landed in
+the last twenty seconds tagged *new* in amber, never selected.
 
 **M6. Two Folders and the drag.** Two lists sharing a `PayloadType`, a drop between them through `ListView.LANDED`,
 copied or moved by drive and key, undoable. Then the design's part 0.1 never built: a status per row and suggestions
@@ -149,6 +150,7 @@ taken to the framework rather than worked around for long.
 | **Greying a row menu's action per row** | trees have it, lists do not | an action that would do nothing says so on the card |
 | **Video, animated images, the suite's viewer** | the codec's players wait on the frame contract's step 5; `PictureViewer` and `Filmstrip` are out of vex-suite-common's build | nothing to wait for: the dock shows a thumbnail (a video's first frame) and Rasterware plays and views (ruled above) |
 | **A marked tree row** (destination counts, screen 02) | the tree has ticks, not fills | the counts on the rail only |
+| **A second mark on a list row** (M5's *new* tag) | a list marks one set, the rail's reach | `Tags` beside the list (FN-12) |
 
 ## The author's rulings
 

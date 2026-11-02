@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * What the explorer has carried out and can take back, and the run in flight: a field of its {@code State}, changed
@@ -174,12 +175,16 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     /**
-     * The folder {@link WatchFolder} was asked to watch, or none. What it says of any other folder is about one no
-     * longer shown.
+     * The folder {@link WatchFolder} was asked to watch, or none, and what it last said landed there. What it says of
+     * any other folder is about one no longer shown.
      */
-    record Watched(Optional<Path> folder) {
+    record Watched(Optional<Path> folder, Set<Path> fresh) {
 
-        static final Watched NONE = new Watched(Optional.empty());
+        static final Watched NONE = new Watched(Optional.empty(), Set.of());
+
+        Watched {
+            fresh = Set.copyOf(fresh);
+        }
     }
 
     /** Whether run {@code run} is the one in flight. */

@@ -6,6 +6,7 @@ import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Docked;
+import dev.sibarum.vexplore.core.Messages.Fresh;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
@@ -319,6 +320,12 @@ final class View {
             fading = shown;
             shown = feed;
         }
+    }
+
+    /** What landed in the folder shown lately: tagged new in the list, never selected. */
+    @Subscribe
+    public void fresh(Fresh m) {
+        ui.fresh(m.paths());
     }
 
     /** The marks kept: the rail lists them. */

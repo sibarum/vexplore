@@ -50,7 +50,8 @@ import java.util.stream.Collectors;
  * <p>Every label here says what the explorer last told the view, and the view tells it ({@link #show},
  * {@link #counts}, {@link #status}). Nothing is remembered here to be shown later, which is the rule worth keeping as
  * this grows: a label that remembers a value can disagree with the session. The widgets keep their own (the list's
- * selection, which levels of the tree are open), and say what changed as messages.
+ * selection, which levels of the tree are open), and say what changed as messages. {@link Tags} is one of those: the
+ * list's second marked set, which the list cannot hold itself (framework-notes FN-12).
  *
  * <h2>The path field takes the breadcrumb's place</h2>
  *
@@ -89,6 +90,7 @@ final class Ui {
     private final TextField path;
     private final TreeView<Spot> tree;
     private final Table<Row> list;
+    private final Tags tags = new Tags();
     private final RailPanel rail;
     private final DockPanel dock;
     private final StatusBar status;
@@ -118,7 +120,7 @@ final class Ui {
         tree = new TreeView<Spot>(gui, Landmarks.TREE).motion(motion.arrival);
         tree.node().width(Length.FILL).height(Length.FILL);
         gui.landmark(Landmarks.TREE, tree.node());
-        list = new Table<>(gui, Columns.ROW_REM, Columns.of()).name(Landmarks.LIST)
+        list = new Table<>(gui, Columns.ROW_REM, Columns.of(tags)).name(Landmarks.LIST)
                 .headers(Type.MONO, Type.SMALL, Role.DIM);
         list.node().width(Length.FILL).height(Length.FILL);
         gui.landmark(Landmarks.LIST, list.node());
@@ -231,6 +233,14 @@ final class Ui {
             list.selection().set(select);
             list.rows().reveal(select.getFirst());
         }
+    }
+
+    /**
+     * The rows to tag new: what landed lately, tagged rather than marked, since the rail's reach is the list's one marked
+     * set (framework-notes FN-12).
+     */
+    void fresh(Set<Path> paths) {
+        tags.mark(paths, list.rows().realizedItems().stream().map(Row::path).collect(Collectors.toSet()));
     }
 
     /** The rows a {@code Table.Selected} names, as the paths they are. */

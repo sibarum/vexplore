@@ -166,3 +166,18 @@ with several: the person is told after choosing it rather than shown before.
 **For the framework:** what a tree's entry has, for a list: a function from the item (and the selection, since a
 right click on a selected row is about all of it) to the ids hidden and greyed, consulted as the menu opens. Any
 list whose menu holds an action for one item meets it.
+
+## FN-12 · A list row has one mark and no tag 🔬
+
+Fresh files (M5, slice 2) tag a row that landed lately with the word *new* in amber after its name, for twenty
+seconds. `ListView.marks` is the one fact a list holds about a row that is not a choice, and the rail's reach already
+uses it (a violet wash). There is no second set, and a row's face is built once, from its item, so it cannot redraw
+itself when something other than the item changes. Vexplore's `Tags` stands in: each name cell builds its tag hidden
+or shown and hands the node over, keyed by path, and a new set shows and hides the tags of the rows realized, pruned
+by `realizedItems()`, as ListView's own javadoc asks of anything that hangs state off a row. It is `marks` again,
+written outside the list.
+
+**For the framework:** more than one marked set, each with its look, or a per-row tag the list draws: told as data,
+the whole set each time, worn by a row realized later, as `marks` is. Two-folder comparison (M6) will want a third
+(*newer here*, *only here*), so the shape is a map from a mark's name to its set and its look, rather than a second
+field.

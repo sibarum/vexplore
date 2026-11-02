@@ -309,6 +309,18 @@ public final class Messages {
     public record Docked(Optional<Preview> preview, String note) {
     }
 
+    /**
+     * The rows to tag <em>new</em>: what landed in the folder shown lately, by path. Tagged, never selected or marked.
+     * The latest is all that matters.
+     */
+    public static final Topic<Fresh> FRESH_TOPIC = Topic.state(Fresh.class);
+
+    public record Fresh(Set<Path> paths) {
+        public Fresh {
+            paths = Set.copyOf(paths);
+        }
+    }
+
     public static final Topic<Naming> NAMING_TOPIC = Topic.edge(Naming.class);
 
     public record Naming(String name) {
@@ -503,6 +515,18 @@ public final class Messages {
     public static final Topic<Stirred> STIRRED_TOPIC = Topic.edge(Stirred.class);
 
     public record Stirred(Path folder) {
+    }
+
+    /**
+     * What landed in {@code folder} lately ({@link WatchFolder}), the whole set each time it grows or something leaves
+     * it. A state topic: only the latest matters.
+     */
+    public static final Topic<Freshness> FRESHNESS_TOPIC = Topic.state(Freshness.class);
+
+    public record Freshness(Path folder, Set<Path> fresh) {
+        public Freshness {
+            fresh = Set.copyOf(fresh);
+        }
     }
 
     /** Read back what the last session remembered, and what the command line named ({@link ReadSession}). */

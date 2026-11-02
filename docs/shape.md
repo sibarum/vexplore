@@ -519,3 +519,15 @@ Slice 1, the list follows the disk, built 2026-11-02:
   without scrolling to it.
 - **A folder moved or removed while shown** ends the run with a last `Stirred`, so the listing it asks says why it
   cannot be read, and the explorer no longer counts it watched. Shown again, it is watched again.
+
+Slice 2, the tag, built 2026-11-02:
+
+- **As sketched: `Freshness` from the source, `Fresh` to the view, twenty seconds.** The fresh set is
+  `Work.Watched.fresh`, and every change of the watched folder goes through one step's helper, which tells the view
+  only when the set it was told changes; a new folder, or one no longer watched, puts the tags down.
+- **The source keeps two values, `Burst` and `Arrivals`,** and waits for whichever is due first, so the wait for a
+  quiet folder and the wait for a tag's end are one `poll`. A file that lands again starts its twenty seconds again; one
+  that leaves is fresh no longer.
+- **The tag is `Tags`, `ListView.marks` again outside the list** (FN-12): the set told whole, each name cell built with
+  its tag shown or hidden and handed over by path, pruned by `realizedItems()`. Not the predicate the sketch half
+  suggested: ListView's javadoc says why a predicate read in the frame is the wrong shape (threading.md, T7.2).

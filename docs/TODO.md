@@ -9,9 +9,9 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 ## Next
 
 The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
-[rebuild.md](rebuild.md). M0 to M4 are done.
+[rebuild.md](rebuild.md). M0 to M5 are done.
 
-- [ ] **M5 to M8** and packaging, as [rebuild.md](rebuild.md) lists them. M8 is the redesign: one of the three
+- [ ] **M6 to M8** and packaging, as [rebuild.md](rebuild.md) lists them. M8 is the redesign: one of the three
       directions on the *Vexplore Redesign* canvas, chosen first.
 
 ## Later

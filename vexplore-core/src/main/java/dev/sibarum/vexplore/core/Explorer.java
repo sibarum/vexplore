@@ -13,6 +13,8 @@ import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Found;
+import dev.sibarum.vexplore.core.Messages.Fresh;
+import dev.sibarum.vexplore.core.Messages.Freshness;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.HandedOff;
 import dev.sibarum.vexplore.core.Messages.Handing;
@@ -124,11 +126,12 @@ import java.util.Set;
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class,
-        Menu.class, Stirred.class, Unwatched.class})
+        Menu.class, Stirred.class, Unwatched.class, Freshness.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
-        Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class})
+        Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class,
+        Fresh.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -284,6 +287,7 @@ public final class Explorer {
         Step<State, Menu> menu = b.step("menu", Explorer::menu);
         Step<State, Stirred> stirred = b.step("stirred", Explorer::stirred);
         Step<State, Unwatched> unwatched = b.step("unwatched", Explorer::unwatched);
+        Step<State, Freshness> freshness = b.step("freshness", Explorer::freshness);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -311,7 +315,8 @@ public final class Explorer {
                 .on(Messages.HANDED_OFF_TOPIC, handedOff)
                 .on(Messages.MENU_TOPIC, menu)
                 .on(Messages.STIRRED_TOPIC, stirred)
-                .on(Messages.UNWATCHED_TOPIC, unwatched);
+                .on(Messages.UNWATCHED_TOPIC, unwatched)
+                .on(Messages.FRESHNESS_TOPIC, freshness);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -463,13 +468,13 @@ public final class Explorer {
                 return s;
             }
             out.send(Messages.UNWATCH_TOPIC, new Unwatch());
-            return s.withWork(s.work().withWatched(Watched.NONE));
+            return watched(s, Watched.NONE, out);
         }
         if (was.equals(Optional.of(l.folder()))) {
             return s;
         }
         out.send(Messages.WATCH_TOPIC, new Watch(l.folder()));
-        return s.withWork(s.work().withWatched(new Watched(Optional.of(l.folder()))));
+        return watched(s, new Watched(Optional.of(l.folder()), Set.of()), out);
     }
 
     /**
@@ -493,7 +498,27 @@ public final class Explorer {
         if (!s.work().watched().folder().equals(Optional.of(u.folder()))) {
             return s;
         }
-        return s.withWork(s.work().withWatched(Watched.NONE));
+        return watched(s, Watched.NONE, out);
+    }
+
+    /**
+     * What landed in the folder shown lately, as {@link WatchFolder} keeps it: the rows to tag new. Its clock, not
+     * this one, says when a file stops being fresh. Said of a folder no longer watched, it is dropped.
+     */
+    private static State freshness(State s, Freshness f, Out out) {
+        Watched w = s.work().watched();
+        if (!w.folder().equals(Optional.of(f.folder()))) {
+            return s;
+        }
+        return watched(s, new Watched(w.folder(), f.fresh()), out);
+    }
+
+    /** Watching {@code value}: the view is told the rows to tag when that is not what it was told last. */
+    private static State watched(State s, Watched value, Out out) {
+        if (!value.fresh().equals(s.work().watched().fresh())) {
+            out.send(Messages.FRESH_TOPIC, new Fresh(value.fresh()));
+        }
+        return s.withWork(s.work().withWatched(value));
     }
 
     /**

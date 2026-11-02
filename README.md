@@ -111,7 +111,7 @@ every message is in one file. Read these in this order.
 | `ListFolder.java`, `ListPlaces.java`, `ListLevel.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
 | `Plan.java`, `Done.java`, `Operations.java` | what an action would do, what it did, and carrying it out: nothing overwritten, a delete into Vexplore's own trash, and an undo that is the reverse plan. |
 | `RunAction.java` | **the source** that carries out a plan, forward or back, on a thread of its own, with a count and a Stop. |
-| `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk. |
+| `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk; and keeps what landed in the last twenty seconds, for the *new* tag. |
 | `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
 | `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
@@ -127,7 +127,8 @@ every message is in one file. Read these in this order.
 | `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenIn`). It answers the tree itself, through `ListPlaces` and `ListLevel`. It decides nothing else. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
-| `Columns.java` | the list's columns, drawn from a row alone. |
+| `Columns.java` | the list's columns, drawn from a row alone, and the *new* tag after a name. |
+| `Tags.java` | the rows tagged *new*: the list's second marked set, told whole, which a list cannot hold (FN-12). |
 | `DockPanel.java` | the Preview Dock under the list: one file's preview, or a note; every node built once. A picture or a video has Open in Rasterware under it. |
 | `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, and says which. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |

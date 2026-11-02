@@ -80,7 +80,8 @@ class ExplorerTest {
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
-                Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC)) {
+                Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC,
+                Messages.FRESH_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -750,5 +751,45 @@ class ExplorerTest {
         tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
         assertEquals(List.of(new Messages.Watch(dir)), took(Messages.Watch.class));
+    }
+
+    @Test
+    void whatLandedIsTaggedForTheFolderShownAndNoOther() {
+        Path a = path("a");
+        Path b = path("b");
+        showing(a);
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        assertEquals(List.of(new Messages.Fresh(Set.of(a.resolve("new.mp4")))), took(Messages.Fresh.class));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        assertTrue(took(Messages.Fresh.class).isEmpty(), "told again, nothing changed");
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(b, Set.of(b.resolve("other.txt"))));
+        assertTrue(took(Messages.Fresh.class).isEmpty(), "b is not shown");
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of()));
+        assertEquals(List.of(new Messages.Fresh(Set.of())), took(Messages.Fresh.class), "its time is up");
+    }
+
+    @Test
+    void goingElsewherePutsTheTagsDown() {
+        Path a = path("a");
+        showing(a);
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        sent.clear();
+        showing(path("b"));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("late.mp4"))));
+        assertTrue(seen(Messages.Fresh.class).isEmpty(), "a left");
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(a));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), a, List.of(), null, TODAY, ZoneOffset.UTC));
+        assertTrue(took(Messages.Fresh.class).isEmpty(), "back in a, nothing has landed since it was watched again");
+    }
+
+    @Test
+    void goingElsewhereSaysTheTagsAreDown() {
+        Path a = path("a");
+        showing(a);
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        sent.clear();
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("b")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("b"), List.of(), null, TODAY, ZoneOffset.UTC));
+        assertEquals(List.of(new Messages.Fresh(Set.of())), took(Messages.Fresh.class));
     }
 }

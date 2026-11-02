@@ -38,10 +38,10 @@ final class Columns {
     private Columns() {
     }
 
-    static List<Table.Column<Row>> of() {
+    static List<Table.Column<Row>> of(Tags tags) {
         Comparator<Row> byName = Comparator.comparing(r -> r.name().toLowerCase(Locale.ROOT));
         return List.of(
-                Table.Column.of("NAME", Length.grow(1), Columns::name, byName),
+                Table.Column.of("NAME", Length.grow(1), (g, r) -> name(g, r, tags), byName),
                 Table.Column.of("TYPE", Length.rem(5f), (g, r) -> cell(g, r.typeLabel(), Type.MONO, Type.SMALL,
                         Role.DIM, HAlign.LEFT), Comparator.comparing(Row::typeLabel)),
                 Table.Column.of("SIZE", Length.rem(6.5f), (g, r) -> cell(g, r.folder() ? "" : Bytes.format(r.size()),
@@ -50,16 +50,25 @@ final class Columns {
                         Role.DIM, HAlign.LEFT), Comparator.comparing(Row::modified)));
     }
 
-    /** The name, after its type icon. */
-    private static Node name(Nodes g, Row r) {
+    /**
+     * The name, after its type icon, and the word <em>new</em> after it in amber while the file has just landed. Amber
+     * as text, never a fill ({@code Look.ANCHOR}); built hidden or shown as {@link Tags} says, and handed to it.
+     */
+    private static Node name(Nodes g, Row r, Tags tags) {
         Node glyph = g.icon(family(r)).size(ICON).node().hitInert(true);
         Node name = g.text(r.name()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
                 .wordWrap(false).height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
+        Node tag = g.text(NEW).font(Type.MONO).textSize(Type.SMALL).textColor(g.theme().color(Look.ANCHOR))
+                .wordWrap(false).hitInert(true).visible(tags.has(r.path()));
+        tags.built(r.path(), tag);
         // Not a scroller, as the table's own cells are not: a name wider than its column is clipped, not scrolled.
         return g.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
                 .alignItems(AlignItems.CENTER).gap(Type.TIGHT)
-                .padding(Length.ZERO, PAD).children(glyph, name);
+                .padding(Length.ZERO, PAD).children(glyph, name, tag);
     }
+
+    /** What a file that has just landed is tagged with. */
+    static final String NEW = "new";
 
     /**
      * The icon's family: finer than a {@link Kind} (the rail speaks of "documents", the icon tells a spreadsheet from a

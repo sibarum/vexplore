@@ -1,8 +1,10 @@
 package dev.sibarum.vexplore.core;
 
+import dev.sibarum.vexplore.core.Messages.Freshness;
 import dev.sibarum.vexplore.core.Messages.Stirred;
 import dev.sibarum.vexplore.core.Messages.Unwatched;
 import dev.sibarum.vexplore.core.Messages.Watch;
+import dev.sibarum.vexplore.core.WatchFolder.Arrivals;
 import dev.sibarum.vexplore.core.WatchFolder.Burst;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,6 +16,7 @@ import sibarum.probe.Cause;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -55,21 +58,25 @@ class WatchFolderTest {
         Atchung bus = Atchung.create();
         Tick tick = bus.tick(null);
         List<Stirred> heard = new CopyOnWriteArrayList<>();
+        List<Freshness> fresh = new CopyOnWriteArrayList<>();
         tick.inbox("heard").subscribe(Messages.STIRRED_TOPIC, heard::add, 64);
-        WatchFolder watch = new WatchFolder(Sender.outside(bus, Messages.STIRRED_TOPIC,
-                Cause.source("test.watch", Cause.Kind.IO)));
+        tick.inbox("fresh").subscribe(Messages.FRESHNESS_TOPIC, fresh::add, 64);
+        WatchFolder watch = watch(bus);
         AtomicReference<Unwatched> ended = new AtomicReference<>();
         Thread run = new Thread(() -> ended.set(watch.run(new Watch(dir))), "test-watch");
         run.start();
 
         long deadline = System.nanoTime() + 10_000_000_000L;
-        for (int i = 0; heard.isEmpty() && System.nanoTime() < deadline; i++) {
+        for (int i = 0; (heard.isEmpty() || fresh.isEmpty()) && System.nanoTime() < deadline; i++) {
             Files.writeString(dir.resolve("landed-" + i + ".txt"), "x");
             Thread.sleep(150L);
             tick.run(System.nanoTime() + 1_000_000L, Tick.ONE_THREAD);
         }
         assertFalse(heard.isEmpty(), "a file landing was said");
         assertEquals(dir, heard.getFirst().folder());
+        assertFalse(fresh.isEmpty(), "and was fresh");
+        assertTrue(fresh.getLast().fresh().stream().allMatch(p -> p.getParent().equals(dir)
+                && p.getFileName().toString().startsWith("landed-")), fresh.getLast().toString());
 
         run.interrupt();
         run.join(5_000L);
@@ -80,9 +87,28 @@ class WatchFolderTest {
 
     @Test
     void aFolderThatIsNotThereSaysSo() {
-        WatchFolder watch = new WatchFolder(Sender.outside(Atchung.create(), Messages.STIRRED_TOPIC,
-                Cause.source("test.watch.gone", Cause.Kind.IO)));
-        Unwatched u = watch.run(new Watch(dir.resolve("gone")));
+        Unwatched u = watch(Atchung.create()).run(new Watch(dir.resolve("gone")));
         assertTrue(u.problem() != null && !u.problem().isEmpty(), "said why");
+    }
+
+    private static WatchFolder watch(Atchung bus) {
+        Cause.Source source = Cause.source("test.watch", Cause.Kind.IO);
+        return new WatchFolder(Sender.outside(bus, Messages.STIRRED_TOPIC, source),
+                Sender.outside(bus, Messages.FRESHNESS_TOPIC, source));
+    }
+
+    @Test
+    void aFileIsFreshUntilItsTimeIsUpOrItLeaves() {
+        Path a = dir.resolve("a.txt");
+        Path b = dir.resolve("b.txt");
+        Arrivals arr = Arrivals.NONE.landed(a, 1_000L).landed(b, 5_000L);
+        assertEquals(Long.MAX_VALUE, Arrivals.NONE.untilNext(0L), "nothing to wait for");
+        assertEquals(WatchFolder.FRESH_MS - 1_000L, arr.untilNext(2_000L), "a goes first");
+        assertEquals(Set.of(a, b), arr.expired(1_000L + WatchFolder.FRESH_MS - 1L).landed().keySet());
+        assertEquals(Set.of(b), arr.expired(1_000L + WatchFolder.FRESH_MS).landed().keySet(), "a's time is up");
+        assertEquals(Set.of(a), arr.left(b).landed().keySet(), "b left");
+        Arrivals again = arr.landed(a, 9_000L);
+        assertEquals(Set.of(a), again.expired(5_000L + WatchFolder.FRESH_MS).landed().keySet(),
+                "landing again starts its time again");
     }
 }

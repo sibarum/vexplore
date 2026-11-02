@@ -31,6 +31,56 @@ reasons and the full method.
 
 ## Milestones
 
+## M5 · Fresh files · 2026-11-02
+
+One finding (FN-12): a list marks one set of rows, and the rail's reach already has it, so the *new* tag is a second
+set kept beside the list. The rest went where the stack said. A `@Source` was the right shape for a watch, a newer
+`Watch` stopping the old run with no code of Vexplore's, and the rule that a step cannot read the clock decided the
+design for the better: the watcher keeps time, and the explorer holds a set. Both timings (`Burst`, `Arrivals`) are
+values tested without a clock or a disk.
+
+### The shapes
+
+| | The promise | What happened | How it looked |
+| --- | --- | --- | --- |
+| FN-12 | A list says what it knows about a row that is not a choice | One marked set, and a face built once from its item | `Tags`: the name cells hand their tags over by path, and a new set shows and hides them |
+
+### What would stop each
+
+12. A list holds named marks, each a set with its look, told whole and worn by a row realized later, as `marks` is
+    now (FN-12). M6's comparison wants a third (*newer here*, *only here*).
+
+### My own mistakes
+
+- **The sketch half-proposed a predicate.** shape.md said the face would read the set the view kept. `ListView`'s
+  own javadoc on `marks` says why a predicate read in the frame is the wrong shape (threading.md, T7.2), and I read it
+  only when I came to write the face. Built as `marks` is instead, told whole. The rule: read the widget's javadoc for
+  the nearest thing it already does before a sketch says how a view will do the next.
+- **A path for the wrong shell.** The first live script typed the folder as `/c/Users/…`, which Git Bash understands
+  and the app's path field does not; the run waited 30 seconds on a folder it never opened. Worse, the helper beside
+  it was set to drop a file into the folder whenever it saw its cue, so a stopped run could have left it there; it was
+  stopped by hand. A helper that changes the disk acts only on its cue and gives up otherwise.
+- **Edits by pattern that hit the wrong line.** A substitution for `Work`'s constructor calls rewrote `withDock` so
+  that it set the watched folder, and a line-range delete in `Ui` took the next method's `/**` with it. Both were
+  caught by reading the result back, neither by the build. A record with one more component is edited call by call.
+- **`wait` is `Object`'s.** `Burst.wait(long)` did not compile; the compiler caught it at once.
+- **An assertion that tested nothing** (`dir.resolve("b").equals(path("b"))`) went into a test and was taken out on
+  reading it back.
+
+### Not seen
+
+- The tag fading in and out. The stills show it there and gone; whether it faded between is the framework's promise
+  for a node shown and hidden, and `ViewTest`'s `Cuts` check does not reach a list row's tag.
+- A folder stirring for a minute (a download). The burst's timing is tested; what a listing a second looks like in
+  the list, whose rows are rebuilt on every `items()`, was not watched.
+
+### What to keep exactly as it is
+
+- **Time kept by the part that waits.** The watcher already waits on the disk with a timeout, so it waits on the
+  tags' ends too, and the explorer stays a function of what it was told.
+- **A re-listing that keeps what the person was doing.** A stir keeps the selection and the pick; the list reselects
+  by path, so a file that grew stays selected.
+
 ## M4 · the Preview Dock and the row menu · 2026-11-02
 
 One finding (FN-11), small: a list's row menu is the same for every row, where a tree's can grey an action, so
