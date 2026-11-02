@@ -44,6 +44,8 @@ final class RailPanel {
     private static final int SELECTS = 4;
     private static final int CONDITIONS = 3;
     private static final int ACTIONS = 6;
+    /** Places for a move or a copy: the destination picked, when it is not suggested, and three suggested. */
+    private static final int PLACES = 4;
 
     /**
      * Chips to a line: one for Select and Condition, whose chips are phrases with counts, and two for Action's short
@@ -66,6 +68,9 @@ final class RailPanel {
     private final List<Button> select = new ArrayList<>();
     private final List<Button> condition = new ArrayList<>();
     private final List<Button> action = new ArrayList<>();
+    private final List<Button> place = new ArrayList<>();
+    private final Node places;
+    private final Button choose;
     private final Node card;
     private final Node headline;
     private final Node detail;
@@ -90,6 +95,12 @@ final class RailPanel {
         Node conditions = section(2, "Condition", chips(condition, CONDITIONS, PHRASES, Landmarks.RAIL_CONDITION));
         Node actions = section(3, "Action", chips(action, ACTIONS, VERBS, Landmarks.RAIL_ACTION));
         sections.addAll(List.of(selects, conditions, actions));
+        // The fourth step, for a move or a copy only: where to. The places suggested, and the system's folder picker.
+        choose = new Button(gui, "Choose folder…").kind(Button.Kind.GHOST).name(Landmarks.RAIL_CHOOSE);
+        gui.landmark(Landmarks.RAIL_CHOOSE, choose.node());
+        Node where = chips(place, PLACES, PHRASES, Landmarks.RAIL_PLACE);
+        where.append(choose.node());
+        places = section(4, "Destination", where);
 
         headline = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
         gui.landmark(Landmarks.RAIL_CARD, headline);
@@ -112,13 +123,16 @@ final class RailPanel {
                 .background(Role.PANEL).border(Length.dp(1), Role.LINE).corner(Length.rem(0.5f))
                 .children(top, detail, buttons);
 
+        // The steps scroll when a short window cannot hold them: a column that does not is laid out by shrinking its
+        // children, which flattened the chips to slivers under a card of five lines. The card does not scroll with
+        // them: it is pinned under them, so the button that carries it out is always in sight.
+        Node steps = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(1.1f))
+                .scroll(false, true).clip(true)
+                .children(header, empty, selects, conditions, actions, places);
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
-                // It scrolls when a short window cannot hold it: a column that does not is laid out by shrinking its
-                // children, which flattened the chips to slivers under a card of five lines.
-                .background(Look.RAIL).scroll(false, true).clip(true)
-                .children(header, empty, selects, conditions, actions,
-                        gui.box().width(Length.FILL).height(Length.grow(1f)), card);
+                .background(Look.RAIL).scroll(false, false).clip(true)
+                .children(steps, card);
         gui.landmark(Landmarks.RAIL, node);
         show(Suggested.NONE);
     }
@@ -140,6 +154,8 @@ final class RailPanel {
         fill(select, s.select());
         fill(condition, s.condition());
         fill(action, s.action());
+        fill(place, s.places());
+        places.visible(!none && s.placing());
         headline.text(s.card().headline());
         detail.text(s.card().detail());
         tag.text(running.isEmpty() ? UNCHANGED : running);
@@ -153,15 +169,20 @@ final class RailPanel {
         return go.address().equals(address);
     }
 
+    /** Whether {@code address} is {@code Choose folder…}. */
+    boolean choose(String address) {
+        return choose.address().equals(address);
+    }
+
     /** Whether {@code address} is the card's Stop. */
     boolean stop(String address) {
         return stop.address().equals(address);
     }
 
     /**
-     * The pick a chip's {@link Button.Toggled} stands for, or null when it is none of the rail's. A picked Select or
-     * Condition chip clicked again is shown picked at once and says nothing: one of its row is always picked, so the
-     * click changed nothing.
+     * The pick a chip's {@link Button.Toggled} stands for, or null when it is none of the rail's. A picked Select,
+     * Condition or Destination chip clicked again is shown picked at once and says nothing: one of its row stays
+     * picked, so the click changed nothing.
      */
     Picked picked(Button.Toggled t) {
         Picked p = find(select, Slot.SELECT, t.button());
@@ -171,6 +192,9 @@ final class RailPanel {
         if (p == null) {
             p = find(action, Slot.ACTION, t.button());
         }
+        if (p == null) {
+            p = find(place, Slot.DESTINATION, t.button());
+        }
         if (p != null && p.slot() != Slot.ACTION && !t.pressed()) {
             held(p);
             return null;
@@ -179,7 +203,7 @@ final class RailPanel {
     }
 
     private void held(Picked p) {
-        (p.slot() == Slot.SELECT ? select : condition).get(p.index()).show(true);
+        (p.slot() == Slot.SELECT ? select : p.slot() == Slot.CONDITION ? condition : place).get(p.index()).show(true);
     }
 
     private static Picked find(List<Button> row, Slot slot, String address) {

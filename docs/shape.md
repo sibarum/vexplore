@@ -302,3 +302,18 @@ Slice 1, delete and undo, built 2026-11-02:
   in the button's place. No `Planning` job yet: a delete is planned in the step from the rows.
 - **Only Delete has a button in slice 1.** Every other action still states its effect, with no button, until its
   slice (`Act.plan` is null for them).
+
+Slice 2, move and copy, built 2026-11-02:
+
+- **Where it goes is `Aim`, a field of `Work`**, not of `State`: the places offered, the destination picked, and the
+  plan for going there, each answer carrying its ticket. The destination is kept from one folder to the next.
+- **The person's own Pictures or Videos folder comes first** among the places, as 0.1's `Destinations.home` had
+  it, then the neighbours that already hold the kind. Mixed kinds get no suggestions; *Choose folder…* is always
+  there.
+- **0.1's `Plan.of` is `Plan.to`**, its skips worded for the card ("it is already there", "the destination is inside
+  it", "a file of that name is already there"). A destination that cannot be read plans nothing and says why.
+- **The card is pinned under the steps**, which scroll on their own: with a fourth row, the button had gone below
+  the fold.
+- **After a run the explorer keeps what is still selected.** The list keeps its selection across a listing of the
+  same folder (its rows are values), and the explorer used to clear its own, leaving the rail empty beside a
+  selected row.

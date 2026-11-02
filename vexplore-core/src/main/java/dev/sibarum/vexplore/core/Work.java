@@ -18,10 +18,12 @@ import java.util.Optional;
  * @param running the run in flight, or none: one at a time
  * @param entries the journal's count, the last entry's number
  * @param journal each entry by number
+ * @param aim     where a move or a copy would go
  */
-record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal) {
+record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
+            Aim aim) {
 
-    static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of());
+    static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE);
 
     Work {
         journal = Map.copyOf(journal);
@@ -111,28 +113,32 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withTrash(Path value) {
-        return new Work(Optional.of(value), runs, running, entries, journal);
+        return new Work(Optional.of(value), runs, running, entries, journal, aim);
     }
 
     /** Run {@code r} starts; its number is the next. */
     Work starting(Running r) {
-        return new Work(trash, r.run(), Optional.of(r), entries, journal);
+        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim);
     }
 
     Work at(int done) {
-        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal);
+        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim);
     }
 
     /** The run is over, and entry {@code number} is now {@code entry}. */
     Work landed(long number, Entry entry) {
         Map<Long, Entry> next = new HashMap<>(journal);
         next.put(number, entry);
-        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next);
+        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim);
     }
 
     /** The run is over, and nothing is recorded: it did nothing. */
     Work idle() {
-        return new Work(trash, runs, Optional.empty(), entries, journal);
+        return new Work(trash, runs, Optional.empty(), entries, journal, aim);
+    }
+
+    Work withAim(Aim value) {
+        return new Work(trash, runs, running, entries, journal, value);
     }
 
     /** Whether run {@code run} is the one in flight. */

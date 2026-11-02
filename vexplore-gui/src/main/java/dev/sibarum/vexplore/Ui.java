@@ -255,6 +255,11 @@ final class Ui {
         return rail.stop(address);
     }
 
+    /** Whether {@code address} is {@code Choose folder…}. */
+    boolean choose(String address) {
+        return rail.choose(address);
+    }
+
     /** The pick a chip's press stands for, or null when it is none of the rail's or changes nothing. */
     Picked picked(Button.Toggled t) {
         return rail.picked(t);
@@ -288,7 +293,7 @@ final class Ui {
 
     // ------------------------------------------------------------------ the path field
 
-    /** Ctrl+L: the field in the breadcrumb's place, with the keyboard in it and its text selected, so typing replaces it. */
+    /** Ctrl+L: the field in the breadcrumb's place, with the keyboard in it and its text selected, so typing replaces. */
     void editPath() {
         crumbs.node().visible(false);
         path.node().visible(true);

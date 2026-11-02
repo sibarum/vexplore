@@ -11,8 +11,8 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
 [rebuild.md](rebuild.md). M0 to M2 are done.
 
-- [ ] **M3: actions**, in the four slices of [shape.md](shape.md)'s *The messages M3 adds*. Slice 1, delete and
-      undo, is done; next is Move and Copy with suggested destinations.
+- [ ] **M3: actions**, in the four slices of [shape.md](shape.md)'s *The messages M3 adds*. Slices 1 and 2 (delete
+      and undo; move and copy) are done; next is Archive and Rename.
 - [ ] **M4 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later
@@ -39,3 +39,4 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 - [ ] Stop is tested in `OperationsTest` but not driven live: a run of a few files ends before a click lands.
 - [ ] An undo refused because a run is going still moves the window's history, so the entry and the history disagree
       until the next Ctrl+Y. A `Change.check()` that asks whether a run goes would refuse it in place.
+- [ ] *Choose folder…* is tested in `ExplorerTest` but not driven live: the system's picker is a real dialog.

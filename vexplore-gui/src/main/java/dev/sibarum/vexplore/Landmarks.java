@@ -40,6 +40,10 @@ final class Landmarks {
     static final String RAIL_SELECT = "rail.select";
     static final String RAIL_CONDITION = "rail.condition";
     static final String RAIL_ACTION = "rail.action";
+    static final String RAIL_PLACE = "rail.place";
+
+    /** The Destination row's {@code Choose folder…}: the system's folder picker. */
+    static final String RAIL_CHOOSE = "rail.choose";
 
     /** The card's headline: the effect, first ({@code Move 9 files · 6.5 GB}). */
     static final String RAIL_CARD = "rail.card";

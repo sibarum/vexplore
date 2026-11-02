@@ -77,7 +77,8 @@ class ExplorerTest {
         Inbox heard = tick.inbox("heard");
         for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC,
                 Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
-                Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC)) {
+                Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
+                Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -266,7 +267,8 @@ class ExplorerTest {
     void aFolderThatCannotBeReadIsShownEmptyAndSaid() {
         Path locked = path("locked");
         tell(Messages.NAVIGATE_TOPIC, new Navigate(locked));
-        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), locked, List.of(), "access is denied", TODAY, ZoneOffset.UTC));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), locked, List.of(), "access is denied", TODAY,
+                ZoneOffset.UTC));
         assertTrue(sent.contains(new Shown(locked, List.of(), Optional.empty())), "the breadcrumb where it was asked");
         assertTrue(took(Status.class).getFirst().alert());
     }
@@ -429,5 +431,84 @@ class ExplorerTest {
         Status said = took(Status.class).getFirst();
         assertTrue(said.alert());
         assertEquals("Deleted 0 of 1. 1 could not be: a.txt: access is denied", said.message());
+    }
+
+    // ------------------------------------------------------------------ where a move or a copy goes
+
+    /** Started, two videos shown, {@code a.mp4} selected and Move picked. */
+    private void moveOfAPicked() {
+        started();
+        showing(dir, video("a.mp4", 10), video("b.mp4", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, 0));
+    }
+
+    @Test
+    void movingAsksWherePlacesAreAndTheCardWaitsForOne() {
+        moveOfAPicked();
+        Messages.Destining asked = seen(Messages.Destining.class).getLast();
+        assertEquals(Kind.VIDEO, asked.kind());
+        assertEquals(dir, asked.folder());
+        Suggested rail = took(Suggested.class).getLast();
+        assertTrue(rail.placing());
+        assertEquals("", rail.card().go(), "nowhere to go yet, so no button");
+        assertTrue(rail.card().detail().endsWith("Choose where they go"));
+
+        Path clips = path("clips");
+        tell(Messages.DESTINATIONS_TOPIC, new Messages.Destinations(asked.ticket(),
+                List.of(new Messages.Dest(clips, "holds 3 videos", 3))));
+        assertEquals(List.of(new Messages.Chip("clips", 3, false)), took(Suggested.class).getLast().places());
+    }
+
+    @Test
+    void aPlacePickedIsPlannedAndTheCardsButtonCarriesOutThePlan() {
+        moveOfAPicked();
+        long ticket = seen(Messages.Destining.class).getLast().ticket();
+        Path clips = path("clips");
+        tell(Messages.DESTINATIONS_TOPIC, new Messages.Destinations(ticket,
+                List.of(new Messages.Dest(clips, "holds 3 videos", 3))));
+        sent.clear();
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.DESTINATION, 0));
+        Messages.Planning want = seen(Messages.Planning.class).getFirst();
+        assertEquals(clips, want.destination());
+        assertEquals(Plan.Op.MOVE, want.op());
+
+        Plan plan = new Plan(Plan.Op.MOVE, List.of(new Plan.Step(path("a.mp4"), clips.resolve("a.mp4"))), List.of(),
+                10L);
+        tell(Messages.PLANNED_TOPIC, new Messages.Planned(want.ticket(), plan));
+        assertEquals("Move 1 file to clips", took(Suggested.class).getLast().card().go());
+
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        assertEquals(plan, took(Messages.Run.class).getFirst().plan());
+    }
+
+    @Test
+    void aFolderChosenIsTheDestinationAndALatePlanIsDropped() {
+        moveOfAPicked();
+        Path far = path("far");
+        tell(Messages.DESTINE_TOPIC, new Messages.Destine(far));
+        Messages.Planning first = seen(Messages.Planning.class).getLast();
+        assertTrue(took(Suggested.class).getLast().places().contains(new Messages.Chip("far", 0, true)),
+                "a folder chosen that was not suggested is shown first, picked");
+        tell(Messages.DESTINE_TOPIC, new Messages.Destine(path("farther")));
+        tell(Messages.PLANNED_TOPIC, new Messages.Planned(first.ticket(), new Plan(Plan.Op.MOVE, List.of(
+                new Plan.Step(path("a.mp4"), far.resolve("a.mp4"))), List.of(), 10L)));
+        List<Suggested> after = took(Suggested.class);
+        assertTrue(after.isEmpty() || after.getLast().card().go().isEmpty(),
+                "a plan for the folder chosen before is not this one");
+    }
+
+    @Test
+    void afterARunTheFolderIsListedAgainKeepingWhatIsStillThereSelected() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long run = took(Messages.Run.class).getFirst().run();
+        tell(Messages.RAN_TOPIC, new Messages.Ran(run,
+                new Done(Plan.Op.DELETE, List.of(), List.of("a.txt: in use"), 10L, false)));
+        Listing again = asked();
+        tell(Messages.LISTED_TOPIC, new Listed(again.ticket(), dir, List.of(file("a.txt", 10), file("b.txt", 20)), null,
+                TODAY, ZoneOffset.UTC));
+        assertEquals(new Summary(2, 1, 10L), seen(Summary.class).getLast(), "a.txt is still there, and still selected");
+        assertEquals(Set.of(path("a.txt")), reached(took(Suggested.class).getLast()));
     }
 }

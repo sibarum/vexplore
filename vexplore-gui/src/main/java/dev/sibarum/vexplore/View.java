@@ -4,6 +4,7 @@ import dev.sibarum.vexplore.Intent.Command;
 import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
+import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
@@ -21,6 +22,7 @@ import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.vexelray.framework.api.Subscribe;
+import dev.vexelray.framework.core.PickFile;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.edit.History;
 import dev.vexelray.gui.core.input.ClaimScope;
@@ -73,6 +75,9 @@ import java.nio.file.Path;
 @dev.vexelray.framework.api.View
 final class View {
 
+    /** What the view's folder picker is asked as, and answered by: it asks for nothing else. */
+    private static final long PICK_FOLDER = 1L;
+
     private final Gui gui;
     private final Ui ui;
 
@@ -85,6 +90,8 @@ final class View {
     private final Sender<Stop> stop;
     private final Sender<Undo> undo;
     private final Sender<Redo> redo;
+    private final Sender<PickFile> pickFile;
+    private final Sender<Destine> destine;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
@@ -92,8 +99,8 @@ final class View {
 
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
-         Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted,
-         Sender<TreeView.Children> children, Sender<Intent> intents) {
+         Sender<PickFile> pickFile, Sender<Destine> destine, Sender<PlacesWanted> placesWanted,
+         Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children, Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
         this.go = go;
@@ -105,6 +112,8 @@ final class View {
         this.stop = stop;
         this.undo = undo;
         this.redo = redo;
+        this.pickFile = pickFile;
+        this.destine = destine;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -249,6 +258,17 @@ final class View {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {
             stop.send(new Stop());
+        } else if (ui.choose(m.button())) {
+            Path shown = ui.shown();
+            pickFile.send(PickFile.folder(PICK_FOLDER, shown == null ? "" : shown.toString()));
+        }
+    }
+
+    /** The folder picker answered: a folder picked is the destination; a cancel changes nothing. */
+    @Subscribe
+    public void folderPicked(dev.vexelray.framework.core.Picked m) {
+        if (m.id() == PICK_FOLDER && !m.isCancelled()) {
+            destine.send(new Destine(Path.of(m.path())));
         }
     }
 

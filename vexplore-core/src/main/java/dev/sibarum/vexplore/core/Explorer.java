@@ -2,6 +2,12 @@ package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Carry;
+import dev.sibarum.vexplore.core.Messages.Card;
+import dev.sibarum.vexplore.core.Messages.Chip;
+import dev.sibarum.vexplore.core.Messages.Dest;
+import dev.sibarum.vexplore.core.Messages.Destine;
+import dev.sibarum.vexplore.core.Messages.Destinations;
+import dev.sibarum.vexplore.core.Messages.Destining;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.Found;
@@ -11,6 +17,8 @@ import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Picked;
+import dev.sibarum.vexplore.core.Messages.Planned;
+import dev.sibarum.vexplore.core.Messages.Planning;
 import dev.sibarum.vexplore.core.Messages.Progress;
 import dev.sibarum.vexplore.core.Messages.Ran;
 import dev.sibarum.vexplore.core.Messages.Recall;
@@ -21,6 +29,7 @@ import dev.sibarum.vexplore.core.Messages.Remember;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Run;
 import dev.sibarum.vexplore.core.Messages.Shown;
+import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
@@ -47,6 +56,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -92,9 +102,10 @@ import java.util.Set;
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
-        Redo.class})
+        Redo.class, Destinations.class, Destine.class, Planned.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
-        Remember.class, Suggested.class, Run.class, Recorded.class})
+        Remember.class, Suggested.class, Run.class, Recorded.class,
+        Destining.class, Planning.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -139,9 +150,24 @@ public final class Explorer {
                     Rail.EMPTY, started, armed, last, work);
         }
 
-        /** A folder's rows landed: nothing is selected or picked in it yet. */
+        /**
+         * The folder shown, asked for again after a run: what is selected is kept, so the rows still there stay
+         * selected in the explorer as they do in the list.
+         */
+        State relisting() {
+            return new State(folder, asked + 1, Optional.empty(), rows, today, zone, selected, Pick.NONE, Rail.EMPTY,
+                    started, armed, last, work);
+        }
+
+        /** A folder's rows landed: nothing is picked in it yet, and of what was selected, only what is still there. */
         State withRows(Listed l) {
-            return new State(folder, asked, Optional.empty(), l.rows(), l.today(), l.zone(), Set.of(), Pick.NONE,
+            Set<Path> still = new HashSet<>();
+            for (Row r : l.rows()) {
+                if (selected.contains(r.path())) {
+                    still.add(r.path());
+                }
+            }
+            return new State(folder, asked, Optional.empty(), l.rows(), l.today(), l.zone(), still, Pick.NONE,
                     Rail.EMPTY, started, armed, last, work);
         }
 
@@ -211,6 +237,9 @@ public final class Explorer {
         Step<State, Ran> ran = b.step("ran", Explorer::ran);
         Step<State, Undo> undo = b.step("undo", Explorer::undo);
         Step<State, Redo> redo = b.step("redo", Explorer::redo);
+        Step<State, Destinations> destinations = b.step("destinations", Explorer::destinations);
+        Step<State, Destine> destine = b.step("destine", Explorer::destine);
+        Step<State, Planned> planned = b.step("planned", Explorer::planned);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -226,7 +255,10 @@ public final class Explorer {
                 .on(Messages.PROGRESS_TOPIC, progress)
                 .on(Messages.RAN_TOPIC, ran)
                 .on(Messages.UNDO_TOPIC, undo)
-                .on(Messages.REDO_TOPIC, redo);
+                .on(Messages.REDO_TOPIC, redo)
+                .on(Messages.DESTINATIONS_TOPIC, destinations)
+                .on(Messages.DESTINE_TOPIC, destine)
+                .on(Messages.PLANNED_TOPIC, planned);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -356,9 +388,13 @@ public final class Explorer {
             refuse(out, "Can't open " + ListFolder.name(l.folder()) + ": " + l.problem());
         }
         out.send(Messages.SHOWN_TOPIC, new Shown(l.folder(), l.rows(), s.select()));
-        out.send(Messages.SUMMARY_TOPIC, new Summary(l.rows().size(), 0, 0L));
-        out.send(Messages.SUGGESTED_TOPIC, Suggested.NONE);
-        return s.withRows(l);
+        State next = s.withRows(l);
+        long bytes = 0L;
+        for (Row r : l.rows()) {
+            bytes += next.selected().contains(r.path()) ? r.size() : 0L;
+        }
+        out.send(Messages.SUMMARY_TOPIC, new Summary(l.rows().size(), next.selected().size(), bytes));
+        return suggest(next, true, out);
     }
 
     /**
@@ -415,6 +451,12 @@ public final class Explorer {
         if (s.rail().equals(Rail.EMPTY)) {
             return s;
         }
+        if (p.slot() == Slot.DESTINATION) {
+            List<Dest> offered = s.work().aim().offered();
+            return p.index() < offered.size()
+                    ? suggest(s.withWork(s.work().withAim(s.work().aim().to(offered.get(p.index()).path()))), true, out)
+                    : suggest(s, true, out);
+        }
         return suggest(s.withPick(p.slot().press(s.rail(), s.pick(), p.index())), true, out);
     }
 
@@ -432,15 +474,113 @@ public final class Explorer {
         if (!always && rail.equals(s.rail())) {
             return s;
         }
-        State next = s.withRail(rail);
+        State next = aim(s.withRail(rail), out);
         out.send(Messages.SUGGESTED_TOPIC, said(next));
         return next;
     }
 
-    /** The rail as it stands, its card saying how far a run has got while one goes. */
+    /**
+     * For a move or a copy, ask where it might go and what going there would do: places near the folder shown for the
+     * kind it reaches, when that changes, and a plan whenever the reach, the action or the destination does.
+     */
+    private static State aim(State s, Out out) {
+        Plan.Op op = s.rail().applied().act() == null ? null : s.rail().applied().act().placed();
+        if (op == null || s.folder().isEmpty() || s.rail().targets().isEmpty()) {
+            return s;
+        }
+        Aim a = s.work().aim();
+        Path folder = s.folder().get();
+        Kind kind = s.rail().targets().getFirst().kind();
+        if (s.rail().targets().stream().allMatch(r -> r.kind() == kind)
+                && (!a.kind().equals(Optional.of(kind)) || !a.near().equals(Optional.of(folder)))) {
+            a = a.asking(kind, folder);
+            out.send(Messages.DESTINING_TOPIC, new Destining(a.asked(), folder, kind));
+        }
+        if (a.destination().isPresent()) {
+            Planning want = new Planning(a.nextPlan(), op, s.rail().targets(), a.destination().get());
+            if (!a.asks(want)) {
+                a = a.planning(want);
+                out.send(Messages.PLANNING_TOPIC, want);
+            }
+        }
+        return s.withWork(s.work().withAim(a));
+    }
+
+    /** Places to go: offered for the kind asked, unless a later ask has overtaken them. */
+    private static State destinations(State s, Destinations d, Out out) {
+        if (d.ticket() != s.work().aim().asked()) {
+            return s;
+        }
+        State next = s.withWork(s.work().withAim(s.work().aim().offering(d.places())));
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /** { Choose folder…} answered: the destination from now on. */
+    private static State destine(State s, Destine d, Out out) {
+        return suggest(s.withWork(s.work().withAim(s.work().aim().to(d.folder()))), true, out);
+    }
+
+    /** What going there would do: the card's button, unless a later plan has been asked for. */
+    private static State planned(State s, Planned p, Out out) {
+        Aim a = s.work().aim();
+        if (a.sent().isEmpty() || a.sent().get().ticket() != p.ticket()) {
+            return s;
+        }
+        State next = s.withWork(s.work().withAim(a.planned(p.plan())));
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /**
+     * The rail as it stands: for a move or a copy with its Destination row and the card for going there, and while a
+     * run goes, its card saying how far it has got.
+     */
     private static Suggested said(State s) {
         Suggested rail = s.rail().worded();
-        return s.work().running().map(r -> rail.running(r.said())).orElse(rail);
+        Plan.Op op = s.rail().applied().act() == null ? null : s.rail().applied().act().placed();
+        if (op != null && !rail.empty()) {
+            rail = placed(rail, s.work().aim());
+        }
+        Suggested worded = rail;
+        return s.work().running().map(r -> worded.running(r.said())).orElse(worded);
+    }
+
+    /**
+     * The Destination row, the destination picked first when it is not one of the places offered, and the card: where
+     * they would go, how many would, and what would be left alone and why.
+     */
+    private static Suggested placed(Suggested rail, Aim a) {
+        List<Chip> places = new ArrayList<>();
+        Optional<Path> to = a.destination();
+        if (to.isPresent() && a.offered().stream().noneMatch(d -> d.path().equals(to.get()))) {
+            places.add(new Chip(ListFolder.name(to.get()), 0, true));
+        }
+        for (Dest d : a.offered()) {
+            places.add(new Chip(ListFolder.name(d.path()), d.count(), to.isPresent() && d.path().equals(to.get())));
+        }
+        Card card = rail.card();
+        if (to.isEmpty()) {
+            Card waiting = new Card(card.headline(), card.detail() + ". Choose where they go", "", "");
+            return rail.placed(true, places, waiting);
+        }
+        if (a.plan().isEmpty()) {
+            return rail.placed(true, places, new Card(card.headline(), card.detail(), "", ""));
+        }
+        Plan plan = a.plan().get();
+        int n = plan.count();
+        String verb = plan.op() == Plan.Op.MOVE ? "Move" : "Copy";
+        String go = n == 0 ? "" : verb + " " + n + (n == 1 ? " file" : " files") + " to " + ListFolder.name(to.get());
+        StringBuilder detail = new StringBuilder(card.detail());
+        if (!plan.skipped().isEmpty()) {
+            Plan.Skip first = plan.skipped().getFirst();
+            detail.append(". ").append(plan.skipped().size()).append(" left alone: ")
+                    .append(ListFolder.name(first.path())).append(", ").append(first.reason());
+            if (plan.skipped().size() > 1) {
+                detail.append(", and others");
+            }
+        }
+        return rail.placed(true, places, new Card(card.headline(), detail.toString(), go, ""));
     }
 
     // ------------------------------------------------------------------ carrying it out, and taking it back
@@ -451,10 +591,14 @@ public final class Explorer {
      */
     private static State carry(State s, Carry c, Out out) {
         Plan plan = s.rail().plan();
+        boolean placed = s.rail().applied().act() != null && s.rail().applied().act().placed() != null;
+        if (plan == null && placed) {
+            plan = s.work().aim().plan().orElse(null);
+        }
         if (plan == null || plan.count() == 0) {
             return s;
         }
-        String words = s.rail().worded().card().go();
+        String words = said(s).card().go();
         return start(s, plan, Way.DO, 0L, words, out);
     }
 
@@ -533,7 +677,12 @@ public final class Explorer {
         out.send(Messages.STATUS_TOPIC, new Status(words.toString(), !d.failed().isEmpty()));
         State next = s.withWork(work);
         out.send(Messages.SUGGESTED_TOPIC, said(next));
-        return next.folder().isPresent() ? show(next, next.folder().get(), Optional.empty(), out) : next;
+        if (next.folder().isEmpty()) {
+            return next;
+        }
+        State again = next.relisting();
+        out.send(Messages.LISTING_TOPIC, new Listing(again.asked(), again.folder().get()));
+        return again;
     }
 
     // ------------------------------------------------------------------ the status line

@@ -93,8 +93,18 @@ public final class Suggestions {
 
     /** What to do with the result: its chip, and the verb the card leads with. */
     public enum Act {
-        MOVE("Move to…", "Move"),
-        COPY("Copy to…", "Copy"),
+        MOVE("Move to…", "Move") {
+            @Override
+            public Plan.Op placed() {
+                return Plan.Op.MOVE;
+            }
+        },
+        COPY("Copy to…", "Copy") {
+            @Override
+            public Plan.Op placed() {
+                return Plan.Op.COPY;
+            }
+        },
         ARCHIVE("Archive", "Archive"),
         RENAME("Rename…", "Rename"),
         MARK("Mark for later", "Mark"),
@@ -126,6 +136,14 @@ public final class Suggestions {
          * gets its plan in the slice that builds it (docs/shape.md, M3).
          */
         Plan plan(List<Row> targets) {
+            return null;
+        }
+
+        /**
+         * What this does to each target once it has a destination, or null for an action that needs none. Its plan is
+         * {@link PlanAction}'s, which reads the destination.
+         */
+        public Plan.Op placed() {
             return null;
         }
     }
@@ -199,7 +217,7 @@ public final class Suggestions {
                 action.add(new Chip(a.chip(), 0, a == applied.act()));
             }
             Set<Row> reach = new LinkedHashSet<>(targets);
-            return new Suggested(basis, select, condition, action, reach, card());
+            return new Suggested(basis, select, condition, action, reach, card(), false, List.of());
         }
 
         /** {@code Move 9 files · 6.5 GB}, and the first few names. */

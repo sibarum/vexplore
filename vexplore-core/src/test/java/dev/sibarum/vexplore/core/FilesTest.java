@@ -67,4 +67,48 @@ class FilesTest {
         Level level = new ListLevel().run(new LevelWanted(dir, dir));
         assertEquals(List.of(dir.resolve("A"), dir.resolve("b")), level.folders());
     }
+
+    private Row row(Path p) throws java.io.IOException {
+        String name = ListFolder.name(p);
+        return new Row(p, name, Files.isDirectory(p), Files.isDirectory(p) ? 0L : Files.size(p), java.time.Instant.EPOCH,
+                Files.isDirectory(p) ? Kind.FOLDER : Kind.ofExtension(Kind.extension(name)));
+    }
+
+    @Test
+    void aPlanLeavesAloneWhatWouldCollideAndSaysWhy() throws Exception {
+        Path to = Files.createDirectory(dir.resolve("to"));
+        Files.writeString(to.resolve("b.txt"), "there");
+        Path a = Files.writeString(dir.resolve("a.txt"), "a");
+        Path b = Files.writeString(dir.resolve("b.txt"), "b");
+        Messages.Planned p = new PlanAction().run(new Messages.Planning(7, Plan.Op.MOVE,
+                List.of(row(a), row(b), row(to)), to));
+        assertEquals(7, p.ticket());
+        assertEquals(List.of(new Plan.Step(a, to.toAbsolutePath().normalize().resolve("a.txt"))), p.plan().steps());
+        assertEquals(List.of("a file of that name is already there", "the destination is inside it"),
+                p.plan().skipped().stream().map(Plan.Skip::reason).toList());
+    }
+
+    @Test
+    void aDestinationThatCannotBeReadPlansNothingAndSaysSo() throws Exception {
+        Path a = Files.writeString(dir.resolve("a.txt"), "a");
+        Messages.Planned p = new PlanAction().run(new Messages.Planning(1, Plan.Op.COPY, List.of(row(a)),
+                dir.resolve("gone")));
+        assertEquals(0, p.plan().count());
+        assertEquals(1, p.plan().skipped().size());
+    }
+
+    @Test
+    void placesAreTheOwnFolderThenTheNeighboursHoldingTheKind() throws Exception {
+        Path home = Files.createDirectory(dir.resolve("home"));
+        Files.createDirectory(home.resolve("Videos"));
+        Path here = Files.createDirectory(dir.resolve("here"));
+        Path clips = Files.createDirectory(here.resolve("clips"));
+        Files.writeString(clips.resolve("x.mp4"), "x");
+        Files.writeString(clips.resolve("y.mov"), "y");
+        Path notes = Files.createDirectory(dir.resolve("notes"));
+        Files.writeString(notes.resolve("z.txt"), "z");
+        List<Messages.Dest> places = SuggestDestinations.places(here, Kind.VIDEO, home);
+        assertEquals(List.of("Videos", "clips"), places.stream().map(d -> ListFolder.name(d.path())).toList());
+        assertEquals("holds 2 videos", places.get(1).reason());
+    }
 }

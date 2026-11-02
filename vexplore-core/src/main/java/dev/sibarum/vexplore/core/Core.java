@@ -13,8 +13,8 @@ import dev.vexelray.framework.api.Configuration;
  * this list, or nothing builds it.
  */
 @Configuration(components = Explorer.class,
-        jobs = {ListFolder.class, ListPlaces.class, ListLevel.class, FindPath.class, OpenFile.class,
-                ReadSession.class, WriteSession.class},
+        jobs = {ListFolder.class, ListPlaces.class, ListLevel.class, FindPath.class, OpenFile.class, PlanAction.class,
+                SuggestDestinations.class, ReadSession.class, WriteSession.class},
         sources = RunAction.class)
 public final class Core {
 }

@@ -4,7 +4,9 @@ import dev.sibarum.vexplore.core.Messages.Row;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * What an action would do, worked out before it does anything: 0.1's, with its kind renamed {@link Op}, since a
@@ -72,6 +74,33 @@ public record Plan(Op op, List<Step> steps, List<Skip> skipped, long bytes) {
 
     public int count() {
         return steps.size();
+    }
+
+    /**
+     * A move or a copy of {@code rows} into {@code destination}, which holds {@code taken} already: 0.1's checks, each a
+     * skip with its reason rather than a step that would fail. Nothing goes over a name already there, into itself,
+     * or into the folder it is already in; and two rows of one name cannot both arrive.
+     */
+    public static Plan to(Op op, List<Row> rows, Path destination, Set<String> taken) {
+        List<Step> steps = new ArrayList<>();
+        List<Skip> skipped = new ArrayList<>();
+        Set<String> names = new HashSet<>(taken);
+        Path to = destination.toAbsolutePath().normalize();
+        long bytes = 0L;
+        for (Row r : rows) {
+            Path whole = r.path().toAbsolutePath().normalize();
+            String why = to.startsWith(whole) ? "the destination is inside it"
+                    : to.equals(whole.getParent()) ? "it is already there"
+                    : !names.add(r.name()) ? "a file of that name is already there"
+                    : null;
+            if (why != null) {
+                skipped.add(new Skip(r.path(), why));
+                continue;
+            }
+            steps.add(new Step(r.path(), to.resolve(r.name())));
+            bytes += r.size();
+        }
+        return new Plan(op, steps, skipped, bytes);
     }
 
     /** Into the trash: every row, the run choosing where in it. */

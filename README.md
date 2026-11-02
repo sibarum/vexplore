@@ -8,8 +8,8 @@ the order the features come back in, and [docs/shape.md](docs/shape.md) the shap
 stands:** M2. Browsing: the tree of places, the breadcrumb and its path field, the list with its columns, sort and
 selection, the status line's counts, and Enter to go into a folder or open a file. The Suggestion Rail: select a
 file, and Select, Condition and Action chips say what Vexplore would do with the others, the rows it would reach are
-marked in the list, and a card states the effect first. M3 is under way: Delete carries out, into Vexplore's own
-trash, and Ctrl+Z takes it back.
+marked in the list, and a card states the effect first. M3 is under way: Delete (into Vexplore's own trash), Move
+and Copy (to a place suggested, or one chosen) carry out, and Ctrl+Z takes any of them back.
 
 ## Run it
 
@@ -110,6 +110,7 @@ every message is in one file. Read these in this order.
 | `ListFolder.java`, `ListPlaces.java`, `ListLevel.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
 | `Plan.java`, `Done.java`, `Operations.java` | what an action would do, what it did, and carrying it out: nothing overwritten, a delete into Vexplore's own trash, and an undo that is the reverse plan. |
 | `RunAction.java` | **the source** that carries out a plan, forward or back, on a thread of its own, with a count and a Stop. |
+| `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
 | `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
 | `Kind.java`, `Bytes.java`, `Dates.java` | what a file is, a size and a time in a person's words: no disk and no widget, so they live here. |

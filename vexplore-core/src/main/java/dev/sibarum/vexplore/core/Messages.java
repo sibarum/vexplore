@@ -86,6 +86,13 @@ public final class Messages {
             Suggestions.Pick press(Suggestions.Rail rail, Suggestions.Pick pick, int index) {
                 return index < rail.acts().size() ? pick.with(rail.acts().get(index)) : pick;
             }
+        },
+        /** A destination: the explorer's to resolve against the places it offered, so the pick is left as it is. */
+        DESTINATION {
+            @Override
+            Suggestions.Pick press(Suggestions.Rail rail, Suggestions.Pick pick, int index) {
+                return pick;
+            }
         };
 
         /** The pick once the chip at {@code index} of this row of {@code rail} is pressed; unchanged past its end. */
@@ -125,6 +132,12 @@ public final class Messages {
     public static final Topic<Redo> REDO_TOPIC = Topic.edge(Redo.class);
 
     public record Redo(long entry) {
+    }
+
+    /** A folder picked for a move or a copy, by {@code Choose folder…}: the destination from now on. */
+    public static final Topic<Destine> DESTINE_TOPIC = Topic.edge(Destine.class);
+
+    public record Destine(Path folder) {
     }
 
     // ------------------------------------------------------------------ the explorer tells the view
@@ -194,23 +207,32 @@ public final class Messages {
     public static final Topic<Suggested> SUGGESTED_TOPIC = Topic.state(Suggested.class);
 
     public record Suggested(String basis, List<Chip> select, List<Chip> condition, List<Chip> action,
-                            Set<Row> reach, Card card) {
+                            Set<Row> reach, Card card, boolean placing, List<Chip> places) {
 
         /** The same rail, its card saying how far a run has got. */
         public Suggested running(String words) {
             return new Suggested(basis, select, condition, action, reach,
-                    new Card(card.headline(), card.detail(), card.go(), words));
+                    new Card(card.headline(), card.detail(), card.go(), words), placing, places);
+        }
+
+        /**
+         * The same rail with its Destination row ({@code placing}: shown, for a move or a copy) and the card that goes
+         * with where they would go.
+         */
+        public Suggested placed(boolean placing, List<Chip> places, Card card) {
+            return new Suggested(basis, select, condition, action, reach, card, placing, places);
         }
 
         /** Nothing selected: an empty rail, and no row marked. */
         public static final Suggested NONE = new Suggested("", List.of(), List.of(), List.of(), Set.of(),
-                Card.NONE);
+                Card.NONE, false, List.of());
 
         public Suggested {
             select = List.copyOf(select);
             condition = List.copyOf(condition);
             action = List.copyOf(action);
             reach = Set.copyOf(reach);
+            places = List.copyOf(places);
         }
 
         /** Whether there is nothing to suggest. */
@@ -290,6 +312,42 @@ public final class Messages {
     public static final Topic<Started> STARTED_TOPIC = Topic.edge(Started.class);
 
     public record Started(Path file, String problem) {
+    }
+
+    /** A folder nearby that already holds files of a kind: a place a move or a copy probably wants. */
+    public record Dest(Path path, String reason, int count) {
+    }
+
+    /** Where files of {@code kind} shown in {@code folder} probably want to go ({@link SuggestDestinations}). */
+    public static final Topic<Destining> DESTINING_TOPIC = Topic.edge(Destining.class);
+
+    public record Destining(long ticket, Path folder, Kind kind) {
+    }
+
+    /** The places for ticket {@code ticket}, best first; often few, sometimes none. */
+    public static final Topic<Destinations> DESTINATIONS_TOPIC = Topic.edge(Destinations.class);
+
+    public record Destinations(long ticket, List<Dest> places) {
+        public Destinations {
+            places = List.copyOf(places);
+        }
+    }
+
+    /**
+     * What a move or a copy of {@code targets} into {@code destination} would do ({@link PlanAction}): it reads the
+     * destination for names already taken.
+     */
+    public static final Topic<Planning> PLANNING_TOPIC = Topic.edge(Planning.class);
+
+    public record Planning(long ticket, Plan.Op op, List<Row> targets, Path destination) {
+        public Planning {
+            targets = List.copyOf(targets);
+        }
+    }
+
+    public static final Topic<Planned> PLANNED_TOPIC = Topic.edge(Planned.class);
+
+    public record Planned(long ticket, Plan plan) {
     }
 
     /**
