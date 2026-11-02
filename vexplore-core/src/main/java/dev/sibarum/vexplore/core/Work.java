@@ -1,7 +1,10 @@
 package dev.sibarum.vexplore.core;
 
+import dev.sibarum.vexplore.core.Messages.Mark;
+
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,14 +22,16 @@ import java.util.Optional;
  * @param entries the journal's count, the last entry's number
  * @param journal each entry by number
  * @param aim     where a move or a copy would go
+ * @param marks   the marks kept, newest first
  */
 record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
-            Aim aim) {
+            Aim aim, List<Mark> marks) {
 
-    static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE);
+    static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of());
 
     Work {
         journal = Map.copyOf(journal);
+        marks = List.copyOf(marks);
     }
 
     /**
@@ -116,32 +121,36 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withTrash(Path value) {
-        return new Work(Optional.of(value), runs, running, entries, journal, aim);
+        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks);
     }
 
     /** Run {@code r} starts; its number is the next. */
     Work starting(Running r) {
-        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim);
+        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks);
     }
 
     Work at(int done) {
-        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim);
+        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks);
     }
 
     /** The run is over, and entry {@code number} is now {@code entry}. */
     Work landed(long number, Entry entry) {
         Map<Long, Entry> next = new HashMap<>(journal);
         next.put(number, entry);
-        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim);
+        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks);
     }
 
     /** The run is over, and nothing is recorded: it did nothing. */
     Work idle() {
-        return new Work(trash, runs, Optional.empty(), entries, journal, aim);
+        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks);
     }
 
     Work withAim(Aim value) {
-        return new Work(trash, runs, running, entries, journal, value);
+        return new Work(trash, runs, running, entries, journal, value, marks);
+    }
+
+    Work withMarks(List<Mark> value) {
+        return new Work(trash, runs, running, entries, journal, aim, value);
     }
 
     /** Whether run {@code run} is the one in flight. */

@@ -329,3 +329,13 @@ Slice 3, archive and rename, built 2026-11-02:
   (`Card.naming`) instead of a button. The explorer sends `Naming(name)` once when Rename becomes the action, and the
   view fills the field from it, the name before the extension selected; a rail sent again never writes over what is
   being typed. A name that will not do is said on the status line, and nothing runs.
+
+Slice 4, marks, built 2026-11-02:
+
+- **A mark is the rail's reach, by path, named for where and what** (`Downloads: All videos here · 8`), newest first,
+  six at most; one of the same files replaces the one before. Kept in `Work`, sent as `Marks(names)` (a state
+  topic), and kept across runs in `Remember`/`Recalled` (one line a mark in the session store).
+- **The card's button for Mark is *Keep as Mark***, and it changes no file, so there is no run and nothing for
+  Ctrl+Z; a mark is forgotten by its ×. The marks are listed whether anything is selected or not.
+- **A mark recalled shows its folder with its rows selected**, rather than marked: recalling is the person asking
+  for those files. So `Shown.select` became a set (a typed file is a set of one).

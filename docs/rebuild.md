@@ -82,10 +82,11 @@ first. No action runs yet. **(ruled 2026-11-02)** The rail is a third of the roo
 narrow window narrows it with the list (framework-notes FN-2). Held Shift and Control wait for a modifiers topic
 (FN-9).
 
-**M3. Actions.** Move, Copy, Archive, Delete into Vexplore's trash, Rename one, Mark. Planned by `PlanAction`, run by
-`RunAction` with a count and a cancel in the rail, undone by Ctrl+Z through a `History` whose changes send messages
-(the ruled pattern; `ValueWidgetUndoTest` is the example). Suggested destinations, and `PickFile.folder` behind
-*Choose folder…*. Marks kept across runs through the session jobs, which 0.1 never did.
+**M3. Actions.** *Done 2026-11-02, in four slices ([shape.md](shape.md)).* Move, Copy, Archive, Delete into
+Vexplore's trash, Rename one, Mark. Planned by `PlanAction`, run by `RunAction` with a count and a cancel in the
+rail, undone by Ctrl+Z through a `History` whose changes send messages (the ruled pattern; `ValueWidgetUndoTest` is
+the example). Suggested destinations, and `PickFile.folder` behind *Choose folder…*. Marks kept across runs through
+the session jobs, which 0.1 never did.
 
 **M4. The Preview Dock and the row menu.** Tier 4 (hex, strings, entropy) first, since it is the floor, then text,
 then pictures. The row menu through `ListView.action` / `CHOSEN`. **(ruled 2026-11-01)** A picture or a video shows

@@ -8,8 +8,9 @@ the order the features come back in, and [docs/shape.md](docs/shape.md) the shap
 stands:** M2. Browsing: the tree of places, the breadcrumb and its path field, the list with its columns, sort and
 selection, the status line's counts, and Enter to go into a folder or open a file. The Suggestion Rail: select a
 file, and Select, Condition and Action chips say what Vexplore would do with the others, the rows it would reach are
-marked in the list, and a card states the effect first. M3 is under way: Delete (into Vexplore's own trash), Move
-and Copy (to a place suggested, or one chosen), Archive and Rename carry out, and Ctrl+Z takes any of them back.
+marked in the list, and a card states the effect first. M3, actions: Delete (into Vexplore's own trash), Move and
+Copy (to a place suggested, or one chosen), Archive and Rename carry out, Ctrl+Z takes any of them back, and Keep
+as Mark keeps a set of files to come back to, across runs.
 
 ## Run it
 

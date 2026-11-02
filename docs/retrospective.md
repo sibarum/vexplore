@@ -31,6 +31,51 @@ reasons and the full method.
 
 ## Milestones
 
+## M3 · actions · 2026-11-02
+
+One finding (FN-10), and it is small: a field has no initial value, so filling it once took a message of its own.
+The rest of M3 went where the framework said it would. A `@Source` with a Stop carried every run, the window's
+`History` held the undo with changes that send messages, `PickFile.folder` answered *Choose folder…*, and two
+ticketed jobs planned a move against its destination. FN-7 (a chip that flips itself) and FN-3 (a hidden node that
+keeps the keyboard: the card's button, hidden as its run starts) were met again and needed nothing new.
+
+### The shapes
+
+| | The promise | What happened | How it looked |
+| --- | --- | --- | --- |
+| FN-10 | A view writes what the model says, every time | A field written every time loses what is being typed | Rename's field, filled once by `Naming` instead of by each rail |
+
+### What would stop each
+
+10. `TextField.initial(String)`, applied when the field is shown, or a node's visibility read back (FN-10).
+
+### My own mistakes
+
+- **A test helper that forgets as it reads, read twice.** `took` clears everything seen, and four tests took one
+  kind and then looked for another, or took the same kind twice in one expression; two of them would have passed
+  with nothing checked. Fixed with `seen`, which forgets nothing. The rule: a reader with a side effect is named for
+  it, and a test reads with the one that has none unless it means to start afresh.
+- **Text substitutions whose delimiter was in the text.** A `|`-delimited Perl edit met `||` and spliced code onto the
+  top of `Suggestions.java`; a `{}`-delimited one met an unbalanced brace and swallowed `Explorer.java` (restored from
+  the commit); a `#`-delimited one met `{@link #undone}`; and a heredoc turned `\n` and `\t` into real line breaks
+  inside Java strings. Each was caught by the compiler, none was committed, and each cost a round. The rule: a
+  multi-line Java edit goes through the Edit tool, and a shell substitution is for one line of known text.
+- **A script read the first row as the first file.** With folders listed first, `HOME` selected `clips`, and the
+  first Move went to plan a folder. A `tree rail` before the click showed it at once.
+- **The card's button was laid out where a fourth row pushed it below the fold**, and the list kept a selection the
+  explorer had dropped. Both were seen only in the screenshots, which is what they are for.
+
+### What to keep exactly as it is
+
+- **An undo is the reverse plan, run the same way.** One source, one count, one Stop, and one rule against
+  overwriting, for a run and its undo alike; each `Op` knows its own undo, so `Done.reverse` has no cases.
+- **The history holds numbers; the explorer holds what they did.** `Journaled` sends `Undo(entry)`, and whether the
+  entry can be taken back is a step's decision.
+- **Every job answer carries its ticket**, the listing's rule from M1, now for places and plans too: a plan for the
+  folder chosen before is dropped, tested by sending it late.
+- **Each slice was a commit with its own live run**, on scratch files only, with the person's real folders shown
+  and never touched.
+
 ## M2 · the rail states its effect · 2026-11-02
 
 Three findings (FN-7 to FN-9), none architectural: a chip that decides for itself, a table column with no floor of its

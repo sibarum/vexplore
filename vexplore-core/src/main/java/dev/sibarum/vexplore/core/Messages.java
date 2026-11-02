@@ -146,6 +146,18 @@ public final class Messages {
     public record Rename(String name) {
     }
 
+    /** A mark of the rail pressed: select its rows again, in the folder they are in. */
+    public static final Topic<RecallMark> RECALL_MARK_TOPIC = Topic.edge(RecallMark.class);
+
+    public record RecallMark(int index) {
+    }
+
+    /** A mark's × pressed: forget it. */
+    public static final Topic<ForgetMark> FORGET_MARK_TOPIC = Topic.edge(ForgetMark.class);
+
+    public record ForgetMark(int index) {
+    }
+
     // ------------------------------------------------------------------ the explorer tells the view
 
     /**
@@ -169,14 +181,16 @@ public final class Messages {
     }
 
     /**
-     * What the list shows: a folder, its rows in the listing's order, and a row to select once they are in (a file named
-     * on the command line, or typed). The breadcrumb is the folder's own parts. The latest is all that matters.
+     * What the list shows: a folder, its rows in the listing's order, and the rows to select once they are in (a file
+     * named on the command line or typed, or a mark's rows). The breadcrumb is the folder's own parts. The latest is all
+     * that matters.
      */
     public static final Topic<Shown> SHOWN_TOPIC = Topic.state(Shown.class);
 
-    public record Shown(Path folder, List<Row> rows, Optional<Path> select) {
+    public record Shown(Path folder, List<Row> rows, Set<Path> select) {
         public Shown {
             rows = List.copyOf(rows);
+            select = Set.copyOf(select);
         }
     }
 
@@ -256,6 +270,25 @@ public final class Messages {
      * Rename was picked, or the file it reaches changed: the view fills the card's field with {@code name}, once, and
      * the person types over it. Sent once, and not with every rail, so what is typed is never written over.
      */
+    /**
+     * A named set of files kept for later: the rail's reach when it was kept, by path. Its rows are all in one folder,
+     * the one it was kept in.
+     */
+    public record Mark(String name, Set<Path> paths) {
+        public Mark {
+            paths = Set.copyOf(paths);
+        }
+    }
+
+    /** The marks kept, newest first, by name: the rail lists them, and a press is said by its place. */
+    public static final Topic<Marks> MARKS_TOPIC = Topic.state(Marks.class);
+
+    public record Marks(List<String> names) {
+        public Marks {
+            names = List.copyOf(names);
+        }
+    }
+
     public static final Topic<Naming> NAMING_TOPIC = Topic.edge(Naming.class);
 
     public record Naming(String name) {
@@ -395,23 +428,27 @@ public final class Messages {
 
     /**
      * What there is to bring back, every path absolute and normalised: the folder shown, the command line's paths, and
-     * the folder the application started in, for when there is none, and where a delete puts things.
+     * the folder the application started in, for when there is none, where a delete puts things, and the marks kept.
      */
     public static final Topic<Recalled> RECALLED_TOPIC = Topic.edge(Recalled.class);
 
-    public record Recalled(Optional<Path> folder, List<Path> arguments, Path started, Path trash) {
+    public record Recalled(Optional<Path> folder, List<Path> arguments, Path started, Path trash, List<Mark> marks) {
         public Recalled {
             arguments = List.copyOf(arguments);
+            marks = List.copyOf(marks);
         }
     }
 
     /**
-     * Keep the session for next time ({@link WriteSession}): the folder shown. A value, so the explorer tells whether it
-     * changed with {@code equals}.
+     * Keep the session for next time ({@link WriteSession}): the folder shown, and the marks. A value, so the explorer
+     * tells whether it changed with {@code equals}.
      */
     public static final Topic<Remember> REMEMBER_TOPIC = Topic.edge(Remember.class);
 
-    public record Remember(Optional<Path> folder) {
+    public record Remember(Optional<Path> folder, List<Mark> marks) {
+        public Remember {
+            marks = List.copyOf(marks);
+        }
     }
 
     // ------------------------------------------------------------------ the view and its jobs: the tree

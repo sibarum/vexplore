@@ -111,4 +111,13 @@ class FilesTest {
         assertEquals(List.of("Videos", "clips"), places.stream().map(d -> ListFolder.name(d.path())).toList());
         assertEquals("holds 2 videos", places.get(1).reason());
     }
+
+    @Test
+    void marksAreKeptAndReadBackAsTheyWere() {
+        List<Messages.Mark> marks = List.of(new Messages.Mark("Downloads: All videos here · 2",
+                java.util.Set.of(dir.resolve("a.mp4").toAbsolutePath(), dir.resolve("b.mp4").toAbsolutePath())),
+                new Messages.Mark("notes", java.util.Set.of(dir.resolve("n.txt").toAbsolutePath())));
+        assertEquals(marks, ReadSession.marks(WriteSession.marks(marks)));
+        assertEquals(List.of(), ReadSession.marks(""));
+    }
 }

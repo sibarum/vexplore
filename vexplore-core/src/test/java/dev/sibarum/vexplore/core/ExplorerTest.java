@@ -78,7 +78,8 @@ class ExplorerTest {
         for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC,
                 Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
-                Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC)) {
+                Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
+                Messages.MARKS_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -126,7 +127,7 @@ class ExplorerTest {
 
     /** A session with nothing to bring back: the folder the application started in is shown. */
     private void started() {
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash")));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash"), List.of()));
         sent.clear();
     }
 
@@ -143,17 +144,18 @@ class ExplorerTest {
     @Test
     void theRememberedFolderIsLookedAtThenShownThenRemembered() {
         Path folder = path("sub");
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(folder), List.of(), dir, dir.resolve("trash")));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(folder), List.of(), dir, dir.resolve("trash"),
+                List.of()));
         assertEquals(List.of(new Find(folder, Why.RESTORE_FOLDER)), took(Find.class));
         tell(Messages.FOUND_TOPIC, new Found(folder, Why.RESTORE_FOLDER, Is.FOLDER));
         assertTrue(asks(folder));
-        assertEquals(List.of(new Remember(Optional.of(folder))), took(Remember.class));
+        assertEquals(List.of(new Remember(Optional.of(folder), List.of())), took(Remember.class));
     }
 
     @Test
     void aRememberedFolderThatHasGoneIsForgottenWithoutComplaint() {
         Path gone = path("gone");
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(gone), List.of(), dir, dir.resolve("trash")));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(gone), List.of(), dir, dir.resolve("trash"), List.of()));
         tell(Messages.FOUND_TOPIC, new Found(gone, Why.RESTORE_FOLDER, Is.NOWHERE));
         assertTrue(asks(dir), "the folder it started in");
         assertTrue(took(Status.class).isEmpty(), "the person moved it; nothing to say");
@@ -162,7 +164,8 @@ class ExplorerTest {
     @Test
     void aPathOnTheCommandLineWinsOverTheRememberedFolder() {
         Path file = path("a.txt");
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(path("sub")), List.of(file), dir, dir.resolve("trash")));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(path("sub")), List.of(file), dir,
+                dir.resolve("trash"), List.of()));
         assertEquals(List.of(new Find(file, Why.ARGUMENT)), took(Find.class));
         tell(Messages.FOUND_TOPIC, new Found(file, Why.ARGUMENT, Is.FILE));
         assertEquals(List.of(dir), took(Listing.class).stream().map(Listing::folder).toList(),
@@ -171,7 +174,7 @@ class ExplorerTest {
 
     @Test
     void anUnchangedSessionIsNotRememberedTwice() {
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash")));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash"), List.of()));
         assertEquals(1, took(Remember.class).size());
         tell(Messages.FOUND_TOPIC, new Found(dir, Why.GO, Is.FOLDER));
         assertTrue(took(Remember.class).isEmpty(), "the same folder again is the same session");
@@ -192,7 +195,7 @@ class ExplorerTest {
         Path folder = path("sub");
         tell(Messages.FOUND_TOPIC, new Found(folder, Why.GO, Is.FOLDER));
         assertTrue(asks(folder));
-        assertEquals(List.of(new Remember(Optional.of(folder))), took(Remember.class));
+        assertEquals(List.of(new Remember(Optional.of(folder), List.of())), took(Remember.class));
     }
 
     @Test
@@ -242,7 +245,7 @@ class ExplorerTest {
         Listing l = asked();
         assertEquals(dir, l.folder());
         tell(Messages.LISTED_TOPIC, new Listed(l.ticket(), dir, List.of(file("a.txt", 1)), null, TODAY, ZoneOffset.UTC));
-        assertEquals(Optional.of(typed), took(Shown.class).getFirst().select());
+        assertEquals(Set.of(typed), took(Shown.class).getFirst().select());
     }
 
     @Test
@@ -269,7 +272,7 @@ class ExplorerTest {
         tell(Messages.NAVIGATE_TOPIC, new Navigate(locked));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), locked, List.of(), "access is denied", TODAY,
                 ZoneOffset.UTC));
-        assertTrue(sent.contains(new Shown(locked, List.of(), Optional.empty())), "the breadcrumb where it was asked");
+        assertTrue(sent.contains(new Shown(locked, List.of(), Set.of())), "the breadcrumb where it was asked");
         assertTrue(took(Status.class).getFirst().alert());
     }
 
@@ -559,5 +562,42 @@ class ExplorerTest {
                 10L, false)));
         assertEquals(List.of(new Messages.Recorded(1, "Rename a.txt to c.txt")), seen(Messages.Recorded.class));
         assertEquals("Renamed a.txt to c.txt", took(Status.class).getFirst().message());
+    }
+
+    // ------------------------------------------------------------------ marks
+
+    @Test
+    void keepingAMarkNamesItListsItAndRemembersIt() {
+        started();
+        showing(dir, video("a.mp4", 10), video("b.mp4", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
+        picked("Mark");
+        assertEquals("Keep as Mark", took(Suggested.class).getLast().card().go());
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        String name = ListFolder.name(dir) + ": All videos here · 2";
+        assertEquals(List.of(new Messages.Marks(List.of(name))), seen(Messages.Marks.class));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "a mark changes no file");
+        Messages.Mark kept = new Messages.Mark(name, Set.of(path("a.mp4"), path("b.mp4")));
+        assertEquals(List.of(kept), took(Remember.class).getLast().marks());
+    }
+
+    @Test
+    void aMarkRecalledShowsItsFolderWithItsRowsSelectedAndOneForgottenGoes() {
+        Path sub = path("sub");
+        Messages.Mark m = new Messages.Mark("sub: both", Set.of(sub.resolve("a.mp4"), sub.resolve("b.mp4")));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash"), List.of(m)));
+        assertEquals(List.of(new Messages.Marks(List.of("sub: both"))), seen(Messages.Marks.class));
+        sent.clear();
+
+        tell(Messages.RECALL_MARK_TOPIC, new Messages.RecallMark(0));
+        Listing l = asked();
+        assertEquals(sub, l.folder());
+        tell(Messages.LISTED_TOPIC, new Listed(l.ticket(), sub, List.of(), null, TODAY, ZoneOffset.UTC));
+        assertEquals(m.paths(), took(Shown.class).getFirst().select());
+
+        tell(Messages.FORGET_MARK_TOPIC, new Messages.ForgetMark(0));
+        assertEquals(List.of(new Messages.Marks(List.of())), seen(Messages.Marks.class));
+        assertEquals(List.of(), took(Remember.class).getLast().marks());
     }
 }

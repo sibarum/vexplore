@@ -9,7 +9,9 @@ import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.icons.Icon;
 import dev.vexelray.gui.widget.Button;
+import dev.vexelray.gui.widget.IconButton;
 import dev.vexelray.gui.widget.TextField;
 
 import java.util.ArrayList;
@@ -47,6 +49,8 @@ final class RailPanel {
     private static final int ACTIONS = 6;
     /** Places for a move or a copy: the destination picked, when it is not suggested, and three suggested. */
     private static final int PLACES = 4;
+    /** The marks listed, as many as the explorer keeps. */
+    private static final int MARKS = 6;
 
     /**
      * Chips to a line: one for Select and Condition, whose chips are phrases with counts, and two for Action's short
@@ -72,6 +76,10 @@ final class RailPanel {
     private final List<Button> place = new ArrayList<>();
     private final Node places;
     private final Button choose;
+    private final List<Button> mark = new ArrayList<>();
+    private final List<IconButton> forget = new ArrayList<>();
+    private final List<Node> markRows = new ArrayList<>();
+    private final Node marks;
     private final Node card;
     private final Node headline;
     private final Node detail;
@@ -104,6 +112,25 @@ final class RailPanel {
         where.append(choose.node());
         places = section(4, "Destination", where);
 
+        // The marks kept: always there when there are some, nothing selected or not, since recalling one is how a
+        // selection made before comes back.
+        Node kept = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
+        for (int i = 0; i < MARKS; i++) {
+            Button recall = new Button(gui, "").name(Landmarks.RAIL_MARK + "." + i);
+            recall.node().font(Type.UI).textSize(Type.RAIL_TEXT);
+            gui.landmark(Landmarks.RAIL_MARK + "." + i, recall.node());
+            IconButton drop = new IconButton(gui, Icon.CLOSE, "Forget this mark").name(Landmarks.RAIL_FORGET + "." + i);
+            gui.landmark(Landmarks.RAIL_FORGET + "." + i, drop.node());
+            Node row = gui.row().width(Length.FILL).gap(Length.rem(0.3f)).alignItems(AlignItems.CENTER)
+                    .scroll(false, false).clip(true).children(recall.node(), drop.node());
+            mark.add(recall);
+            forget.add(drop);
+            markRows.add(row);
+            kept.append(row);
+        }
+        marks = section(0, "Marks", kept);
+        marks.visible(false);
+
         headline = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
         gui.landmark(Landmarks.RAIL_CARD, headline);
         tag = gui.text(UNCHANGED).font(Type.MONO).textSize(Type.SMALL).textColor(Role.FAINT)
@@ -134,7 +161,7 @@ final class RailPanel {
         // them: it is pinned under them, so the button that carries it out is always in sight.
         Node steps = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(1.1f))
                 .scroll(false, true).clip(true)
-                .children(header, empty, selects, conditions, actions, places);
+                .children(header, empty, selects, conditions, actions, places, marks);
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
                 .background(Look.RAIL).scroll(false, false).clip(true)
@@ -174,6 +201,36 @@ final class RailPanel {
     /** Whether {@code address} is the card's button, which carries out what the card states. */
     boolean go(String address) {
         return go.address().equals(address);
+    }
+
+    /** The marks kept, by name, newest first: one row each, the rest hidden in their places. */
+    void marks(List<String> names) {
+        for (int i = 0; i < MARKS; i++) {
+            boolean there = i < names.size();
+            mark.get(i).label(there ? names.get(i) : "");
+            markRows.get(i).visible(there);
+        }
+        marks.visible(!names.isEmpty());
+    }
+
+    /** Which mark {@code address} recalls, or -1 for none. */
+    int recall(String address) {
+        for (int i = 0; i < mark.size(); i++) {
+            if (mark.get(i).address().equals(address)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Which mark {@code address} forgets, or -1 for none. */
+    int forget(String address) {
+        for (int i = 0; i < forget.size(); i++) {
+            if (forget.get(i).address().equals(address)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** The name field's address: what its {@code Submitted} says it with. */
@@ -274,7 +331,8 @@ final class RailPanel {
 
     private Node section(int number, String title, Node content) {
         Node label = gui.row().gap(Length.rem(0.6f)).alignItems(AlignItems.CENTER).children(
-                gui.text(String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL).textColor(Role.FAINT),
+                gui.text(number == 0 ? "•" : String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL)
+                        .textColor(Role.FAINT),
                 gui.text(title).font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK));
         return gui.column().width(Length.FILL).gap(Length.rem(0.55f)).children(label, content);
     }

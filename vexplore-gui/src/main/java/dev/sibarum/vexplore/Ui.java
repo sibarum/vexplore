@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -193,8 +192,8 @@ final class Ui {
 
     /**
      * Show what the explorer listed: the breadcrumb from the folder's root down to it, the field holding it for Ctrl+L,
-     * and its rows, with the row it names selected and scrolled to. Selecting it is said like any selection, so the
-     * explorer counts it.
+     * and its rows, with the rows it names selected and the first scrolled to. Selecting them is said like any
+     * selection, so the explorer counts them.
      */
     void show(Shown s) {
         List<Path> chain = new ArrayList<>();
@@ -204,10 +203,10 @@ final class Ui {
         crumbs.path(chain);
         path.text(s.folder().toString());
         list.items(s.rows());
-        Optional<Row> select = s.select().flatMap(p -> s.rows().stream().filter(r -> r.path().equals(p)).findFirst());
-        if (select.isPresent()) {
-            list.selection().at(select.get());
-            list.rows().reveal(select.get());
+        List<Row> select = s.rows().stream().filter(r -> s.select().contains(r.path())).toList();
+        if (!select.isEmpty()) {
+            list.selection().set(select);
+            list.rows().reveal(select.getFirst());
         }
     }
 
@@ -253,6 +252,21 @@ final class Ui {
     /** Whether {@code address} is the card's Stop. */
     boolean stop(String address) {
         return rail.stop(address);
+    }
+
+    /** The marks kept, by name. */
+    void marks(java.util.List<String> names) {
+        rail.marks(names);
+    }
+
+    /** Which mark {@code address} recalls, or -1. */
+    int recall(String address) {
+        return rail.recall(address);
+    }
+
+    /** Which mark {@code address} forgets, or -1. */
+    int forget(String address) {
+        return rail.forget(address);
     }
 
     /** The rename field's address. */

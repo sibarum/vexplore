@@ -5,14 +5,17 @@ import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Destine;
+import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
+import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.PlacesWanted;
+import dev.sibarum.vexplore.core.Messages.RecallMark;
 import dev.sibarum.vexplore.core.Messages.Recorded;
 import dev.sibarum.vexplore.core.Messages.Redo;
 import dev.sibarum.vexplore.core.Messages.Rename;
@@ -95,6 +98,8 @@ final class View {
     private final Sender<PickFile> pickFile;
     private final Sender<Destine> destine;
     private final Sender<Rename> rename;
+    private final Sender<RecallMark> recallMark;
+    private final Sender<ForgetMark> forgetMark;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
@@ -103,7 +108,9 @@ final class View {
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
-         Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children, Sender<Intent> intents) {
+         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark,
+         Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children,
+         Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
         this.go = go;
@@ -118,6 +125,8 @@ final class View {
         this.pickFile = pickFile;
         this.destine = destine;
         this.rename = rename;
+        this.recallMark = recallMark;
+        this.forgetMark = forgetMark;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -267,7 +276,17 @@ final class View {
         } else if (ui.choose(m.button())) {
             Path shown = ui.shown();
             pickFile.send(PickFile.folder(PICK_FOLDER, shown == null ? "" : shown.toString()));
+        } else if (ui.recall(m.button()) >= 0) {
+            recallMark.send(new RecallMark(ui.recall(m.button())));
+        } else if (ui.forget(m.button()) >= 0) {
+            forgetMark.send(new ForgetMark(ui.forget(m.button())));
         }
+    }
+
+    /** The marks kept: the rail lists them. */
+    @Subscribe
+    public void marks(Marks m) {
+        ui.marks(m.names());
     }
 
     /** Rename was picked: the card's field holds the file's name, once, to be typed over. */

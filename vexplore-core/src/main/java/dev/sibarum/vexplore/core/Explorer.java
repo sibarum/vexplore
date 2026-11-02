@@ -10,11 +10,14 @@ import dev.sibarum.vexplore.core.Messages.Destinations;
 import dev.sibarum.vexplore.core.Messages.Destining;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
+import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Found;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Is;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
+import dev.sibarum.vexplore.core.Messages.Mark;
+import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.Picked;
@@ -24,6 +27,7 @@ import dev.sibarum.vexplore.core.Messages.Progress;
 import dev.sibarum.vexplore.core.Messages.Ran;
 import dev.sibarum.vexplore.core.Messages.Recall;
 import dev.sibarum.vexplore.core.Messages.Recalled;
+import dev.sibarum.vexplore.core.Messages.RecallMark;
 import dev.sibarum.vexplore.core.Messages.Recorded;
 import dev.sibarum.vexplore.core.Messages.Redo;
 import dev.sibarum.vexplore.core.Messages.Rename;
@@ -106,10 +110,10 @@ import java.util.Set;
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
-        Rename.class})
+        Rename.class, RecallMark.class, ForgetMark.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
-        Destining.class, Planning.class, Naming.class})
+        Destining.class, Planning.class, Naming.class, Marks.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -134,7 +138,7 @@ public final class Explorer {
      * @param last     the session last sent to be remembered, so an unchanged one is not written again
      * @param work     what has been carried out and can be taken back, and the run in flight
      */
-    record State(Optional<Path> folder, long asked, Optional<Path> select, List<Row> rows, LocalDate today,
+    record State(Optional<Path> folder, long asked, Set<Path> select, List<Row> rows, LocalDate today,
                  ZoneId zone, Set<Path> selected, Pick pick, Rail rail, Optional<Path> started, boolean armed,
                  Optional<Remember> last, Work work) {
 
@@ -144,12 +148,12 @@ public final class Explorer {
         }
 
         static State initial() {
-            return new State(Optional.empty(), 0L, Optional.empty(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
+            return new State(Optional.empty(), 0L, Set.of(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
                     Set.of(), Pick.NONE, Rail.EMPTY, Optional.empty(), false, Optional.empty(), Work.NONE);
         }
 
         /** Asking for {@code value}'s listing: what was listed before is no longer what is shown. */
-        State asking(Path value, Optional<Path> then) {
+        State asking(Path value, Set<Path> then) {
             return new State(Optional.of(value), asked + 1, then, List.of(), today, zone, Set.of(), Pick.NONE,
                     Rail.EMPTY, started, armed, last, work);
         }
@@ -159,7 +163,7 @@ public final class Explorer {
          * selected in the explorer as they do in the list.
          */
         State relisting() {
-            return new State(folder, asked + 1, Optional.empty(), rows, today, zone, selected, Pick.NONE, Rail.EMPTY,
+            return new State(folder, asked + 1, Set.of(), rows, today, zone, selected, Pick.NONE, Rail.EMPTY,
                     started, armed, last, work);
         }
 
@@ -171,7 +175,7 @@ public final class Explorer {
                     still.add(r.path());
                 }
             }
-            return new State(folder, asked, Optional.empty(), l.rows(), l.today(), l.zone(), still, Pick.NONE,
+            return new State(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still, Pick.NONE,
                     Rail.EMPTY, started, armed, last, work);
         }
 
@@ -245,6 +249,8 @@ public final class Explorer {
         Step<State, Destine> destine = b.step("destine", Explorer::destine);
         Step<State, Planned> planned = b.step("planned", Explorer::planned);
         Step<State, Rename> rename = b.step("rename", Explorer::rename);
+        Step<State, RecallMark> recallMark = b.step("recallMark", Explorer::recallMark);
+        Step<State, ForgetMark> forgetMark = b.step("forgetMark", Explorer::forgetMark);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -264,7 +270,9 @@ public final class Explorer {
                 .on(Messages.DESTINATIONS_TOPIC, destinations)
                 .on(Messages.DESTINE_TOPIC, destine)
                 .on(Messages.PLANNED_TOPIC, planned)
-                .on(Messages.RENAME_TOPIC, rename);
+                .on(Messages.RENAME_TOPIC, rename)
+                .on(Messages.RECALL_MARK_TOPIC, recallMark)
+                .on(Messages.FORGET_MARK_TOPIC, forgetMark);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -293,7 +301,9 @@ public final class Explorer {
      * started in. A path is looked at before it is shown, since what was remembered may have gone.
      */
     private static State recalled(State s, Recalled r, Out out) {
-        State next = s.withStarted(r.started()).withWork(s.work().withTrash(r.trash()));
+        State next = s.withStarted(r.started())
+                .withWork(s.work().withTrash(r.trash()).withMarks(r.marks()));
+        out.send(Messages.MARKS_TOPIC, marks(next));
         if (!r.arguments().isEmpty()) {
             out.send(Messages.FIND_TOPIC, new Find(r.arguments().getFirst(), Why.ARGUMENT));
             return next;
@@ -302,7 +312,7 @@ public final class Explorer {
             out.send(Messages.FIND_TOPIC, new Find(r.folder().get(), Why.RESTORE_FOLDER));
             return next;
         }
-        return remember(show(next, r.started(), Optional.empty(), out).withArmed(), out);
+        return remember(show(next, r.started(), Set.of(), out).withArmed(), out);
     }
 
     /**
@@ -313,7 +323,7 @@ public final class Explorer {
         if (!s.armed()) {
             return s;
         }
-        Remember now = new Remember(s.folder());
+        Remember now = new Remember(s.folder(), s.work().marks());
         if (s.last().equals(Optional.of(now))) {
             return s;
         }
@@ -349,7 +359,7 @@ public final class Explorer {
      */
     private static State found(State s, Found f, Out out) {
         Path shown = f.is() == Is.FOLDER ? f.path() : f.is() == Is.FILE ? f.path().getParent() : null;
-        Optional<Path> select = f.is() == Is.FILE ? Optional.of(f.path()) : Optional.empty();
+        Set<Path> select = f.is() == Is.FILE ? Set.of(f.path()) : Set.of();
         if (shown == null) {
             if (f.why() == Why.GO) {
                 refuse(out, "Nothing at " + f.path());
@@ -368,14 +378,14 @@ public final class Explorer {
 
     /** The breadcrumb, the tree, Enter on a folder's row, Backspace or Alt+Up: show that folder. */
     private static State navigate(State s, Navigate n, Out out) {
-        return remember(show(s, n.folder(), Optional.empty(), out), out);
+        return remember(show(s, n.folder(), Set.of(), out), out);
     }
 
     /**
      * Ask for {@code folder}'s rows, to select {@code select} among them when they land. Nothing is shown until they do,
      * so the breadcrumb and the list never disagree about which folder this is.
      */
-    private static State show(State s, Path folder, Optional<Path> select, Out out) {
+    private static State show(State s, Path folder, Set<Path> select, Out out) {
         State next = s.asking(folder, select);
         out.send(Messages.LISTING_TOPIC, new Listing(next.asked(), folder));
         return next;
@@ -427,7 +437,7 @@ public final class Explorer {
             return s;
         }
         if (row.get().folder()) {
-            return remember(show(s, a.path(), Optional.empty(), out), out);
+            return remember(show(s, a.path(), Set.of(), out), out);
         }
         out.send(Messages.START_TOPIC, new Start(a.path()));
         return s;
@@ -600,6 +610,9 @@ public final class Explorer {
      * line rather than queued, because a queued run would act on a selection the person has since moved past.
      */
     private static State carry(State s, Carry c, Out out) {
+        if (s.rail().applied().act() == Act.MARK && !s.rail().targets().isEmpty()) {
+            return keep(s, out);
+        }
         Plan plan = s.rail().plan(names(s));
         boolean placed = s.rail().applied().act() != null && s.rail().applied().act().placed() != null;
         if (plan == null && placed) {
@@ -719,6 +732,74 @@ public final class Explorer {
         State again = next.relisting();
         out.send(Messages.LISTING_TOPIC, new Listing(again.asked(), again.folder().get()));
         return again;
+    }
+
+    // ------------------------------------------------------------------ marks
+
+    /** How many marks are kept; a new one past this drops the oldest. */
+    static final int MARKS = 6;
+
+    /**
+     * Keep as Mark: what the rail reaches, named for where it is and what it is
+     * ({@code Downloads: All videos here · 8}), newest first. A mark of the same files replaces the one before it.
+     * Kept across runs, with the folder shown.
+     */
+    private static State keep(State s, Out out) {
+        Rail rail = s.rail();
+        Set<Path> paths = new HashSet<>();
+        for (Row r : rail.targets()) {
+            paths.add(r.path());
+        }
+        int n = paths.size();
+        String what = n == 1 ? rail.targets().getFirst().name()
+                : rail.scopes().stream().filter(o -> o.value() == rail.applied().scope()).findFirst()
+                        .map(o -> o.label()).orElse("Just these") + " · " + n;
+        String name = s.folder().map(ListFolder::name).orElse("") + ": " + what;
+        List<Mark> kept = new ArrayList<>();
+        kept.add(new Mark(name, paths));
+        for (Mark m : s.work().marks()) {
+            if (!m.paths().equals(paths) && kept.size() < MARKS) {
+                kept.add(m);
+            }
+        }
+        State next = s.withWork(s.work().withMarks(kept));
+        out.send(Messages.MARKS_TOPIC, marks(next));
+        out.send(Messages.STATUS_TOPIC, new Status("Kept as a mark: " + name, false));
+        return remember(next, out);
+    }
+
+    /** A mark pressed: its folder shown, with what of it is still there selected. */
+    private static State recallMark(State s, RecallMark r, Out out) {
+        if (r.index() >= s.work().marks().size()) {
+            return s;
+        }
+        Mark m = s.work().marks().get(r.index());
+        Path folder = m.paths().iterator().next().getParent();
+        if (folder == null) {
+            return s;
+        }
+        return remember(show(s, folder, m.paths(), out), out);
+    }
+
+    /** A mark's × pressed: forgotten, here and in the session. */
+    private static State forgetMark(State s, ForgetMark f, Out out) {
+        if (f.index() >= s.work().marks().size()) {
+            return s;
+        }
+        List<Mark> kept = new ArrayList<>(s.work().marks());
+        Mark gone = kept.remove(f.index());
+        State next = s.withWork(s.work().withMarks(kept));
+        out.send(Messages.MARKS_TOPIC, marks(next));
+        out.send(Messages.STATUS_TOPIC, new Status("Forgot the mark " + gone.name(), false));
+        return remember(next, out);
+    }
+
+    private static Marks marks(State s) {
+        List<String> names = new ArrayList<>(s.work().marks().size());
+        for (Mark m : s.work().marks()) {
+            names.add(m.name());
+        }
+        return new Marks(names);
     }
 
     // ------------------------------------------------------------------ the status line

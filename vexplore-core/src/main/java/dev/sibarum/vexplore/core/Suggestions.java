@@ -259,7 +259,8 @@ public final class Suggestions {
             if (applied.act() != null && !applied.act().hint().isEmpty()) {
                 detail.append(". ").append(applied.act().hint());
             }
-            return new Card(headline, detail.toString(), plan(Set.of()) == null ? "" : done, "",
+            String go = plan(Set.of()) != null ? done : applied.act() == Act.MARK ? "Keep as Mark" : "";
+            return new Card(headline, detail.toString(), go, "",
                     applied.act() == Act.RENAME);
         }
     }

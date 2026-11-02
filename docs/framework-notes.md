@@ -141,3 +141,15 @@ around: the rail suggests from the selection alone, and `Intents` stays in 0.1's
 
 **For the framework:** a state topic of the modifiers held, `Modifiers(Set<Modifier>)`, published on each change, so
 a step can hold the last one and suggest within the pause before the second click.
+
+## FN-10 · A field cannot be filled once and then left to the person 🔬
+
+Rename puts a field on the rail's card holding the file's name. The rail is sent again whenever the selection or a
+pick changes, and a view that writes the field's text from each one writes over what is being typed. The view
+cannot tell whether the field was just shown (a node has `visible(boolean)` and no way to read it back) and must
+hold no state of its own. So the explorer sends `Naming(name)` once, when Rename becomes the action, and the view
+fills the field from that alone. It is a fair shape, a one-off command rather than a value, but it took a message of
+its own for what a form toolkit calls an initial value.
+
+**For the framework:** `TextField.initial(String)`, applied when the field is shown and ignored while it is, or a way
+to read a node's visibility. Every form in a panel that is re-shown from a model meets it.

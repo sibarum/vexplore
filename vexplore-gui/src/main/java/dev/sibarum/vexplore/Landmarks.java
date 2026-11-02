@@ -45,6 +45,10 @@ final class Landmarks {
     /** The Destination row's {@code Choose folder…}: the system's folder picker. */
     static final String RAIL_CHOOSE = "rail.choose";
 
+    /** The marks, each row numbered from 0: {@code rail.mark.0} recalls the newest, {@code rail.forget.0} forgets it. */
+    static final String RAIL_MARK = "rail.mark";
+    static final String RAIL_FORGET = "rail.forget";
+
     /** The card's headline: the effect, first ({@code Move 9 files · 6.5 GB}). */
     static final String RAIL_CARD = "rail.card";
 

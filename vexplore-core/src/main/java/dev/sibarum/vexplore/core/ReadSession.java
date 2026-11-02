@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore.core;
 
+import dev.sibarum.vexplore.core.Messages.Mark;
 import dev.sibarum.vexplore.core.Messages.Recall;
 import dev.sibarum.vexplore.core.Messages.Recalled;
 import dev.vexelray.framework.api.Job;
@@ -9,8 +10,10 @@ import dev.vexelray.gui.core.app.Settings;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Read back what the last session remembered, and what the command line named, on the offload lane.
@@ -25,6 +28,9 @@ public final class ReadSession {
 
     static final String FOLDER = "session.folder";
 
+    /** The marks, one a line: its name, then its paths, each after a tab. Neither a name nor a path holds either. */
+    static final String MARKS = "session.marks";
+
     private final Settings settings;
     private final Launch launch;
 
@@ -35,7 +41,7 @@ public final class ReadSession {
 
     public Recalled run(Recall r) {
         return new Recalled(path(settings.getString(FOLDER, "")), paths(launch.rest()), Path.of("").toAbsolutePath(),
-                trash());
+                trash(), marks(settings.getString(MARKS, "")));
     }
 
     /**
@@ -50,6 +56,22 @@ public final class ReadSession {
         List<Path> out = new ArrayList<>();
         for (String t : texts) {
             path(t).ifPresent(out::add);
+        }
+        return out;
+    }
+
+    /** The marks as {@link WriteSession} wrote them; a path that is not one any more is left out, and an empty mark. */
+    static List<Mark> marks(String text) {
+        List<Mark> out = new ArrayList<>();
+        for (String line : text.split("\n")) {
+            String[] parts = line.split("\t");
+            Set<Path> paths = new LinkedHashSet<>();
+            for (int i = 1; i < parts.length; i++) {
+                path(parts[i]).ifPresent(paths::add);
+            }
+            if (!parts[0].isBlank() && !paths.isEmpty()) {
+                out.add(new Mark(parts[0], paths));
+            }
         }
         return out;
     }
