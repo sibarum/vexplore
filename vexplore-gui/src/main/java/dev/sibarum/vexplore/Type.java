@@ -30,8 +30,11 @@ final class Type {
 
     // ------------------------------------------------------------------ type
 
-    /** The path field, a hint, the bars' chrome. */
+    /** The path field, a hint, the bars' chrome, the list's TYPE column. */
     static final Length SMALL = Length.rem(0.75f);
+
+    /** A row's words: a name, a size, a time. The handoff's 13.5 px. */
+    static final Length BODY = Length.rem(0.84375f);
 
     // ------------------------------------------------------------------ regions, from the handoff at 1440 x 900
 

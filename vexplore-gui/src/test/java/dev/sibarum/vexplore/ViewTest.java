@@ -138,4 +138,22 @@ class ViewTest {
         eventually("the status line", () -> !said.isEmpty());
         assertNull(shown(), "nothing was shown");
     }
+
+    @Test
+    void aShownFolderListsItsRows() throws Exception {
+        Path sub = Files.createDirectory(dir.resolve("sub")).toAbsolutePath().normalize();
+        Files.writeString(sub.resolve("a.txt"), "a");
+        Files.createDirectory(sub.resolve("inner"));
+        go(sub);
+        eventually("the rows", () -> wiring.ui().rows() == 2);
+    }
+
+    @Test
+    void goingUpShowsTheFolderThisOneIsIn() throws Exception {
+        Path sub = Files.createDirectory(dir.resolve("sub")).toAbsolutePath().normalize();
+        go(sub);
+        eventually("the folder", () -> sub.equals(shown()));
+        shell.bus().publish(Intent.INTENTS, new Intent(Intent.Command.UP));
+        eventually("the folder above", () -> sub.getParent().equals(shown()));
+    }
 }

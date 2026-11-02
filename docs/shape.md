@@ -96,3 +96,25 @@ narrow window at a high zoom gives the rail its 25 rem and the list what is left
 All of 2026-11-01, and built in M0: Ctrl+L turns the breadcrumb into a field in its place, and Esc or Enter puts it
 back; the atlas's faces, with the design's two asked for upstream (framework-notes FN-1); `ListLevel` for the tree
 and `ListFolder` for the list, kept apart (M1).
+
+## What M1 built differently
+
+Built 2026-11-01. Where the code departs from the sketch above, and why:
+
+- **`Listing`, not `List`.** A record named `List` in `Messages` would hide `java.util.List` from every record
+  beside it.
+- **`OpenFile`, not `Launch`.** `dev.vexelray.framework.core.Launch` is the framework's command line, which
+  `ReadSession` already takes. `OpenFile` opens through the engine's `NativePlatform.open` (framework-notes FN-4),
+  since the build refuses an `os.name` test outside an OS module.
+- **FindPath's answer is `Is`, not `Kind`.** `Kind` is 0.1's file kind, back as its own enum in `-core`, and a
+  `Row` carries one; FindPath's folder-file-nothing became `Messages.Is`.
+- **`ShowFolder` is gone.** `Shown` is the breadcrumb and the list together, sent when the listing lands, so the two
+  never name different folders.
+- **The tree's messages:** `PlacesWanted` → `Places(List<Place>)` and `LevelWanted(place, folder)` →
+  `Level(place, folder, folders)`. A tree row is `Ui.Spot(place, folder)`: Documents under the places and Documents
+  under `C:\Users\…` are two rows, and a tree's items are its rows' identities.
+- **The rail waits for M2.** At 25 rem beside a list a split's minimum cannot protect (FN-2), the empty rail left
+  the list 181 px wide, too narrow for a name. The body is the tree beside the list until the rail has something to
+  say.
+- **Esc puts the keyboard in the list**, not on the breadcrumb's last button: the list is where the folder the field
+  named is about to be, and a drive's root, which has no button, is covered too (FN-3).

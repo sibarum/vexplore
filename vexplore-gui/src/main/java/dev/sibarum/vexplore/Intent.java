@@ -27,6 +27,12 @@ record Intent(Command command) {
                 view.closePath();
             }
         },
+        UP {
+            @Override
+            void on(View view) {
+                view.up();
+            }
+        },
         ZOOM_IN {
             @Override
             void on(View view) {

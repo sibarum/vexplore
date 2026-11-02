@@ -2,7 +2,7 @@ package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.Found;
-import dev.sibarum.vexplore.core.Messages.Kind;
+import dev.sibarum.vexplore.core.Messages.Is;
 import dev.vexelray.framework.api.Job;
 
 import java.nio.file.Files;
@@ -14,9 +14,9 @@ public final class FindPath {
 
     public Found run(Find f) {
         Path p = f.path();
-        Kind kind = Files.isDirectory(p) ? Kind.FOLDER
-                : Files.isRegularFile(p) ? Kind.FILE
-                : Kind.NOWHERE;
-        return new Found(p, f.why(), kind);
+        Is is = Files.isDirectory(p) ? Is.FOLDER
+                : Files.isRegularFile(p) ? Is.FILE
+                : Is.NOWHERE;
+        return new Found(p, f.why(), is);
     }
 }

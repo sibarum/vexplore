@@ -24,14 +24,15 @@ final class Landmarks {
     /** The tree of places, at the left. */
     static final String TREE = "tree";
 
-    /** The file list. */
+    /** The file list: a table of the folder's rows. */
     static final String LIST = "list";
 
-    /** The Suggestion Rail, at the right. */
+    /** The Suggestion Rail, at the right: from M2. */
     static final String RAIL = "rail";
 
-    /** The status line, and its slot. */
+    /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
+    static final String STATUS_COUNTS = "status.counts";
     static final String STATUS_MESSAGE = "status.message";
 
     private Landmarks() {
