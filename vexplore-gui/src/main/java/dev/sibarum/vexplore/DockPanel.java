@@ -3,6 +3,7 @@ package dev.sibarum.vexplore;
 import dev.sibarum.vexplore.core.Bytes;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Preview;
+import dev.vexelray.gui.core.Feed;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
@@ -23,7 +24,8 @@ import java.util.Locale;
  * <p>As the rail: a preview that changes rewrites what the nodes say and whether they show, and never builds or
  * removes one, so nothing changes in one frame. The body is a pool of lines as long as the longest a tier gives. The
  * entropy bar is a row of cells lit or not, so a new file changes colours, which fade, and never a width. A text's
- * lines and a hex dump's rows are the same nodes; a text is drawn in ink, the dump dimmer.
+ * lines and a hex dump's rows are the same nodes; a text is drawn in ink, the dump dimmer. A picture or a video's
+ * poster frame is one node given each new feed, which the framework crossfades; the view gives the old ones back.
  *
  * <h2>Nothing in it is executed</h2>
  *
@@ -37,6 +39,10 @@ final class DockPanel {
     /** Cells in the entropy bar: one for each quarter of a bit per byte. */
     private static final int CELLS = 32;
 
+    /** The most a picture takes, in rem: the dock's height on a first run less its header, and most of its width. */
+    private static final float PICTURE_H = 15f;
+    private static final float PICTURE_W = 36f;
+
     private final Node node;
     private final Node name;
     private final Node about;
@@ -49,6 +55,7 @@ final class DockPanel {
     private final Node reading;
     private final List<Node> cells = new ArrayList<>();
     private final Node strings;
+    private final Node picture;
 
     DockPanel(Gui gui) {
         name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
@@ -87,8 +94,12 @@ final class DockPanel {
                 .width(Length.FILL);
         measure = gui.column().width(Length.FILL).gap(Length.rem(0.4f)).children(said, bar, strings);
 
+        picture = gui.box().corner(Length.rem(0.25f)).visible(false);
+        gui.landmark(Landmarks.DOCK_PICTURE, picture);
+        Node stage = gui.row().width(Length.FILL).justify(Justify.CENTER).children(picture);
+
         Node content = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(0.8f))
-                .scroll(true, true).clip(true).children(note, measure, body);
+                .scroll(true, true).clip(true).children(note, stage, measure, body);
         node = gui.column().width(Length.FILL).height(Length.FILL).padding(Length.rem(0.9f), Length.rem(1.25f))
                 .gap(Length.rem(0.8f)).background(Look.CHROME).clip(true).children(header, content);
         gui.landmark(Landmarks.DOCK, node);
@@ -118,6 +129,14 @@ final class DockPanel {
             line.textColor(text ? Role.INK : Role.DIM);
             line.visible(there);
         }
+        Feed feed = p == null ? null : p.picture().orElse(null);
+        if (feed != null) {
+            // Whole, at its own aspect, and never larger than its own pixels at the root's 16 px.
+            float rem = Math.min(1f / 16f, Math.min(PICTURE_W / feed.width(), PICTURE_H / feed.height()));
+            picture.image(feed).width(Length.rem(feed.width() * rem)).height(Length.rem(feed.height() * rem));
+        }
+        // Hidden with its picture still on it, so it fades out rather than going blank first.
+        picture.visible(feed != null);
         measure.visible(bytes);
         if (bytes) {
             entropy.text(String.format(Locale.ROOT, "Entropy %.1f bits per byte", p.entropy()));

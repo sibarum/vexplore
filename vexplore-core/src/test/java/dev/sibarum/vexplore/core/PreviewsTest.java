@@ -34,7 +34,8 @@ class PreviewsTest {
         Path f = Files.write(dir.resolve("x.png"), png);
         Preview p = Previews.of(f);
         assertEquals(Tier.BYTES, p.tier());
-        assertEquals("PNG image", p.identity());
+        assertEquals("PNG image · does not decode as an image", p.identity(),
+                "signed as a picture, so it says why not");
         assertEquals(png.length, p.size());
         assertEquals(2, p.lines().size(), "sixteen bytes a row");
         assertTrue(p.lines().getFirst().startsWith("00000000  89 50 4e 47"));
@@ -97,6 +98,31 @@ class PreviewsTest {
         assertEquals(Previews.LINE_WIDTH, lines.getFirst().length());
         byte[] none = new byte[0];
         assertEquals("empty file", Previews.of(dir.resolve("e"), none, 0).identity());
+    }
+
+    @Test
+    void aPictureIsItsThumbnailNoLargerThanTheDockAsks() throws Exception {
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(1200, 300,
+                java.awt.image.BufferedImage.TYPE_INT_RGB);
+        Path f = dir.resolve("wide.png");
+        javax.imageio.ImageIO.write(img, "png", f.toFile());
+        Preview p = Previews.of(f);
+        assertEquals(Tier.PICTURE, p.tier());
+        assertTrue(p.identity().startsWith("PNG"), p.identity());
+        assertEquals(Previews.SIDE, p.picture().orElseThrow().width(), "scaled as it decodes");
+        assertEquals(Previews.SIDE / 4, p.picture().orElseThrow().height(), "at its own aspect");
+        assertTrue(p.lines().isEmpty());
+    }
+
+    @Test
+    void aFileNamedAsAPictureOrAVideoThatIsNeitherFallsATierAndSaysWhy() throws Exception {
+        Preview png = Previews.of(Files.writeString(dir.resolve("fake.png"), "not pixels at all"));
+        assertEquals(Tier.TEXT, png.tier());
+        assertTrue(png.picture().isEmpty());
+        assertTrue(png.identity().startsWith("UTF-8 text · "), png.identity());
+        Preview mp4 = Previews.of(Files.write(dir.resolve("fake.mp4"), new byte[]{0, 1, 2, 3, 4, 5, 6, 7}));
+        assertEquals(Tier.BYTES, mp4.tier());
+        assertTrue(mp4.identity().startsWith("unknown binary · "), mp4.identity());
     }
 
     @Test

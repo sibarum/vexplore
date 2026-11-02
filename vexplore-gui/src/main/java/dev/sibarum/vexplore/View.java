@@ -27,8 +27,10 @@ import dev.sibarum.vexplore.core.Messages.Stop;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Undo;
+import dev.sibarum.vexplore.core.Preview;
 import dev.vexelray.framework.api.Subscribe;
 import dev.vexelray.framework.core.PickFile;
+import dev.vexelray.gui.core.Feed;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.edit.History;
 import dev.vexelray.gui.core.input.ClaimScope;
@@ -105,6 +107,10 @@ final class View {
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
     private final Sender<Intent> intents;
+
+    /** The dock's picture, and the one it replaced, which may still be fading out: the view's to give back. */
+    private Feed shown;
+    private Feed fading;
 
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
@@ -288,6 +294,15 @@ final class View {
     @Subscribe
     public void docked(Docked m) {
         ui.docked(m);
+        Feed feed = m.preview().flatMap(Preview::picture).orElse(null);
+        if (feed != shown) {
+            // The picture before last: the one just replaced is still crossfading out, so it is kept a change longer.
+            if (fading != null && fading != feed) {
+                fading.close();
+            }
+            fading = shown;
+            shown = feed;
+        }
     }
 
     /** The marks kept: the rail lists them. */

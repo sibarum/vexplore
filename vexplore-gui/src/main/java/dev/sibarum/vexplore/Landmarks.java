@@ -71,6 +71,9 @@ final class Landmarks {
     /** The body's first line: a text's first line, or the hex dump's first row. */
     static final String DOCK_LINE = "dock.line";
 
+    /** A picture's thumbnail, or a video's poster frame. */
+    static final String DOCK_PICTURE = "dock.picture";
+
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
     static final String STATUS_COUNTS = "status.counts";

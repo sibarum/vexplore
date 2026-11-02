@@ -413,3 +413,15 @@ Slice 2, tier 3, built 2026-11-02:
   clipped at the dock's edge rather than wrapped, so a line on screen is a line in the file.
 - **The text's lines and the dump's rows are one pool of sixty nodes**, drawn in ink for a text and dimmer for a dump.
   No message changed: `Preview.Tier` gained `TEXT`.
+
+Slice 3, tier 1, thumbnails, built 2026-11-02 (Open in Rasterware still to come):
+
+- **`Preview` gained `Optional<Feed> picture`, as sketched, and nothing else**: the feed knows its own size, which is
+  all the dock needs to draw it at its aspect. Tier 1 is two tags, `PICTURE` and `VIDEO`.
+- **Only a file named or signed as a picture or a video is decoded as one**, so a text file never reaches imagelib and
+  FFmpeg sees only what looks like a container. One that promised a picture and gave none falls a tier with the
+  decoder's reason beside what it is (`unknown binary · not a video`), as 0.1 said it.
+- **Decoded at 640 px on its longer side**, which the codec scales to as it decodes; drawn whole, at its aspect, at
+  most 15 by 36 rem, and never larger than its own pixels at the root's 16 px.
+- **The view gives the feeds back**: it keeps the picture shown and the one it replaced, which may still be
+  crossfading out, and closes the one before. A preview dropped as stale was never drawn and needs no closing.

@@ -1,6 +1,12 @@
 package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Preview.Tier;
+import dev.vexelray.codec.image.Decoded;
+import dev.vexelray.codec.image.Picture;
+import dev.vexelray.codec.image.Pictures;
+import dev.vexelray.codec.video.Videos;
+import dev.vexelray.gui.core.Feed;
+import dev.vexelray.vulkan.present.MipChain;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,11 +22,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
- * The preview ladder, from the floor up: 0.1's, a tier at a time (docs/shape.md, M4). A folder is a folder, a file
- * that decodes as text is its first lines, and every other file is the bytes it is: a hex dump, the strings inside it,
- * and how random it looks.
+ * The preview ladder: 0.1's, a tier at a time (docs/shape.md, M4). A folder is a folder; a picture is its thumbnail
+ * and a video its poster frame, as Rasterware decodes them; a file that decodes as text is its first lines; and every
+ * other file is the bytes it is: a hex dump, the strings inside it, and how random it looks.
+ *
+ * <p><b>Only what is named or signed as one is decoded as a picture or a video</b>, so a text file never reaches the
+ * image decoder and FFmpeg sees only what looks like a video. One that promised a picture and gave none falls a tier,
+ * with the decoder's reason beside what it is ("unknown binary · not an image").
  *
  * <p><b>A bounded read, and nothing executed.</b> {@link #SAMPLE} bytes from the start of the file, through a plain
  * input stream, are all that is read. The file is never mapped, and never opened by another program.
@@ -35,6 +46,12 @@ public final class Previews {
 
     /** Bytes shown in the hex dump, sixteen to a row. */
     static final int DUMP = 16 * 16;
+
+    /**
+     * The longest side a thumbnail is decoded at: the dock's picture at its largest on a wide window, at no more than
+     * its own pixels. The codec scales as it decodes, so a large photograph costs a decode and not its pixels.
+     */
+    static final int SIDE = 640;
 
     /** Lines of a text the dock is given. */
     static final int TEXT_LINES = 60;
@@ -65,7 +82,23 @@ public final class Previews {
             try (InputStream in = Files.newInputStream(path)) {
                 sample = in.readNBytes(SAMPLE);
             }
-            return of(path, sample, size);
+            String said = identify(sample);
+            Decoded d = null;
+            Tier tier = Tier.PICTURE;
+            if (Pictures.named(path) || said.endsWith(" image")) {
+                d = Pictures.decode(path, sample, size, SIDE);
+            } else if (Videos.named(path) || said.startsWith("MPEG-4") || said.startsWith("Matroska")
+                    || said.startsWith("RIFF")) {
+                d = Videos.poster(path, SIDE);
+                tier = Tier.VIDEO;
+            }
+            if (d != null && d.image()) {
+                return new Preview(path, tier, d.identity(), size, List.of(), entropy(sample), List.of(),
+                        size > sample.length, Optional.of(feed(d.picture())));
+            }
+            // Named or signed as a picture or a video and none came: the tier below says why, beside what it is.
+            Preview below = of(path, sample, size);
+            return d == null ? below : below.identified(d.identity());
         } catch (IOException | RuntimeException e) {
             return new Preview(path, Tier.BYTES, "unreadable: " + ListFolder.problem(e), 0L, List.of(), 0d,
                     List.of(), false);
@@ -123,6 +156,23 @@ public final class Previews {
             }
         }
         return lines;
+    }
+
+    /**
+     * {@code p}'s first frame in a still feed, with its mip chain: Rasterware's. An animation's sheet holds its frames
+     * side by side, and a thumbnail is the first of them.
+     */
+    static Feed feed(Picture p) {
+        int w = p.frameWidth();
+        int h = p.frameHeight();
+        byte[] first = p.sheet();
+        if (p.sheetWidth() != w || p.sheetHeight() != h) {
+            first = new byte[w * h * 4];
+            for (int y = 0; y < h; y++) {
+                System.arraycopy(p.sheet(), y * p.sheetWidth() * 4, first, y * w * 4, w * 4);
+            }
+        }
+        return Feed.still(w, h, true, MipChain.of(first, w, h));
     }
 
     private static long count(Path dir) throws IOException {
