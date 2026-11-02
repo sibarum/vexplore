@@ -278,6 +278,37 @@ class ExplorerTest {
     }
 
     @Test
+    void theMenusOpenIsEntersOnTheOneSelected() {
+        showing(dir, folder("sub"), file("a.txt", 10), file("b.txt", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Messages.Menu.OPEN));
+        assertEquals(List.of(new Start(path("a.txt"))), took(Start.class));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"), path("b.txt"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Messages.Menu.OPEN));
+        assertTrue(seen(Start.class).isEmpty(), "never several programs at once");
+        assertTrue(took(Status.class).getFirst().alert());
+    }
+
+    @Test
+    void theMenusActionIsPickedOnTheRailAndNotCarriedOut() {
+        showing(dir, video("a.mp4", 10), video("b.mov", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Suggestions.Act.DELETE.name()));
+        assertEquals("Delete 1 file · 10 B", took(Suggested.class).getLast().card().headline());
+        assertTrue(seen(Messages.Run.class).isEmpty(), "the card's button carries it out");
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Suggestions.Act.DELETE.name()));
+        assertTrue(seen(Suggested.class).isEmpty(), "chosen again, it stays picked");
+
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"), path("b.mov"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Suggestions.Act.RENAME.name()));
+        assertEquals("Rename is not offered for these", took(Status.class).getFirst().message());
+    }
+
+    @Test
     void aFileThatWillNotOpenIsSaid() {
         tell(Messages.STARTED_TOPIC, new Started(path("a.txt"), "no opener"));
         assertTrue(took(Status.class).getFirst().alert());

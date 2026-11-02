@@ -108,6 +108,17 @@ public final class Messages {
     public record Picked(Slot slot, int index) {
     }
 
+    /**
+     * A row menu's choice, about the selection, which the right click has already made: {@link #OPEN}, or the
+     * {@linkplain Suggestions.Act#name() name} of one of the rail's actions, which the menu picks on the rail rather
+     * than carrying out, so the card states its effect first as every other way in does.
+     */
+    public static final Topic<Menu> MENU_TOPIC = Topic.edge(Menu.class);
+
+    public record Menu(String action) {
+        public static final String OPEN = "open";
+    }
+
     /** The card's button: carry out what the card states. */
     public static final Topic<Carry> CARRY_TOPIC = Topic.edge(Carry.class);
 

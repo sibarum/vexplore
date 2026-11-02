@@ -432,3 +432,17 @@ Slice 3, tier 1, thumbnails and Open in Rasterware, built 2026-11-02:
 - **The button is under the picture, shown only with one**, and sends `OpenIn()`; the explorer hands on the file in
   the dock, so the view names nothing. `HandOff` is in `-gui`, beside the view, since `Apps` is the framework
   shell's, and asks for Rasterware as `pix`, its installer id until the suite's commands are renamed together.
+
+Slice 4, the row menu, built 2026-11-02:
+
+- **`Menu(String action)`, as sketched**: `open`, or the name of one of `Suggestions.Act`, so the menu is the rail's
+  own list and cannot drift from it. The labels are the chips' (`Move to…`, `Delete (recoverable)`), and a script
+  reaches each as `menu.<label>`, which the framework names.
+- **The menu is about the selection.** The list's right click selects the row first, or leaves a selection it is part
+  of alone, and publishes that before the menu opens; so `Menu` names no row and the explorer reads what it already
+  knows.
+- **Open is Enter's, on one item only.** A folder is gone into and a file opened; with several selected it is said,
+  never several programs at once.
+- **An action chosen when it is already picked stays picked**, where its chip pressed again would let it go. One the
+  rail does not offer for the selection (Rename, with several) is said rather than silently dropped. The menu lists
+  every action whatever is selected, because a list's actions are declared once.

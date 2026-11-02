@@ -11,6 +11,7 @@ import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Marks;
+import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenIn;
@@ -105,6 +106,7 @@ final class View {
     private final Sender<RecallMark> recallMark;
     private final Sender<ForgetMark> forgetMark;
     private final Sender<OpenIn> openIn;
+    private final Sender<Menu> menu;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
@@ -117,7 +119,7 @@ final class View {
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
-         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenIn> openIn,
+         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenIn> openIn, Sender<Menu> menu,
          Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children,
          Sender<Intent> intents) {
         this.gui = gui;
@@ -137,6 +139,7 @@ final class View {
         this.recallMark = recallMark;
         this.forgetMark = forgetMark;
         this.openIn = openIn;
+        this.menu = menu;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -264,6 +267,14 @@ final class View {
     public void rowActivated(ListView.Activated m) {
         if (m.list().equals(ui.rowsAddress()) && m.item() instanceof Row r) {
             activated.send(new Activated(r.path()));
+        }
+    }
+
+    /** A row menu's choice: about the selection, which the right click has already made and the explorer knows. */
+    @Subscribe
+    public void rowMenu(ListView.Chosen m) {
+        if (m.at().equals(ui.rowsAddress())) {
+            menu.send(new Menu(m.action()));
         }
     }
 

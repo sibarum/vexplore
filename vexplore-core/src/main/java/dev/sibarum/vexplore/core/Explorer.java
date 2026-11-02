@@ -21,6 +21,7 @@ import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Mark;
 import dev.sibarum.vexplore.core.Messages.Marks;
+import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenIn;
@@ -117,7 +118,8 @@ import java.util.Set;
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
-        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class})
+        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class,
+        Menu.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
@@ -262,6 +264,7 @@ public final class Explorer {
         Step<State, Previewed> previewed = b.step("previewed", Explorer::previewed);
         Step<State, OpenIn> openIn = b.step("openIn", Explorer::openIn);
         Step<State, HandedOff> handedOff = b.step("handedOff", Explorer::handedOff);
+        Step<State, Menu> menu = b.step("menu", Explorer::menu);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -286,7 +289,8 @@ public final class Explorer {
                 .on(Messages.FORGET_MARK_TOPIC, forgetMark)
                 .on(Messages.PREVIEWED_TOPIC, previewed)
                 .on(Messages.OPEN_IN_TOPIC, openIn)
-                .on(Messages.HANDED_OFF_TOPIC, handedOff);
+                .on(Messages.HANDED_OFF_TOPIC, handedOff)
+                .on(Messages.MENU_TOPIC, menu);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -468,10 +472,39 @@ public final class Explorer {
         return s;
     }
 
+    // ------------------------------------------------------------------ the row menu
+
+    /**
+     * A row menu's choice, about the selection. Open is Enter's, on the one row selected. One of the rail's actions is
+     * picked on the rail, as its chip would pick it, and not carried out: the card states its effect and its button
+     * carries it out, as every other way in does. Chosen when it is already picked, it stays picked, where a chip
+     * pressed again would let it go. One the rail does not offer for this selection (Rename, with several) is said.
+     */
+    private static State menu(State s, Menu m, Out out) {
+        if (Menu.OPEN.equals(m.action())) {
+            if (s.selected().size() != 1) {
+                refuse(out, "Open is for one item at a time");
+                return s;
+            }
+            return activated(s, new Activated(s.selected().iterator().next()), out);
+        }
+        for (Act a : Act.values()) {
+            if (!a.name().equals(m.action())) {
+                continue;
+            }
+            if (!s.rail().acts().contains(a)) {
+                refuse(out, a.verb() + " is not offered for " + (s.selected().size() == 1 ? "this file" : "these"));
+                return s;
+            }
+            return a == s.rail().applied().act() ? s : suggest(s.withPick(s.pick().with(a)), true, out);
+        }
+        return s;
+    }
+
     // ------------------------------------------------------------------ the Suggestion Rail
 
     /**
-     * A chip pressed: the pick it makes, resolved against the rail last sent, which is what the person saw. A place past
+     * A chip pressed:the pick it makes, resolved against the rail last sent, which is what the person saw. A place past
      * the end of its row (the rail shrank under the pointer) changes nothing.
      *
      * <p>The rail is sent even when the pick changed nothing: a chip changes its own look when it is clicked, before

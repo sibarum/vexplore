@@ -88,10 +88,10 @@ rail, undone by Ctrl+Z through a `History` whose changes send messages (the rule
 the example). Suggested destinations, and `PickFile.folder` behind *Choose folder…*. Marks kept across runs through
 the session jobs, which 0.1 never did.
 
-**M4. The Preview Dock and the row menu.** Tier 4 (hex, strings, entropy) first, since it is the floor, then text,
-then pictures. The row menu through `ListView.action` / `CHOSEN`. **(ruled 2026-11-01)** A picture or a video shows
-only as its thumbnail in the dock, and opening its preview hands it to Rasterware. Vexplore has no viewer of its own,
-now or once the suite's is ported.
+**M4. The Preview Dock and the row menu.** *Done 2026-11-02, in four slices ([shape.md](shape.md)).* Tier 4 (hex,
+strings, entropy) first, since it is the floor, then text, then pictures. The row menu through `ListView.action` /
+`CHOSEN`. **(ruled 2026-11-01)** A picture or a video shows only as its thumbnail in the dock, and opening its preview
+hands it to Rasterware. Vexplore has no viewer of its own, now or once the suite's is ported.
 
 **M5. Fresh files.** `WatchFolder`; a row that landed in the last few seconds tagged *new* in amber, never selected.
 

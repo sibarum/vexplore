@@ -4,6 +4,7 @@ import dev.sibarum.vexplore.core.Bytes;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
+import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Place;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
@@ -11,6 +12,7 @@ import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
@@ -23,6 +25,7 @@ import dev.vexelray.gui.fileicons.FileFamily;
 import dev.vexelray.gui.widget.Breadcrumb;
 import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.Cue;
+import dev.vexelray.gui.widget.MenuAction;
 import dev.vexelray.gui.widget.SplitPane;
 import dev.vexelray.gui.widget.StatusBar;
 import dev.vexelray.gui.widget.Table;
@@ -120,6 +123,11 @@ final class Ui {
         gui.landmark(Landmarks.LIST, list.node());
 
         list.rows().looks(Role.SELECTION, Look.TARGETED);
+        // The row menu: Open, then the rail's actions, which a choice picks on the rail rather than carries out.
+        list.rows().action(MenuAction.of(Menu.OPEN, "Open"));
+        for (Act a : Act.values()) {
+            list.rows().action(MenuAction.of(a.name(), a.chip()));
+        }
 
         // The rail is there whenever the list is, empty or not: one that appeared with its first suggestion would move
         // every row. It is a share of the room beside the tree rather than the handoff's 25 rem, which a split's
