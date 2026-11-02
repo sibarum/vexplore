@@ -4,15 +4,19 @@ import dev.sibarum.vexplore.core.Plan.Op;
 import dev.sibarum.vexplore.core.Plan.Step;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Carrying out a {@link Plan}: 0.1's, with its undo turned into a plan of its own ({@link Done#reverse}).
@@ -41,6 +45,9 @@ public final class Operations {
      * steps are finished, after each one.
      */
     public static Done execute(Plan plan, Path trash, IntConsumer progress) {
+        if (plan.op() == Op.ARCHIVE) {
+            return zip(plan, progress);
+        }
         List<Step> done = new ArrayList<>();
         List<String> failed = new ArrayList<>();
         Path bin = trash.resolve(Long.toString(System.currentTimeMillis()));
@@ -67,14 +74,76 @@ public final class Operations {
         return new Done(plan.op(), done, failed, plan.bytes(), stopped);
     }
 
-    /** One step. A remove takes away {@code to}, the copy; everything else puts {@code from} at {@code to}. */
+    /**
+     * One step. A remove or an unarchive takes away {@code to}, the copy or the zip (the zip once: the steps after the
+     * first find it gone); everything else puts {@code from} at {@code to}.
+     */
     private static void carry(Op op, Path from, Path to) throws IOException {
-        if (op == Op.REMOVE) {
+        if (op == Op.REMOVE || op == Op.UNARCHIVE) {
             deleteTree(to);
         } else if (op == Op.COPY) {
             copyTree(from, to);
         } else {
             moveTree(from, to);
+        }
+    }
+
+    /**
+     * Every step's source into the one new zip the steps name: 0.1's. Never over a zip already there; a source that
+     * cannot be read is left out and said, and a Stop ends it between files, the zip holding what went in by then.
+     */
+    private static Done zip(Plan plan, IntConsumer progress) {
+        List<Step> done = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        if (plan.steps().isEmpty()) {
+            return new Done(Op.ARCHIVE, done, failed, 0L, false);
+        }
+        Path zip = plan.steps().getFirst().to();
+        if (Files.exists(zip)) {
+            failed.add(ListFolder.name(zip) + ": something is already at " + zip);
+            return new Done(Op.ARCHIVE, done, failed, plan.bytes(), false);
+        }
+        int n = 0;
+        boolean stopped = false;
+        try (OutputStream out = Files.newOutputStream(zip, StandardOpenOption.CREATE_NEW);
+             ZipOutputStream z = new ZipOutputStream(out)) {
+            for (Step s : plan.steps()) {
+                if (Thread.currentThread().isInterrupted()) {
+                    stopped = true;
+                    break;
+                }
+                try {
+                    addToZip(z, s.from(), ListFolder.name(s.from()));
+                    done.add(s);
+                } catch (IOException | RuntimeException e) {
+                    failed.add(ListFolder.name(s.from()) + ": " + reason(e));
+                }
+                progress.accept(++n);
+            }
+        } catch (IOException | RuntimeException e) {
+            failed.add(ListFolder.name(zip) + ": " + reason(e));
+        }
+        return new Done(Op.ARCHIVE, done, failed, plan.bytes(), stopped);
+    }
+
+    private static void addToZip(ZipOutputStream z, Path source, String entry) throws IOException {
+        if (!Files.isDirectory(source)) {
+            z.putNextEntry(new ZipEntry(entry));
+            Files.copy(source, z);
+            z.closeEntry();
+            return;
+        }
+        try (var walk = Files.walk(source)) {
+            for (Path p : (Iterable<Path>) walk::iterator) {
+                String rel = entry + "/" + source.relativize(p).toString().replace('\\', '/');
+                if (Files.isDirectory(p)) {
+                    z.putNextEntry(new ZipEntry(rel.endsWith("/") ? rel : rel + "/"));
+                } else {
+                    z.putNextEntry(new ZipEntry(rel));
+                    Files.copy(p, z);
+                }
+                z.closeEntry();
+            }
         }
     }
 

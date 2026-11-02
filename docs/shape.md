@@ -317,3 +317,15 @@ Slice 2, move and copy, built 2026-11-02:
 - **After a run the explorer keeps what is still selected.** The list keeps its selection across a listing of the
   same folder (its rows are values), and the explorer used to clear its own, leaving the rail empty beside a
   selected row.
+
+Slice 3, archive and rename, built 2026-11-02:
+
+- **Each `Op` knows its undo** (`undone()`, and `swaps()` for whether it goes back along each step), so
+  `Done.reverse` has no list of cases. `ARCHIVE` is taken back by `UNARCHIVE`, which removes the zip, and the other
+  way round for the redo; `RENAME` by renaming back.
+- **An archive goes beside its files** as `Archive.zip`, or the first `Archive-n.zip` not taken, planned in the step
+  from the folder's names (`Act.plan` takes them). Its run writes one zip and never over one already there.
+- **Rename is planned when its name is typed** (`Rename(name)`), and Enter carries it out: the card has a field
+  (`Card.naming`) instead of a button. The explorer sends `Naming(name)` once when Rename becomes the action, and the
+  view fills the field from it, the name before the extension selected; a rail sent again never writes over what is
+  being typed. A name that will not do is said on the status line, and nothing runs.

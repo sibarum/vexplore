@@ -140,6 +140,12 @@ public final class Messages {
     public record Destine(Path folder) {
     }
 
+    /** The rename field submitted: give the one file the rail reaches this name. */
+    public static final Topic<Rename> RENAME_TOPIC = Topic.edge(Rename.class);
+
+    public record Rename(String name) {
+    }
+
     // ------------------------------------------------------------------ the explorer tells the view
 
     /**
@@ -193,11 +199,12 @@ public final class Messages {
     /**
      * The rail's card: the effect first ({@code Move 9 files · 6.5 GB}), then the first few names. {@code go} is the
      * button's words, or empty when there is nothing it can do yet; {@code running} is how far a run has got
-     * ({@code Deleting · 3 of 9}), or empty when none goes, and while one does the button is its Stop.
+     * ({@code Deleting · 3 of 9}), or empty when none goes, and while one does the button is its Stop. {@code naming}:
+     * the card holds a field for a new name, for a rename, whose Enter carries it out.
      */
-    public record Card(String headline, String detail, String go, String running) {
+    public record Card(String headline, String detail, String go, String running, boolean naming) {
 
-        public static final Card NONE = new Card("", "", "", "");
+        public static final Card NONE = new Card("", "", "", "", false);
     }
 
     /**
@@ -212,7 +219,7 @@ public final class Messages {
         /** The same rail, its card saying how far a run has got. */
         public Suggested running(String words) {
             return new Suggested(basis, select, condition, action, reach,
-                    new Card(card.headline(), card.detail(), card.go(), words), placing, places);
+                    new Card(card.headline(), card.detail(), card.go(), words, card.naming()), placing, places);
         }
 
         /**
@@ -245,6 +252,15 @@ public final class Messages {
      * A run landed that can be taken back: the view puts entry {@code entry} in the window's history, as
      * {@code words} ({@code Delete 4 files}), so Ctrl+Z sends its {@link Undo}.
      */
+    /**
+     * Rename was picked, or the file it reaches changed: the view fills the card's field with {@code name}, once, and
+     * the person types over it. Sent once, and not with every rail, so what is typed is never written over.
+     */
+    public static final Topic<Naming> NAMING_TOPIC = Topic.edge(Naming.class);
+
+    public record Naming(String name) {
+    }
+
     public static final Topic<Recorded> RECORDED_TOPIC = Topic.edge(Recorded.class);
 
     public record Recorded(long entry, String words) {

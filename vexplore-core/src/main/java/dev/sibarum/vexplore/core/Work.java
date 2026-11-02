@@ -46,6 +46,9 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
                 String what = d.count() == r.total()
                         ? d.op().gone() + r.words().substring(r.words().indexOf(' '))
                         : d.op().gone() + " " + d.count() + " of " + r.total();
+                if (d.op() == Plan.Op.ARCHIVE && d.count() > 0) {
+                    return what + " into " + ListFolder.name(d.done().getFirst().to());
+                }
                 return d.op() == Plan.Op.DELETE && d.count() > 0
                         ? what + " into Vexplore's trash. Ctrl+Z puts " + (d.count() == 1 ? "it" : "them") + " back"
                         : what;

@@ -11,8 +11,8 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
 [rebuild.md](rebuild.md). M0 to M2 are done.
 
-- [ ] **M3: actions**, in the four slices of [shape.md](shape.md)'s *The messages M3 adds*. Slices 1 and 2 (delete
-      and undo; move and copy) are done; next is Archive and Rename.
+- [ ] **M3: actions**, in the four slices of [shape.md](shape.md)'s *The messages M3 adds*. Slices 1 to 3 (delete
+      and undo; move and copy; archive and rename) are done; next is Marks, kept across runs.
 - [ ] **M4 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later

@@ -29,16 +29,16 @@ public record Done(Op op, List<Step> done, List<String> failed, long bytes, bool
     }
 
     /**
-     * The plan that takes this back, last step first. A move or a delete moves each back to where it was; a copy removes
-     * what it made, and a remove copies it again. Undoing an undo is the same rule once more, which is the redo.
+     * The plan that takes this back, last step first, as {@link Op#undone} says: a move, a delete or a rename goes back
+     * to where it was; a copy or an archive has what it made removed, and that removal is made again. Undoing an undo
+     * is the same rule once more, which is the redo.
      */
     public Plan reverse() {
         List<Step> back = new ArrayList<>(done.size());
         for (int i = done.size() - 1; i >= 0; i--) {
             Step s = done.get(i);
-            back.add(op == Op.MOVE || op == Op.DELETE ? new Step(s.to(), s.from()) : s);
+            back.add(op.swaps() ? new Step(s.to(), s.from()) : s);
         }
-        Op undo = op == Op.COPY ? Op.REMOVE : op == Op.REMOVE ? Op.COPY : Op.MOVE;
-        return new Plan(undo, back, List.of(), bytes);
+        return new Plan(op.undone(), back, List.of(), bytes);
     }
 }

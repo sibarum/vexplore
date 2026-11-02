@@ -106,4 +106,49 @@ class OperationsTest {
             Thread.interrupted();
         }
     }
+
+    @Test
+    void anArchiveIsOneNewZipBesideItsFilesAndItsUndoRemovesIt() throws IOException {
+        Path a = file("a.txt", "a");
+        Path b = file("b.txt", "b");
+        Plan plan = Plan.archive(List.of(row(a), row(b)), java.util.Set.of("a.txt", "b.txt", "Archive.zip"));
+        Path zip = dir.resolve("Archive-2.zip");
+        assertEquals(zip, plan.steps().getFirst().to(), "a name not taken");
+        Done made = Operations.execute(plan, trash(), n -> { });
+        assertEquals(2, made.count());
+        try (var z = new java.util.zip.ZipFile(zip.toFile())) {
+            assertEquals(2, z.size());
+        }
+        assertTrue(Files.exists(a), "the files stay where they are");
+
+        Done gone = Operations.execute(made.reverse(), trash(), n -> { });
+        assertEquals(List.of(), gone.failed());
+        assertFalse(Files.exists(zip));
+        Operations.execute(gone.reverse(), trash(), n -> { });
+        assertTrue(Files.exists(zip), "and the redo makes it again");
+    }
+
+    @Test
+    void anArchiveNeverWritesOverAZipAlreadyThere() throws IOException {
+        Path a = file("a.txt", "a");
+        Files.writeString(dir.resolve("Archive.zip"), "not mine");
+        Done d = Operations.execute(Plan.archive(List.of(row(a)), java.util.Set.of()), trash(), n -> { });
+        assertEquals(0, d.count());
+        assertEquals("not mine", Files.readString(dir.resolve("Archive.zip")));
+    }
+
+    @Test
+    void aRenameIsUndoneByRenamingBackAndRefusesANameThatWillNotDo() throws IOException {
+        Path a = file("a.txt", "a");
+        Done d = Operations.execute(Plan.rename(row(a), "b.txt", java.util.Set.of("a.txt")), trash(), n -> { });
+        assertEquals("a", Files.readString(dir.resolve("b.txt")));
+        Operations.execute(d.reverse(), trash(), n -> { });
+        assertEquals("a", Files.readString(a));
+
+        assertEquals("a file of that name is already there",
+                Plan.rename(row(a), "c.txt", java.util.Set.of("c.txt")).skipped().getFirst().reason());
+        assertEquals("that is its name already",
+                Plan.rename(row(a), " a.txt ", java.util.Set.of()).skipped().getFirst().reason());
+        assertEquals(0, Plan.rename(row(a), "x/y", java.util.Set.of()).count());
+    }
 }

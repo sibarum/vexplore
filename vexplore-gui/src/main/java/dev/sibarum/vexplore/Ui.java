@@ -255,6 +255,16 @@ final class Ui {
         return rail.stop(address);
     }
 
+    /** The rename field's address. */
+    String nameAddress() {
+        return rail.nameAddress();
+    }
+
+    /** Rename was picked: the field holds {@code current}, ready to type over. */
+    void naming(String current) {
+        rail.naming(current);
+    }
+
     /** Whether {@code address} is {@code Choose folder…}. */
     boolean choose(String address) {
         return rail.choose(address);
@@ -293,7 +303,7 @@ final class Ui {
 
     // ------------------------------------------------------------------ the path field
 
-    /** Ctrl+L: the field in the breadcrumb's place, with the keyboard in it and its text selected, so typing replaces. */
+    /** Ctrl+L: the field in the breadcrumb's place, the keyboard in it and its text selected, so typing replaces it. */
     void editPath() {
         crumbs.node().visible(false);
         path.node().visible(true);

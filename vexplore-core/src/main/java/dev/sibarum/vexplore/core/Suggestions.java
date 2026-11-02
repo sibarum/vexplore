@@ -105,12 +105,23 @@ public final class Suggestions {
                 return Plan.Op.COPY;
             }
         },
-        ARCHIVE("Archive", "Archive"),
-        RENAME("Rename…", "Rename"),
+        ARCHIVE("Archive", "Archive") {
+            @Override
+            Plan plan(List<Row> targets, Set<String> taken) {
+                return Plan.archive(targets, taken);
+            }
+        },
+        /** Planned when its name is typed ({@code Messages.Rename}), so the card asks for the name instead. */
+        RENAME("Rename…", "Rename") {
+            @Override
+            String hint() {
+                return "Type its new name and press Enter";
+            }
+        },
         MARK("Mark for later", "Mark"),
         DELETE("Delete (recoverable)", "Delete") {
             @Override
-            Plan plan(List<Row> targets) {
+            Plan plan(List<Row> targets, Set<String> taken) {
                 return Plan.delete(targets);
             }
         };
@@ -132,11 +143,16 @@ public final class Suggestions {
         }
 
         /**
-         * What carrying this out on {@code targets} would do, or null while it cannot be carried out yet: each action
-         * gets its plan in the slice that builds it (docs/shape.md, M3).
+         * What carrying this out on {@code targets} would do, planned in a step from the folder's rows ({@code taken}
+         * are their names), or null for an action planned some other way or not built yet.
          */
-        Plan plan(List<Row> targets) {
+        Plan plan(List<Row> targets, Set<String> taken) {
             return null;
+        }
+
+        /** What the card adds when this is picked: how to carry it out, when its button cannot. */
+        String hint() {
+            return "";
         }
 
         /**
@@ -194,9 +210,12 @@ public final class Suggestions {
             return targets.stream().mapToLong(Row::size).sum();
         }
 
-        /** What the card's button would carry out, or null when no action is picked or it cannot be carried out yet. */
-        public Plan plan() {
-            return applied.act() == null || targets.isEmpty() ? null : applied.act().plan(targets);
+        /**
+         * What the card's button would carry out, or null when no action is picked or it is not planned in a step;
+         * {@code taken} are the names in the folder shown.
+         */
+        public Plan plan(Set<String> taken) {
+            return applied.act() == null || targets.isEmpty() ? null : applied.act().plan(targets, taken);
         }
 
         /** The rail in words, for the view to show: chips worded and lit, the reach, and the card. */
@@ -237,7 +256,11 @@ public final class Suggestions {
                 detail.append(" and ").append(n - named).append(" more");
             }
             detail.append(n == 1 ? ", marked in the list" : ", all marked in the list");
-            return new Card(headline, detail.toString(), plan() == null ? "" : done, "");
+            if (applied.act() != null && !applied.act().hint().isEmpty()) {
+                detail.append(". ").append(applied.act().hint());
+            }
+            return new Card(headline, detail.toString(), plan(Set.of()) == null ? "" : done, "",
+                    applied.act() == Act.RENAME);
         }
     }
 

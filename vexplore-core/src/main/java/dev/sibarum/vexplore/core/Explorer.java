@@ -16,6 +16,7 @@ import dev.sibarum.vexplore.core.Messages.Is;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Navigate;
+import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
 import dev.sibarum.vexplore.core.Messages.Planning;
@@ -25,6 +26,7 @@ import dev.sibarum.vexplore.core.Messages.Recall;
 import dev.sibarum.vexplore.core.Messages.Recalled;
 import dev.sibarum.vexplore.core.Messages.Recorded;
 import dev.sibarum.vexplore.core.Messages.Redo;
+import dev.sibarum.vexplore.core.Messages.Rename;
 import dev.sibarum.vexplore.core.Messages.Remember;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Run;
@@ -37,6 +39,7 @@ import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.sibarum.vexplore.core.Messages.Why;
+import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.sibarum.vexplore.core.Suggestions.Pick;
 import dev.sibarum.vexplore.core.Suggestions.Rail;
 import dev.sibarum.vexplore.core.Work.Entry;
@@ -102,10 +105,11 @@ import java.util.Set;
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
-        Redo.class, Destinations.class, Destine.class, Planned.class})
+        Redo.class, Destinations.class, Destine.class, Planned.class,
+        Rename.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
-        Destining.class, Planning.class})
+        Destining.class, Planning.class, Naming.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -240,6 +244,7 @@ public final class Explorer {
         Step<State, Destinations> destinations = b.step("destinations", Explorer::destinations);
         Step<State, Destine> destine = b.step("destine", Explorer::destine);
         Step<State, Planned> planned = b.step("planned", Explorer::planned);
+        Step<State, Rename> rename = b.step("rename", Explorer::rename);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -258,7 +263,8 @@ public final class Explorer {
                 .on(Messages.REDO_TOPIC, redo)
                 .on(Messages.DESTINATIONS_TOPIC, destinations)
                 .on(Messages.DESTINE_TOPIC, destine)
-                .on(Messages.PLANNED_TOPIC, planned);
+                .on(Messages.PLANNED_TOPIC, planned)
+                .on(Messages.RENAME_TOPIC, rename);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -474,6 +480,10 @@ public final class Explorer {
         if (!always && rail.equals(s.rail())) {
             return s;
         }
+        if (rail.applied().act() == Act.RENAME && !rail.targets().isEmpty()
+                && (s.rail().applied().act() != Act.RENAME || !s.rail().targets().equals(rail.targets()))) {
+            out.send(Messages.NAMING_TOPIC, new Naming(rail.targets().getFirst().name()));
+        }
         State next = aim(s.withRail(rail), out);
         out.send(Messages.SUGGESTED_TOPIC, said(next));
         return next;
@@ -561,11 +571,11 @@ public final class Explorer {
         }
         Card card = rail.card();
         if (to.isEmpty()) {
-            Card waiting = new Card(card.headline(), card.detail() + ". Choose where they go", "", "");
+            Card waiting = new Card(card.headline(), card.detail() + ". Choose where they go", "", "", false);
             return rail.placed(true, places, waiting);
         }
         if (a.plan().isEmpty()) {
-            return rail.placed(true, places, new Card(card.headline(), card.detail(), "", ""));
+            return rail.placed(true, places, new Card(card.headline(), card.detail(), "", "", false));
         }
         Plan plan = a.plan().get();
         int n = plan.count();
@@ -580,7 +590,7 @@ public final class Explorer {
                 detail.append(", and others");
             }
         }
-        return rail.placed(true, places, new Card(card.headline(), detail.toString(), go, ""));
+        return rail.placed(true, places, new Card(card.headline(), detail.toString(), go, "", false));
     }
 
     // ------------------------------------------------------------------ carrying it out, and taking it back
@@ -590,7 +600,7 @@ public final class Explorer {
      * line rather than queued, because a queued run would act on a selection the person has since moved past.
      */
     private static State carry(State s, Carry c, Out out) {
-        Plan plan = s.rail().plan();
+        Plan plan = s.rail().plan(names(s));
         boolean placed = s.rail().applied().act() != null && s.rail().applied().act().placed() != null;
         if (plan == null && placed) {
             plan = s.work().aim().plan().orElse(null);
@@ -600,6 +610,32 @@ public final class Explorer {
         }
         String words = said(s).card().go();
         return start(s, plan, Way.DO, 0L, words, out);
+    }
+
+    /**
+     * The rename field submitted: planned here, against the names in the folder shown, and carried out at once, since
+     * the Enter that submits a name is the person agreeing to it. A name that will not do is said, and nothing runs.
+     */
+    private static State rename(State s, Rename r, Out out) {
+        if (s.rail().applied().act() != Act.RENAME || s.rail().targets().size() != 1) {
+            return s;
+        }
+        Row row = s.rail().targets().getFirst();
+        Plan plan = Plan.rename(row, r.name(), names(s));
+        if (plan.count() == 0) {
+            refuse(out, "Can't rename " + row.name() + ": " + plan.skipped().getFirst().reason());
+            return s;
+        }
+        return start(s, plan, Way.DO, 0L, "Rename " + row.name() + " to " + r.name().strip(), out);
+    }
+
+    /** The names in the folder shown: what a new name, or an archive's, must not be. */
+    private static Set<String> names(State s) {
+        Set<String> out = new HashSet<>();
+        for (Row r : s.rows()) {
+            out.add(r.name());
+        }
+        return out;
     }
 
     /** Ctrl+Z on entry {@code u.entry()}: run the reverse of what it last did. */

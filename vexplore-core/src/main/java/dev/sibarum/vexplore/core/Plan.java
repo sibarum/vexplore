@@ -33,21 +33,72 @@ public record Plan(Op op, List<Step> steps, List<Skip> skipped, long bytes) {
     }
 
     /**
-     * What is done to the files. {@code DELETE} moves into Vexplore's trash, so it is a move whose destination the run
-     * chooses; {@code REMOVE} deletes outright, and is only ever the undo of a copy, taking away what Vexplore made.
+     * What is done to the files, and what takes it back. {@code DELETE} moves into Vexplore's trash, so it is a move
+     * whose destination the run chooses. {@code REMOVE} and {@code UNARCHIVE} delete outright, and are only ever the
+     * undo of a copy or an archive, taking away what Vexplore made. Each knows its undo ({@link #undone}) and whether
+     * that goes back along each step ({@link #swaps}), which is all {@link Done#reverse} needs.
      */
     public enum Op {
-        MOVE("Moving", "Moved"),
-        COPY("Copying", "Copied"),
-        DELETE("Deleting", "Deleted"),
-        REMOVE("Removing", "Removed");
+        MOVE("Moving", "Moved", true) {
+            @Override
+            public Op undone() {
+                return MOVE;
+            }
+        },
+        COPY("Copying", "Copied", false) {
+            @Override
+            public Op undone() {
+                return REMOVE;
+            }
+        },
+        DELETE("Deleting", "Deleted", true) {
+            @Override
+            public Op undone() {
+                return MOVE;
+            }
+        },
+        REMOVE("Removing", "Removed", false) {
+            @Override
+            public Op undone() {
+                return COPY;
+            }
+        },
+        /** Every step's {@code to} is the one zip they all go into. */
+        ARCHIVE("Archiving", "Archived", false) {
+            @Override
+            public Op undone() {
+                return UNARCHIVE;
+            }
+        },
+        UNARCHIVE("Removing", "Removed", false) {
+            @Override
+            public Op undone() {
+                return ARCHIVE;
+            }
+        },
+        RENAME("Renaming", "Renamed", true) {
+            @Override
+            public Op undone() {
+                return RENAME;
+            }
+        };
 
         private final String going;
         private final String gone;
+        private final boolean swaps;
 
-        Op(String going, String gone) {
+        Op(String going, String gone, boolean swaps) {
             this.going = going;
             this.gone = gone;
+            this.swaps = swaps;
+        }
+
+        /** What takes this back. */
+        public abstract Op undone();
+
+        /** Whether its undo goes back along each step, {@code to} to {@code from}, rather than over the same steps. */
+        public boolean swaps() {
+            return swaps;
         }
 
         /** The card's word while it runs: {@code Deleting}. */
@@ -101,6 +152,51 @@ public record Plan(Op op, List<Step> steps, List<Skip> skipped, long bytes) {
             bytes += r.size();
         }
         return new Plan(op, steps, skipped, bytes);
+    }
+
+    /** The name an archive is given beside its files: {@code Archive.zip}, or the first {@code Archive-n.zip} free. */
+    static String archiveName(Set<String> taken) {
+        String name = "Archive.zip";
+        for (int i = 2; taken.contains(name); i++) {
+            name = "Archive-" + i + ".zip";
+        }
+        return name;
+    }
+
+    /** {@code rows} into one new zip beside them, under a name not {@code taken} there. */
+    public static Plan archive(List<Row> rows, Set<String> taken) {
+        Path zip = rows.getFirst().path().resolveSibling(archiveName(taken));
+        List<Step> steps = new ArrayList<>(rows.size());
+        long bytes = 0L;
+        for (Row r : rows) {
+            steps.add(new Step(r.path(), zip));
+            bytes += r.size();
+        }
+        return new Plan(Op.ARCHIVE, steps, List.of(), bytes);
+    }
+
+    /**
+     * Giving {@code row} the name {@code to}, in the folder it is in, where {@code taken} are the names already: 0.1's
+     * checks. A name that is empty, unchanged, taken, or not one name is a plan of nothing that says why.
+     */
+    public static Plan rename(Row row, String to, Set<String> taken) {
+        String name = to == null ? "" : to.strip();
+        String why = name.isEmpty() ? "type a new name and press Enter"
+                : name.equals(row.name()) ? "that is its name already"
+                : !named(name) ? "a name cannot hold / or \\, or be . or .."
+                : taken.contains(name) ? "a file of that name is already there"
+                : null;
+        if (why != null) {
+            return new Plan(Op.RENAME, List.of(), List.of(new Skip(row.path(), why)), 0L);
+        }
+        return new Plan(Op.RENAME, List.of(new Step(row.path(), row.path().resolveSibling(name))), List.of(),
+                row.size());
+    }
+
+    /** Whether {@code name} is one file name, on any of the systems a folder here can be on. */
+    static boolean named(String name) {
+        return !name.isBlank() && !name.equals(".") && !name.equals("..")
+                && name.indexOf('/') < 0 && name.indexOf('\\') < 0 && name.indexOf('\0') < 0;
     }
 
     /** Into the trash: every row, the run choosing where in it. */

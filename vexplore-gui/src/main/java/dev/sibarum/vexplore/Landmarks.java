@@ -55,6 +55,9 @@ final class Landmarks {
     static final String RAIL_GO = "rail.go";
     static final String RAIL_STOP = "rail.stop";
 
+    /** The card's field for a rename's new name: Enter carries it out. */
+    static final String RAIL_NAME = "rail.name";
+
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
     static final String STATUS_COUNTS = "status.counts";

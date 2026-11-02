@@ -10,6 +10,7 @@ import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.widget.Button;
+import dev.vexelray.gui.widget.TextField;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,6 +78,7 @@ final class RailPanel {
     private final Node tag;
     private final Button go;
     private final Button stop;
+    private final TextField name;
 
     RailPanel(Gui gui) {
         this.gui = gui;
@@ -117,11 +119,15 @@ final class RailPanel {
         gui.landmark(Landmarks.RAIL_GO, go.node());
         stop = new Button(gui, "Stop").name(Landmarks.RAIL_STOP);
         gui.landmark(Landmarks.RAIL_STOP, stop.node());
+        // A rename's new name, typed here and carried out by Enter: the card is where what would happen is said.
+        name = new TextField(gui, "").name(Landmarks.RAIL_NAME);
+        name.node().width(Length.FILL).font(Type.UI).textSize(Type.RAIL_TEXT);
+        gui.landmark(Landmarks.RAIL_NAME, name.node());
         Node buttons = gui.row().width(Length.FILL).gap(Length.rem(0.5f)).scroll(false, false).clip(true)
                 .children(go.node(), stop.node());
         card = gui.column().width(Length.FILL).padding(Length.rem(1f)).gap(Length.rem(0.5f))
                 .background(Role.PANEL).border(Length.dp(1), Role.LINE).corner(Length.rem(0.5f))
-                .children(top, detail, buttons);
+                .children(top, detail, name.node(), buttons);
 
         // The steps scroll when a short window cannot hold them: a column that does not is laid out by shrinking its
         // children, which flattened the chips to slivers under a card of five lines. The card does not scroll with
@@ -162,11 +168,28 @@ final class RailPanel {
         go.label(s.card().go());
         go.node().visible(running.isEmpty() && !s.card().go().isEmpty());
         stop.node().visible(!running.isEmpty());
+        name.node().visible(running.isEmpty() && s.card().naming());
     }
 
     /** Whether {@code address} is the card's button, which carries out what the card states. */
     boolean go(String address) {
         return go.address().equals(address);
+    }
+
+    /** The name field's address: what its {@code Submitted} says it with. */
+    String nameAddress() {
+        return name.address();
+    }
+
+    /**
+     * Rename was picked: the field holds the file's name, with the keyboard in it and the name before its extension
+     * selected, so typing replaces the name and keeps the extension, as a file manager's rename does.
+     */
+    void naming(String current) {
+        name.text(current);
+        int dot = current.lastIndexOf('.');
+        name.select(0, dot > 0 ? dot : current.length());
+        gui.focus(name.node());
     }
 
     /** Whether {@code address} is {@code Choose folder…}. */

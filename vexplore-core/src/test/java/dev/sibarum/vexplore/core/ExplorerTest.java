@@ -78,7 +78,7 @@ class ExplorerTest {
         for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC,
                 Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
-                Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC)) {
+                Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -510,5 +510,54 @@ class ExplorerTest {
                 TODAY, ZoneOffset.UTC));
         assertEquals(new Summary(2, 1, 10L), seen(Summary.class).getLast(), "a.txt is still there, and still selected");
         assertEquals(Set.of(path("a.txt")), reached(took(Suggested.class).getLast()));
+    }
+
+    // ------------------------------------------------------------------ archive and rename
+
+    private void picked(String act) {
+        List<Messages.Chip> acts = took(Suggested.class).getLast().action();
+        int at = 0;
+        while (!acts.get(at).label().startsWith(act)) {
+            at++;
+        }
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, at));
+    }
+
+    @Test
+    void anArchiveGoesBesideItsFilesUnderANameNotTaken() {
+        started();
+        showing(dir, file("a.txt", 10), file("b.txt", 20), file("Archive.zip", 5));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"), path("b.txt"))));
+        picked("Archive");
+        assertEquals("Archive 2 files", took(Suggested.class).getLast().card().go());
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        Messages.Run run = took(Messages.Run.class).getFirst();
+        assertEquals(Plan.Op.ARCHIVE, run.plan().op());
+        assertEquals(path("Archive-2.zip"), run.plan().steps().getFirst().to());
+    }
+
+    @Test
+    void renamingAsksForANameOnceAndEnterCarriesItOut() {
+        started();
+        showing(dir, file("a.txt", 10), file("b.txt", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        picked("Rename");
+        assertEquals(List.of(new Messages.Naming("a.txt")), seen(Messages.Naming.class));
+        Suggested rail = took(Suggested.class).getLast();
+        assertTrue(rail.card().naming());
+        assertEquals("", rail.card().go(), "Enter in the field carries it out, not a button");
+
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 0));
+        assertTrue(seen(Messages.Naming.class).isEmpty(), "the name is asked once, not with every rail");
+
+        tell(Messages.RENAME_TOPIC, new Messages.Rename("b.txt"));
+        assertTrue(took(Status.class).getFirst().alert(), "b.txt is taken");
+        tell(Messages.RENAME_TOPIC, new Messages.Rename("c.txt"));
+        Messages.Run run = took(Messages.Run.class).getFirst();
+        assertEquals(List.of(new Plan.Step(path("a.txt"), path("c.txt"))), run.plan().steps());
+        tell(Messages.RAN_TOPIC, new Messages.Ran(run.run(), new Done(Plan.Op.RENAME, run.plan().steps(), List.of(),
+                10L, false)));
+        assertEquals(List.of(new Messages.Recorded(1, "Rename a.txt to c.txt")), seen(Messages.Recorded.class));
+        assertEquals("Renamed a.txt to c.txt", took(Status.class).getFirst().message());
     }
 }
