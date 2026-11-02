@@ -289,6 +289,15 @@ public final class Messages {
         }
     }
 
+    /**
+     * What the Preview Dock shows: one file's preview, or, with none, a note ({@code Select one file to see it here},
+     * {@code 3 selected · 4.2 MB}). The latest is all that matters.
+     */
+    public static final Topic<Docked> DOCKED_TOPIC = Topic.state(Docked.class);
+
+    public record Docked(Optional<Preview> preview, String note) {
+    }
+
     public static final Topic<Naming> NAMING_TOPIC = Topic.edge(Naming.class);
 
     public record Naming(String name) {
@@ -397,6 +406,17 @@ public final class Messages {
     public static final Topic<Planned> PLANNED_TOPIC = Topic.edge(Planned.class);
 
     public record Planned(long ticket, Plan plan) {
+    }
+
+    /** Preview one file for the dock ({@link ReadPreview}), ticketed: one for a file since unselected is dropped. */
+    public static final Topic<Previewing> PREVIEWING_TOPIC = Topic.edge(Previewing.class);
+
+    public record Previewing(long ticket, Path path) {
+    }
+
+    public static final Topic<Previewed> PREVIEWED_TOPIC = Topic.edge(Previewed.class);
+
+    public record Previewed(long ticket, Preview preview) {
     }
 
     /**

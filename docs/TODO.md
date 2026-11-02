@@ -11,7 +11,8 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
 [rebuild.md](rebuild.md). M0 to M3 are done.
 
-- [ ] **M4: the Preview Dock and the row menu**, as [rebuild.md](rebuild.md) has it.
+- [ ] **M4: the Preview Dock and the row menu**, in the four slices of [shape.md](shape.md)'s *The messages M4
+      adds*. Slice 1, the dock and tier 4 (bytes), is done; next is tier 3, text.
 - [ ] **M5 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later

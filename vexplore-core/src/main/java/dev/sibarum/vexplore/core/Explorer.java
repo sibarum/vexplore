@@ -8,6 +8,7 @@ import dev.sibarum.vexplore.core.Messages.Dest;
 import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Destinations;
 import dev.sibarum.vexplore.core.Messages.Destining;
+import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
@@ -23,6 +24,8 @@ import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
 import dev.sibarum.vexplore.core.Messages.Planning;
+import dev.sibarum.vexplore.core.Messages.Previewed;
+import dev.sibarum.vexplore.core.Messages.Previewing;
 import dev.sibarum.vexplore.core.Messages.Progress;
 import dev.sibarum.vexplore.core.Messages.Ran;
 import dev.sibarum.vexplore.core.Messages.Recall;
@@ -46,6 +49,7 @@ import dev.sibarum.vexplore.core.Messages.Why;
 import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.sibarum.vexplore.core.Suggestions.Pick;
 import dev.sibarum.vexplore.core.Suggestions.Rail;
+import dev.sibarum.vexplore.core.Work.Dock;
 import dev.sibarum.vexplore.core.Work.Entry;
 import dev.sibarum.vexplore.core.Work.Running;
 import dev.sibarum.vexplore.core.Work.Way;
@@ -110,10 +114,11 @@ import java.util.Set;
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
-        Rename.class, RecallMark.class, ForgetMark.class})
+        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
-        Destining.class, Planning.class, Naming.class, Marks.class})
+        Destining.class, Planning.class, Naming.class, Marks.class,
+        Previewing.class, Docked.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -251,6 +256,7 @@ public final class Explorer {
         Step<State, Rename> rename = b.step("rename", Explorer::rename);
         Step<State, RecallMark> recallMark = b.step("recallMark", Explorer::recallMark);
         Step<State, ForgetMark> forgetMark = b.step("forgetMark", Explorer::forgetMark);
+        Step<State, Previewed> previewed = b.step("previewed", Explorer::previewed);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -272,7 +278,8 @@ public final class Explorer {
                 .on(Messages.PLANNED_TOPIC, planned)
                 .on(Messages.RENAME_TOPIC, rename)
                 .on(Messages.RECALL_MARK_TOPIC, recallMark)
-                .on(Messages.FORGET_MARK_TOPIC, forgetMark);
+                .on(Messages.FORGET_MARK_TOPIC, forgetMark)
+                .on(Messages.PREVIEWED_TOPIC, previewed);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -410,7 +417,7 @@ public final class Explorer {
             bytes += next.selected().contains(r.path()) ? r.size() : 0L;
         }
         out.send(Messages.SUMMARY_TOPIC, new Summary(l.rows().size(), next.selected().size(), bytes));
-        return suggest(next, true, out);
+        return dock(suggest(next, true, out), out);
     }
 
     /**
@@ -427,7 +434,7 @@ public final class Explorer {
             }
         }
         out.send(Messages.SUMMARY_TOPIC, new Summary(s.rows().size(), selected.size(), bytes));
-        return suggest(s.withSelected(selected), out);
+        return dock(suggest(s.withSelected(selected), out), out);
     }
 
     /** Enter or a double click on a row: a folder is gone into, and a file opened as the desktop would open it. */
@@ -732,6 +739,47 @@ public final class Explorer {
         State again = next.relisting();
         out.send(Messages.LISTING_TOPIC, new Listing(again.asked(), again.folder().get()));
         return again;
+    }
+
+    // ------------------------------------------------------------------ the Preview Dock
+
+    /**
+     * The dock follows the selection: one file is previewed, asked of {@link ReadPreview} when it becomes the one;
+     * none or several are a note. The preview shown stays until the next one lands, so the dock never flashes empty
+     * between two files.
+     */
+    private static State dock(State s, Out out) {
+        Dock d = s.work().dock();
+        if (s.selected().size() == 1) {
+            Path one = s.selected().iterator().next();
+            if (d.path().equals(Optional.of(one))) {
+                return s;
+            }
+            Dock next = new Dock(d.ticket() + 1, Optional.of(one));
+            out.send(Messages.PREVIEWING_TOPIC, new Previewing(next.ticket(), one));
+            return s.withWork(s.work().withDock(next));
+        }
+        String note;
+        if (s.selected().isEmpty()) {
+            note = "Select one file to see it here";
+        } else {
+            long bytes = 0L;
+            for (Row r : s.rows()) {
+                bytes += s.selected().contains(r.path()) ? r.size() : 0L;
+            }
+            note = s.selected().size() + " selected" + (bytes > 0 ? " · " + Bytes.format(bytes) : "");
+        }
+        out.send(Messages.DOCKED_TOPIC, new Docked(Optional.empty(), note));
+        return s.withWork(s.work().withDock(new Dock(d.ticket(), Optional.empty())));
+    }
+
+    /** A preview landed: shown, unless the selection has moved on since it was asked. */
+    private static State previewed(State s, Previewed p, Out out) {
+        if (p.ticket() != s.work().dock().ticket() || s.work().dock().path().isEmpty()) {
+            return s;
+        }
+        out.send(Messages.DOCKED_TOPIC, new Docked(Optional.of(p.preview()), ""));
+        return s;
     }
 
     // ------------------------------------------------------------------ marks

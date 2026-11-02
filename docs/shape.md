@@ -339,3 +339,68 @@ Slice 4, marks, built 2026-11-02:
   Ctrl+Z; a mark is forgotten by its ×. The marks are listed whether anything is selected or not.
 - **A mark recalled shows its folder with its rows selected**, rather than marked: recalling is the person asking
   for those files. So `Shown.select` became a set (a typed file is a set of one).
+
+## The messages M4 adds
+
+Proposed 2026-11-02, before any of it is written. M4 is the Preview Dock under the list and the row menu, as
+rebuild.md has it: tier 4 (bytes) first, since it is the floor every file reaches, then text, then pictures. As M3
+did, it comes in slices, each a commit with its test and its ottermate run:
+
+1. **The dock, and tier 4.** A region under the list (a `SplitPane`, stacked, the dock its sized pane), with the rail
+   beside both, as screen 03 has it. One file selected: its name, what its first bytes say it is, its size, the
+   tier's tag, and a hex dump, the printable strings in it and an entropy bar. A folder says it is one, with its
+   count. None selected says how to fill the dock; several say how many and how much.
+2. **Tier 3, text.** The first lines of anything that decodes as text, monospaced. Tier 2 (an archive's listing, a
+   JSON tree, a CSV table) is not in M4: rebuild.md lists 1, 3 and 4.
+3. **Tier 1, pictures and videos, as thumbnails.** A picture through `vexelray-codec-image`'s `Pictures`, a video's
+   first frame through `vexelray-codec-video`'s `Videos.poster`, each at the dock's size, as Rasterware's
+   `ReadThumbnail` does it. **Open in Rasterware** beside it (ruled 2026-11-01: Vexplore has no viewer of its own),
+   found with the framework's `Apps.find`; where it is not installed, the desktop's own opener, said so.
+4. **The row menu** (`ListView.action`, answered by `ListView.CHOSEN`): Open, then the rail's actions. **An action
+   chosen from the menu picks it on the rail**, so the card states its effect and its button carries it out, as
+   every other way in does; the menu is a shortcut to the pick, not a second way to act.
+
+**0.1's `Previews` comes back** in `-core` for tiers 3 and 4 (a bounded read of the file's first 4 KB, nothing
+executed), with its tests, as `Suggestions` did.
+
+### The messages
+
+The explorer asks the dock's job, and tells the view:
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Previewing(long ticket, Path path)` → `Previewed(long ticket, Preview preview)` | `ReadPreview`, a job | one file's preview, ticketed as a listing is |
+| `Preview(Path path, Tier tier, String identity, long size, List<String> lines, double entropy, List<String> strings, boolean truncated, Optional<Feed> picture)` | (a value) | 0.1's, with the picture as Rasterware carries one |
+| `Docked(Optional<Preview> preview, String note)` | state | what the dock shows: a preview, or a note (`Select one file to see it here`, `3 selected · 4.2 MB`) |
+
+`Explorer.State` gains `dock`: the ticket asked and what is shown. The explorer asks when the selection becomes one
+file, and a preview for a file no longer the one selected is dropped by its ticket.
+
+The view tells the explorer: `Menu(String action)` for a row menu's choice (the right click has already made that
+row the selection, as the list does), and, from slice 3, `OpenIn()` for the dock's button.
+
+| Request → reply | Part | Does |
+| --- | --- | --- |
+| `Handing(Path file)` → `Started(Path file, String problem)` | `HandOff`, a job, slice 3 | Rasterware where installed, else the desktop's opener; in `-gui`, because `Apps` is the framework shell's |
+
+### Not in M4
+
+- **The inline preview in each row** (screen 03's PREVIEW column: a sparkline, a waveform, a first line). The design
+  wants one; rebuild.md's M4 does not list it. Proposed as its own milestone after M7, since it reads every file in
+  a folder and wants the watching of M5 first.
+- **Pop out** (the dock in a window of its own). `Popout` is a widget of the library's; proposed for after slice 3,
+  if wanted then.
+- Tier 2, and PDF pages.
+
+## What M4 built differently
+
+Slice 1, the dock and tier 4, built 2026-11-02:
+
+- **The sample is 64 KB, as 0.1 had it**, not the sketch's 4 KB: enough for an entropy that means something, still
+  one read. The dump shows its first 256 bytes.
+- **The dock's state is `Work.Dock`** (the ticket and the file asked for), beside `Aim`, not a field of `State`. The
+  preview shown stays until the next lands, so the dock never flashes empty between two files.
+- **The entropy bar is 32 cells, lit or not**, rather than a bar that grows: a new file changes colours, which fade,
+  and never a width.
+- **What the bytes say comes first, and the dump under it**: entropy, its reading and the strings found, then the
+  dump, which scrolls. With the dump first, a dock of sixteen rows pushed the summary out of sight.

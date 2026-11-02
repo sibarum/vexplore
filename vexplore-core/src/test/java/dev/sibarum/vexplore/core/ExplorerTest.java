@@ -79,7 +79,7 @@ class ExplorerTest {
                 Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
-                Messages.MARKS_TOPIC)) {
+                Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -599,5 +599,36 @@ class ExplorerTest {
         tell(Messages.FORGET_MARK_TOPIC, new Messages.ForgetMark(0));
         assertEquals(List.of(new Messages.Marks(List.of())), seen(Messages.Marks.class));
         assertEquals(List.of(), took(Remember.class).getLast().marks());
+    }
+
+    // ------------------------------------------------------------------ the Preview Dock
+
+    @Test
+    void oneFileSelectedIsPreviewedAndALatePreviewIsDropped() {
+        showing(dir, file("a.txt", 10), file("b.txt", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        Messages.Previewing first = took(Messages.Previewing.class).getFirst();
+        assertEquals(path("a.txt"), first.path());
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("b.txt"))));
+        Messages.Previewing second = took(Messages.Previewing.class).getFirst();
+
+        Preview a = new Preview(path("a.txt"), Preview.Tier.BYTES, "unknown binary", 10,
+                List.of(), 0d, List.of(), false);
+        tell(Messages.PREVIEWED_TOPIC, new Messages.Previewed(first.ticket(), a));
+        assertTrue(took(Messages.Docked.class).isEmpty(), "a.txt is no longer the one selected");
+        Preview b = new Preview(path("b.txt"), Preview.Tier.BYTES, "unknown binary", 20,
+                List.of(), 0d, List.of(), false);
+        tell(Messages.PREVIEWED_TOPIC, new Messages.Previewed(second.ticket(), b));
+        assertEquals(new Messages.Docked(Optional.of(b), ""), took(Messages.Docked.class).getFirst());
+    }
+
+    @Test
+    void noneOrSeveralSelectedIsANote() {
+        showing(dir, file("a.txt", 1024), file("b.txt", 2048));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"), path("b.txt"))));
+        assertEquals("2 selected · 3 KB", took(Messages.Docked.class).getLast().note());
+        assertTrue(seen(Messages.Previewing.class).isEmpty());
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of()));
+        assertEquals("Select one file to see it here", took(Messages.Docked.class).getLast().note());
     }
 }

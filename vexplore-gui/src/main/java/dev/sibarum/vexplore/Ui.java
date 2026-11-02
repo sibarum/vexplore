@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.core.Bytes;
+import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Place;
@@ -85,6 +86,7 @@ final class Ui {
     private final TreeView<Spot> tree;
     private final Table<Row> list;
     private final RailPanel rail;
+    private final DockPanel dock;
     private final StatusBar status;
     private final Motion motion;
     private final Color danger;
@@ -123,8 +125,13 @@ final class Ui {
         // every row. It is a share of the room beside the tree rather than the handoff's 25 rem, which a split's
         // minimum cannot protect the list from in a narrow window (framework-notes FN-2).
         rail = new RailPanel(gui);
-        SplitPane work = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.LIST, list.node()),
-                rail.node()).sized(SplitPane.Pane.SECOND).size(Type.RAIL)
+        // The dock under the list, the sized pane of their split so a taller window gives the list the room: the
+        // handoff's screen 03. The rail stays beside both.
+        dock = new DockPanel(gui);
+        SplitPane listing = new SplitPane(gui, SplitPane.Orientation.STACKED, region(Look.LIST, list.node()),
+                dock.node()).sized(SplitPane.Pane.SECOND).size(Type.DOCK).minFirst(Type.LIST_MIN_HEIGHT);
+        SplitPane work = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, listing.node(), rail.node())
+                .sized(SplitPane.Pane.SECOND).size(Type.RAIL)
                 .minFirst(Type.LIST_MIN).minSecond(Type.RAIL_MIN);
         SplitPane body = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.CHROME, tree.node()),
                 work.node()).size(Type.TREE);
@@ -231,6 +238,13 @@ final class Ui {
             }
         }
         status.text(Landmarks.STATUS_COUNTS, b.toString());
+    }
+
+    // ------------------------------------------------------------------ the Preview Dock
+
+    /** What the dock shows: one file's preview, or a note. */
+    void docked(Docked d) {
+        dock.show(d);
     }
 
     // ------------------------------------------------------------------ the Suggestion Rail

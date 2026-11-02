@@ -23,11 +23,13 @@ import java.util.Optional;
  * @param journal each entry by number
  * @param aim     where a move or a copy would go
  * @param marks   the marks kept, newest first
+ * @param dock    the preview asked for the dock
  */
 record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
-            Aim aim, List<Mark> marks) {
+            Aim aim, List<Mark> marks, Dock dock) {
 
-    static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of());
+    static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of(),
+            Dock.NONE);
 
     Work {
         journal = Map.copyOf(journal);
@@ -121,36 +123,49 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withTrash(Path value) {
-        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks);
+        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock);
     }
 
     /** Run {@code r} starts; its number is the next. */
     Work starting(Running r) {
-        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks);
+        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock);
     }
 
     Work at(int done) {
-        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks);
+        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks, dock);
     }
 
     /** The run is over, and entry {@code number} is now {@code entry}. */
     Work landed(long number, Entry entry) {
         Map<Long, Entry> next = new HashMap<>(journal);
         next.put(number, entry);
-        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks);
+        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks, dock);
     }
 
     /** The run is over, and nothing is recorded: it did nothing. */
     Work idle() {
-        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks);
+        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock);
     }
 
     Work withAim(Aim value) {
-        return new Work(trash, runs, running, entries, journal, value, marks);
+        return new Work(trash, runs, running, entries, journal, value, marks, dock);
     }
 
     Work withMarks(List<Mark> value) {
-        return new Work(trash, runs, running, entries, journal, aim, value);
+        return new Work(trash, runs, running, entries, journal, aim, value, dock);
+    }
+
+    Work withDock(Dock value) {
+        return new Work(trash, runs, running, entries, journal, aim, marks, value);
+    }
+
+    /**
+     * The preview asked for the dock: its ticket, and the file it is for, or none when the dock shows a note. An
+     * answer with another ticket is for a file no longer the one selected.
+     */
+    record Dock(long ticket, Optional<Path> path) {
+
+        static final Dock NONE = new Dock(0L, Optional.empty());
     }
 
     /** Whether run {@code run} is the one in flight. */

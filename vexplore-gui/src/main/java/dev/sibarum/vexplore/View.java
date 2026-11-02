@@ -5,6 +5,7 @@ import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Destine;
+import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
@@ -281,6 +282,12 @@ final class View {
         } else if (ui.forget(m.button()) >= 0) {
             forgetMark.send(new ForgetMark(ui.forget(m.button())));
         }
+    }
+
+    /** What the dock shows. */
+    @Subscribe
+    public void docked(Docked m) {
+        ui.docked(m);
     }
 
     /** The marks kept: the rail lists them. */

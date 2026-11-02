@@ -62,6 +62,12 @@ final class Landmarks {
     /** The card's field for a rename's new name: Enter carries it out. */
     static final String RAIL_NAME = "rail.name";
 
+    /** The Preview Dock, under the list, and its header: the file's name, its tier, and the note when there is none. */
+    static final String DOCK = "dock";
+    static final String DOCK_NAME = "dock.name";
+    static final String DOCK_TAG = "dock.tag";
+    static final String DOCK_NOTE = "dock.note";
+
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
     static final String STATUS_COUNTS = "status.counts";

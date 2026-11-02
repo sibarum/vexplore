@@ -14,7 +14,7 @@ import dev.vexelray.framework.api.Configuration;
  */
 @Configuration(components = Explorer.class,
         jobs = {ListFolder.class, ListPlaces.class, ListLevel.class, FindPath.class, OpenFile.class, PlanAction.class,
-                SuggestDestinations.class, ReadSession.class, WriteSession.class},
+                ReadPreview.class, SuggestDestinations.class, ReadSession.class, WriteSession.class},
         sources = RunAction.class)
 public final class Core {
 }
