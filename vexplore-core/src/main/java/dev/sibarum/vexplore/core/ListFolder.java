@@ -14,6 +14,8 @@ import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -36,16 +38,17 @@ public final class ListFolder {
             .thenComparing(r -> r.name().toLowerCase(Locale.ROOT));
 
     public Listed run(Listing l) {
+        ZoneId zone = ZoneId.systemDefault();
         List<Row> rows = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(l.folder())) {
             for (Path p : stream) {
                 rows.add(row(p));
             }
         } catch (IOException | RuntimeException e) {
-            return new Listed(l.ticket(), l.folder(), List.of(), problem(e));
+            return new Listed(l.ticket(), l.folder(), List.of(), problem(e), LocalDate.now(zone), zone);
         }
         rows.sort(ORDER);
-        return new Listed(l.ticket(), l.folder(), rows, null);
+        return new Listed(l.ticket(), l.folder(), rows, null, LocalDate.now(zone), zone);
     }
 
     static Row row(Path p) {

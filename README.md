@@ -5,8 +5,10 @@ A file explorer that suggests instead of asking.
 A VexelRay desktop application, being rebuilt on VexelRay 0.2 from the `vexel-desktop` template. The design
 ([docs/design/README.md](docs/design/README.md)) is the requirement; [docs/rebuild.md](docs/rebuild.md) is the plan and
 the order the features come back in, and [docs/shape.md](docs/shape.md) the shape they come back into. **Where it
-stands:** M1, browsing: the tree of places, the breadcrumb and its path field, the list with its columns, sort and
-selection, the status line's counts, and Enter to go into a folder or open a file. The Suggestion Rail is M2.
+stands:** M2. Browsing: the tree of places, the breadcrumb and its path field, the list with its columns, sort and
+selection, the status line's counts, and Enter to go into a folder or open a file. The Suggestion Rail: select a
+file, and Select, Condition and Action chips say what Vexplore would do with the others, the rows it would reach are
+marked in the list, and a card states the effect first. No action runs yet; that is M3.
 
 ## Run it
 
@@ -104,6 +106,7 @@ every message is in one file. Read these in this order.
 | `Messages.java` | **every message the parts send each other**, grouped by who sends it to whom, each record beside its topic. A record crosses as itself, so it holds only immutable values; a list it holds is copied in its constructor. |
 | `Explorer.java` | **the controller**: every decision (which folder to show, what a typed path names, what comes back next time) as a declared step on one immutable state, held by a ledger. Each message it hears runs one step. It needs no lock, because only its steps change its state and they run one at a time. |
 | `ListFolder.java`, `ListPlaces.java`, `ListLevel.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
+| `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
 | `Kind.java`, `Bytes.java`, `Dates.java` | what a file is, a size and a time in a person's words: no disk and no widget, so they live here. |
 | `Core.java` | the list of this module's component and jobs. The processor compiling `-gui` sees only `-gui`'s sources, so this list, named among `VexploreApp`'s starters, is how the wiring hears of them. A new component or job goes on it. |
 
@@ -112,10 +115,11 @@ every message is in one file. Read these in this order.
 | File | What belongs in it |
 | --- | --- |
 | `Recipes.java` | **what this module builds.** One `@Provides` method per part; `VexploreAppWiring`, which builds them and the components and jobs in order, is generated while it compiles. A part's phase is the latest phase of anything it takes, so there is none to declare. |
-| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`). It answers the tree itself, through `ListPlaces` and `ListLevel`. It decides nothing else. |
+| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`). It answers the tree itself, through `ListPlaces` and `ListLevel`. It decides nothing else. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Columns.java` | the list's columns, drawn from a row alone. |
+| `RailPanel.java` | the Suggestion Rail: its chips and card, every node built once and relabelled. A chip pressed is said as its row and place. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |
 
 `Vexplore.java` is the entry point and the constants, and nothing else. The application edge — input, the
@@ -172,7 +176,7 @@ happened at least once. If the build cannot resolve them, that is why.
 | --- | --- |
 | `vexelray-framework-api`, `vexelray-gui-core` | all `-core` builds against: the framework's annotations, and the values (a span, a colour, the settings store) and the bus that are safe from any thread |
 | `vexelray-framework-shell`, `-automation`, `-processor` | the application edge, the driving socket, and the processor that checks both modules and writes the wiring |
-| `vexelray-gui-widget` | the widgets: `Breadcrumb`, `TreeView`, `Table`, `TextField`, `SplitPane`, `StatusBar`, `Cues` |
+| `vexelray-gui-widget` | the widgets: `Breadcrumb`, `TreeView`, `Table`, `TextField`, `SplitPane`, `StatusBar`, `Button` (the rail's chips), `Cues` |
 | `vexelray-gui-krono` | the clock: every transition and cue |
 | `vexelray-gui-automation` | driving the running app the way a person does — a debugging instrument |
 | `tactroller-atchung` | keyboard and pointer input onto an atchung bus (brings `atchung-core`) |

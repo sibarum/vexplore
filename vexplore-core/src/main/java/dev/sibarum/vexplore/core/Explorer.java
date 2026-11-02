@@ -9,6 +9,7 @@ import dev.sibarum.vexplore.core.Messages.Is;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Navigate;
+import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Recall;
 import dev.sibarum.vexplore.core.Messages.Recalled;
 import dev.sibarum.vexplore.core.Messages.Remember;
@@ -17,8 +18,11 @@ import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
+import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Why;
+import dev.sibarum.vexplore.core.Suggestions.Pick;
+import dev.sibarum.vexplore.core.Suggestions.Rail;
 import dev.vexelray.framework.api.Component;
 import dev.vexelray.framework.api.Hears;
 import dev.vexelray.framework.api.Publishes;
@@ -30,6 +34,9 @@ import sibarum.atchung.Step;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -74,9 +81,9 @@ import java.util.Set;
  */
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
-        Activated.class, Started.class})
+        Activated.class, Started.class, Picked.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
-        Remember.class})
+        Remember.class, Suggested.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -91,13 +98,18 @@ public final class Explorer {
      * @param asked    the ticket of the listing last asked for: a reply with another has been overtaken
      * @param select   the row to select when that listing lands: a file named on the command line or typed
      * @param rows     the folder's rows, as last listed. The order the list shows is the table's.
+     * @param today    the day the rows were listed on, which the rail's "today" means
+     * @param zone     the zone a row's day is read in
      * @param selected the rows selected, as the list last said
+     * @param pick     the rail's Select, Condition and Action so far
+     * @param rail     what the rail last offered: a chip pressed is resolved against it
      * @param started  the folder the application started in, shown when there is no other
      * @param armed    whether the restore is done: before then a write would overwrite what is being restored
      * @param last     the session last sent to be remembered, so an unchanged one is not written again
      */
-    record State(Optional<Path> folder, long asked, Optional<Path> select, List<Row> rows, Set<Path> selected,
-                 Optional<Path> started, boolean armed, Optional<Remember> last) {
+    record State(Optional<Path> folder, long asked, Optional<Path> select, List<Row> rows, LocalDate today,
+                 ZoneId zone, Set<Path> selected, Pick pick, Rail rail, Optional<Path> started, boolean armed,
+                 Optional<Remember> last) {
 
         State {
             rows = List.copyOf(rows);
@@ -105,33 +117,46 @@ public final class Explorer {
         }
 
         static State initial() {
-            return new State(Optional.empty(), 0L, Optional.empty(), List.of(), Set.of(), Optional.empty(), false,
-                    Optional.empty());
+            return new State(Optional.empty(), 0L, Optional.empty(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
+                    Set.of(), Pick.NONE, Rail.EMPTY, Optional.empty(), false, Optional.empty());
         }
 
         /** Asking for {@code value}'s listing: what was listed before is no longer what is shown. */
         State asking(Path value, Optional<Path> then) {
-            return new State(Optional.of(value), asked + 1, then, List.of(), Set.of(), started, armed, last);
+            return new State(Optional.of(value), asked + 1, then, List.of(), today, zone, Set.of(), Pick.NONE,
+                    Rail.EMPTY, started, armed, last);
         }
 
-        State withRows(List<Row> value) {
-            return new State(folder, asked, Optional.empty(), value, Set.of(), started, armed, last);
+        /** A folder's rows landed: nothing is selected or picked in it yet. */
+        State withRows(Listed l) {
+            return new State(folder, asked, Optional.empty(), l.rows(), l.today(), l.zone(), Set.of(), Pick.NONE,
+                    Rail.EMPTY, started, armed, last);
         }
 
         State withSelected(Set<Path> value) {
-            return new State(folder, asked, select, rows, value, started, armed, last);
+            return new State(folder, asked, select, rows, today, zone, value, pick, rail, started, armed, last);
+        }
+
+        State withPick(Pick value) {
+            return new State(folder, asked, select, rows, today, zone, selected, value, rail, started, armed, last);
+        }
+
+        State withRail(Rail value) {
+            return new State(folder, asked, select, rows, today, zone, selected, pick, value, started, armed, last);
         }
 
         State withStarted(Path value) {
-            return new State(folder, asked, select, rows, selected, Optional.of(value), armed, last);
+            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, Optional.of(value), armed,
+                    last);
         }
 
         State withArmed() {
-            return new State(folder, asked, select, rows, selected, started, true, last);
+            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, true, last);
         }
 
         State withLast(Remember value) {
-            return new State(folder, asked, select, rows, selected, started, armed, Optional.of(value));
+            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, armed,
+                    Optional.of(value));
         }
 
         /** The row at {@code path}, or none: one the list showed before this listing, or never. */
@@ -161,6 +186,7 @@ public final class Explorer {
         Step<State, Chosen> chosen = b.step("chosen", Explorer::chosen);
         Step<State, Activated> activated = b.step("activated", Explorer::activated);
         Step<State, Started> started = b.step("started", Explorer::started);
+        Step<State, Picked> picked = b.step("picked", Explorer::picked);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -170,7 +196,8 @@ public final class Explorer {
                 .on(Messages.LISTED_TOPIC, listed)
                 .on(Messages.CHOSEN_TOPIC, chosen)
                 .on(Messages.ACTIVATED_TOPIC, activated)
-                .on(Messages.STARTED_TOPIC, started);
+                .on(Messages.STARTED_TOPIC, started)
+                .on(Messages.PICKED_TOPIC, picked);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -301,7 +328,8 @@ public final class Explorer {
         }
         out.send(Messages.SHOWN_TOPIC, new Shown(l.folder(), l.rows(), s.select()));
         out.send(Messages.SUMMARY_TOPIC, new Summary(l.rows().size(), 0, 0L));
-        return s.withRows(l.rows());
+        out.send(Messages.SUGGESTED_TOPIC, Suggested.NONE);
+        return s.withRows(l);
     }
 
     /**
@@ -318,7 +346,7 @@ public final class Explorer {
             }
         }
         out.send(Messages.SUMMARY_TOPIC, new Summary(s.rows().size(), selected.size(), bytes));
-        return s.withSelected(selected);
+        return suggest(s.withSelected(selected), out);
     }
 
     /** Enter or a double click on a row: a folder is gone into, and a file opened as the desktop would open it. */
@@ -343,6 +371,40 @@ public final class Explorer {
             out.send(Messages.STATUS_TOPIC, new Status("Opened " + name, false));
         }
         return s;
+    }
+
+    // ------------------------------------------------------------------ the Suggestion Rail
+
+    /**
+     * A chip pressed: the pick it makes, resolved against the rail last sent, which is what the person saw. A place past
+     * the end of its row (the rail shrank under the pointer) changes nothing.
+     *
+     * <p>The rail is sent even when the pick changed nothing: a chip changes its own look when it is clicked, before
+     * this has answered (framework-notes FN-7), and the rail sent back shows every chip as it is.
+     */
+    private static State picked(State s, Picked p, Out out) {
+        if (s.rail().equals(Rail.EMPTY)) {
+            return s;
+        }
+        return suggest(s.withPick(p.slot().press(s.rail(), s.pick(), p.index())), true, out);
+    }
+
+    private static State suggest(State s, Out out) {
+        return suggest(s, false, out);
+    }
+
+    /**
+     * Work the rail out again from the rows, the selection and the pick, and send it if it says anything different, or
+     * when {@code always}. The pick kept is the one asked for, not the one that applied, so a pick that falls back while
+     * the selection is too narrow for it comes back when the selection is wide enough again.
+     */
+    private static State suggest(State s, boolean always, Out out) {
+        Rail rail = Suggestions.of(s.rows(), s.selected(), s.pick(), s.today(), s.zone());
+        if (!always && rail.equals(s.rail())) {
+            return s;
+        }
+        out.send(Messages.SUGGESTED_TOPIC, rail.worded());
+        return s.withRail(rail);
     }
 
     // ------------------------------------------------------------------ the status line

@@ -156,4 +156,28 @@ class ViewTest {
         shell.bus().publish(Intent.INTENTS, new Intent(Intent.Command.UP));
         eventually("the folder above", () -> sub.getParent().equals(shown()));
     }
+
+    /**
+     * The rail through the window: a row chosen is suggested on, a chip widens the reach, and the rail and the marks
+     * that follow change nothing in one frame (the watch above).
+     */
+    @Test
+    void theRailSuggestsOnTheSelectionAndAChipWidensIt() throws Exception {
+        List<Messages.Suggested> suggested = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.SUGGESTED_TOPIC, suggested::add);
+        Path sub = Files.createDirectory(dir.resolve("clips")).toAbsolutePath().normalize();
+        for (String name : List.of("a.mp4", "b.mp4", "c.mp4")) {
+            Files.writeString(sub.resolve(name), name);
+        }
+        go(sub);
+        eventually("the rows", () -> wiring.ui().rows() == 3);
+        shell.bus().publish(Messages.CHOSEN_TOPIC, new Messages.Chosen(java.util.Set.of(sub.resolve("a.mp4"))));
+        eventually("the rail", () -> !suggested.isEmpty() && !suggested.getLast().empty());
+        assertEquals(1, suggested.getLast().reach().size());
+        shell.bus().publish(Messages.PICKED_TOPIC, new Messages.Picked(Messages.Slot.SELECT, 1));
+        eventually("all three", () -> suggested.getLast().reach().size() == 3);
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
 }

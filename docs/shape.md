@@ -118,3 +118,92 @@ Built 2026-11-01. Where the code departs from the sketch above, and why:
   say.
 - **Esc puts the keyboard in the list**, not on the breadcrumb's last button: the list is where the folder the field
   named is about to be, and a drive's root, which has no button, is covered too (FN-3).
+
+## The messages M2 adds
+
+Proposed 2026-11-01, before any of it is written. M2 is the rail stating its effect: Select, Condition and Action as
+chips, the rows a suggestion would reach marked in the list (never selected), and the card that says what would
+happen. Nothing runs yet. Held Shift and Control wait for a modifiers topic (rebuild.md, *What it waits on*), so the
+rail works from the selection alone.
+
+**The engine is 0.1's `Suggestions`, back as it was**, in `-core` over `Row` instead of `Entry`: a pure function of
+the rows, the selection, the pick and today. The explorer runs it in a step whenever one of those changes, as
+rebuild.md has it; at hundreds of rows it is far under a frame, and a step cannot be late.
+
+`Explorer.State` gains two fields:
+
+| Field | Holds |
+| --- | --- |
+| `pick` | `Pick(Scope, Condition, Act)` so far, `Pick.NONE` when a folder is shown |
+| `rail` | what the rail last offered, so a chip pressed is resolved against what the person saw |
+
+The view tells the explorer:
+
+| Record | Sent when |
+| --- | --- |
+| `Picked(Slot slot, int index)` | a chip is pressed; `Slot` is `SELECT`, `CONDITION`, `ACTION`, and the index is the chip's place in that row of the rail |
+
+The explorer tells the view:
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Suggested(String basis, List<Chip> select, List<Chip> condition, List<Chip> action, Set<Path> reach, Card card)` | state | the whole rail; empty lists and an empty card when nothing is selected |
+| `Chip(String label, int count, boolean on)` | (a field) | one chip, worded, and whether it is the one picked |
+| `Card(String headline, String detail)` | (a field) | `9 files · 6.5 GB` (or `Move 9 files · 6.5 GB` once an action is picked) and `trip.mp4, IMG_2231.mov and 7 more, all marked in the list` |
+
+`reach` is the paths the effect would touch: the view marks those rows with `ListView.marks`, in the handoff's amber
+(a role of `Look`'s, as `Role.HIGHLIGHT` is the widget's default). The card's words are the explorer's, as the
+status line's are, so a test reads them with no window.
+
+`Listed` gains `today` and `zone`. "From today" and "If modified today" need the date, and a step may not read the
+clock, so `ListFolder` says when it listed. A folder left open past midnight says "today" of the day before until it
+is listed again (M5's watching relists).
+
+**Why `Picked` is an index.** The chips are a fixed set of buttons, kept and relabelled (nothing on screen changes in
+one frame), so a pressed chip knows only its place. The explorer resolves the place against `rail`, the rail it last
+sent. If a listing lands between the person reading a chip and pressing it, the place may name a different chip;
+that needs a click in the one frame where the rail changed under the pointer. The alternative, the view remembering
+what each chip stood for, breaks `Ui` holding no state.
+
+**The pick when the selection changes** is kept, as 0.1 kept it: a pick no longer on offer falls back to the
+selection itself (`Just this file`), and one still on offer (`All videos here`, with one more video ctrl-clicked)
+stays. A new folder resets it.
+
+### The rail's room, against FN-2
+
+The rail must be there whenever the list is, empty or not: a rail that appeared with its first suggestion would move
+every row, which the design's third rule forbids. At the handoff's 25 rem it squeezed the list to 181 px in a narrow
+window at a high zoom (M1). Three ways to size it:
+
+1. **A share of the room beside the tree, a third** (proposed). 400 of the 1190 px the handoff's tree leaves. A narrow
+   or zoomed window narrows the rail with the list, and the rail's chips clip before the list does; a drag of its
+   divider still sets an exact width. The list stays the widest region at any size.
+2. **25 rem, as the handoff.** Exactly the design at 1440 px and zoom 1, and FN-2 as measured elsewhere.
+3. **400 dp.** Not grown by zoom, so the rail's text grows inside a fixed box. Against `Type`'s rule that a region
+   holding text is rem.
+
+### The card in M2
+
+It states the effect and has no buttons: *Move 9 files* and *Keep as Mark* come with M3, when they do something.
+A button that does nothing would be a lie the card's whole job is not to tell. Its tag says
+`nothing has changed yet`.
+
+## What M2 built differently
+
+Built 2026-11-02. Where the code departs from the sketch above, and why:
+
+- **`reach` is rows, not paths.** `ListView.marks` takes the list's own items, and a list has no way to read them
+  back, so turning paths into rows would have meant `Ui` keeping the rows it was given. A `Row` is a value, so the
+  explorer's rows are the list's.
+- **The marked rows are violet, not amber.** The design system's `scope-wash` (0.1's), as `Look.TARGETED`: the
+  design system keeps amber off every fill, and the reach is the person's pick. Amber is the "based on" line.
+- **The explorer answers every `Picked`**, even one that changed nothing, and the rail puts a picked Select or
+  Condition chip back in the frame it was clicked: the library's chip flips itself before the model answers
+  (framework-notes FN-7).
+- **Select and Condition one chip to a line**, Action two. A second phrase on a line was clipped out of reach in a
+  narrow rail. "based on" sits under the title, and the card's tag under its headline, for the same reason. The rail
+  scrolls when a short window cannot hold it; laid out without scrolling, it shrank the chips to slivers.
+- **Rename is offered only when the effect is one row**, since it renames one. A rename picked falls back to no action
+  when the reach grows past one.
+- **The rail is a third of the room beside the tree** (option 1 above, ruled 2026-11-02), with drag minimums of
+  20 rem for the list and 15 rem for the rail.

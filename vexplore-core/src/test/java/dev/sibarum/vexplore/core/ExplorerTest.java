@@ -18,6 +18,9 @@ import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Messages.Picked;
+import dev.sibarum.vexplore.core.Messages.Slot;
+import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Why;
 import dev.vexelray.framework.core.CloseRequested;
 import dev.vexelray.framework.core.WindowOpened;
@@ -33,6 +36,8 @@ import sibarum.atchung.Topic;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -53,6 +58,9 @@ class ExplorerTest {
     @TempDir
     Path dir;
 
+    /** The day every listing here says it was listed on. */
+    private static final LocalDate TODAY = LocalDate.of(2026, 9, 30);
+
     private Fatal previous;
     private Atchung bus;
     private Tick tick;
@@ -67,9 +75,10 @@ class ExplorerTest {
         tick = bus.tick(null);
         new Explorer(tick.inbox("explorer"));
         Inbox heard = tick.inbox("heard");
-        for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC, Messages.START_TOPIC,
+        for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC,
+                Messages.START_TOPIC,
                 Messages.STATUS_TOPIC, Messages.FIND_TOPIC,
-                Messages.RECALL_TOPIC, Messages.REMEMBER_TOPIC)) {
+                Messages.RECALL_TOPIC, Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -202,7 +211,7 @@ class ExplorerTest {
     /** Show {@code folder} as the list would have it once its listing lands, and forget what that sent. */
     private void showing(Path folder, Row... rows) {
         tell(Messages.NAVIGATE_TOPIC, new Navigate(folder));
-        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), folder, List.of(rows), null));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), folder, List.of(rows), null, TODAY, ZoneOffset.UTC));
         sent.clear();
     }
 
@@ -214,9 +223,9 @@ class ExplorerTest {
         Listing first = asked();
         tell(Messages.NAVIGATE_TOPIC, new Navigate(b));
         Listing second = asked();
-        tell(Messages.LISTED_TOPIC, new Listed(first.ticket(), a, List.of(), null));
+        tell(Messages.LISTED_TOPIC, new Listed(first.ticket(), a, List.of(), null, TODAY, ZoneOffset.UTC));
         assertTrue(took(Shown.class).isEmpty(), "the folder the person left is never shown");
-        tell(Messages.LISTED_TOPIC, new Listed(second.ticket(), b, List.of(), null));
+        tell(Messages.LISTED_TOPIC, new Listed(second.ticket(), b, List.of(), null, TODAY, ZoneOffset.UTC));
         assertEquals(b, took(Shown.class).getFirst().folder());
     }
 
@@ -227,7 +236,7 @@ class ExplorerTest {
         tell(Messages.FOUND_TOPIC, new Found(typed, Why.GO, Is.FILE));
         Listing l = asked();
         assertEquals(dir, l.folder());
-        tell(Messages.LISTED_TOPIC, new Listed(l.ticket(), dir, List.of(file("a.txt", 1)), null));
+        tell(Messages.LISTED_TOPIC, new Listed(l.ticket(), dir, List.of(file("a.txt", 1)), null, TODAY, ZoneOffset.UTC));
         assertEquals(Optional.of(typed), took(Shown.class).getFirst().select());
     }
 
@@ -253,7 +262,7 @@ class ExplorerTest {
     void aFolderThatCannotBeReadIsShownEmptyAndSaid() {
         Path locked = path("locked");
         tell(Messages.NAVIGATE_TOPIC, new Navigate(locked));
-        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), locked, List.of(), "access is denied"));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), locked, List.of(), "access is denied", TODAY, ZoneOffset.UTC));
         assertTrue(sent.contains(new Shown(locked, List.of(), Optional.empty())), "the breadcrumb where it was asked");
         assertTrue(took(Status.class).getFirst().alert());
     }
@@ -262,5 +271,74 @@ class ExplorerTest {
     void aFileThatWillNotOpenIsSaid() {
         tell(Messages.STARTED_TOPIC, new Started(path("a.txt"), "no opener"));
         assertTrue(took(Status.class).getFirst().alert());
+    }
+
+    // ------------------------------------------------------------------ the Suggestion Rail
+
+    private Row video(String name, long size) {
+        return new Row(path(name), name, false, size, Instant.EPOCH, Kind.VIDEO);
+    }
+
+    /** The paths of the rows a rail reaches. */
+    private static Set<Path> reached(Suggested s) {
+        return s.reach().stream().map(Row::path).collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Test
+    void aSelectionIsSuggestedOnAndAChipWidensWhatItReaches() {
+        showing(dir, video("a.mp4", 10), video("b.mov", 20), file("notes.txt", 5), video("c.mkv", 30));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        Suggested one = took(Suggested.class).getLast();
+        assertEquals("a.mp4", one.basis());
+        assertEquals(Set.of(path("a.mp4")), reached(one), "ignoring the rail costs nothing: it reaches the selection");
+        assertEquals("All videos here", one.select().get(1).label());
+        assertEquals(3, one.select().get(1).count());
+
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
+        Suggested all = took(Suggested.class).getLast();
+        assertEquals(Set.of(path("a.mp4"), path("b.mov"), path("c.mkv")), reached(all), "marked, never selected");
+        assertTrue(all.select().get(1).on());
+        assertEquals("3 files · 60 B", all.card().headline());
+        assertEquals("a.mp4, b.mov, c.mkv, all marked in the list", all.card().detail());
+
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, 0));
+        assertEquals("Move 3 files · 60 B", took(Suggested.class).getLast().card().headline());
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, 0));
+        assertEquals("3 files · 60 B", took(Suggested.class).getLast().card().headline(),
+                "pressing the picked action again puts it down");
+    }
+
+    @Test
+    void nothingSelectedIsAnEmptyRailAndAChipPressedThenDoesNothing() {
+        showing(dir, video("a.mp4", 10), video("b.mov", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of()));
+        assertEquals(Suggested.NONE, took(Suggested.class).getLast());
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
+        assertTrue(took(Suggested.class).isEmpty());
+    }
+
+    @Test
+    void aNewFolderPutsThePickDown() {
+        showing(dir, video("a.mp4", 10), video("b.mov", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(video("a.mp4", 10), video("b.mov", 20)),
+                null, TODAY, ZoneOffset.UTC));
+        assertEquals(Suggested.NONE, took(Suggested.class).getLast(), "the rail is put away as the rows land");
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        assertEquals(Set.of(path("a.mp4")), reached(took(Suggested.class).getLast()));
+    }
+
+    @Test
+    void aPickTooWideForTheSelectionFallsBackAndComesBack() {
+        showing(dir, video("a.mp4", 10), video("b.mov", 20), file("notes.txt", 5));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"), path("notes.txt"))));
+        assertEquals(2, reached(took(Suggested.class).getLast()).size(), "a video and a note are not all videos");
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("b.mov"))));
+        assertEquals(2, reached(took(Suggested.class).getLast()).size(), "one video again, so all of them again");
     }
 }

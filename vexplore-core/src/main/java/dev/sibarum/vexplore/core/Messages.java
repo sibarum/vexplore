@@ -4,6 +4,8 @@ import sibarum.atchung.Topic;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -65,6 +67,40 @@ public final class Messages {
     public record Activated(Path path) {
     }
 
+    /** Which row of the rail a chip is in. Each knows how a chip at its place changes the pick. */
+    public enum Slot {
+        SELECT {
+            @Override
+            Suggestions.Pick press(Suggestions.Rail rail, Suggestions.Pick pick, int index) {
+                return index < rail.scopes().size() ? pick.with(rail.scopes().get(index).value()) : pick;
+            }
+        },
+        CONDITION {
+            @Override
+            Suggestions.Pick press(Suggestions.Rail rail, Suggestions.Pick pick, int index) {
+                return index < rail.conditions().size() ? pick.with(rail.conditions().get(index).value()) : pick;
+            }
+        },
+        ACTION {
+            @Override
+            Suggestions.Pick press(Suggestions.Rail rail, Suggestions.Pick pick, int index) {
+                return index < rail.acts().size() ? pick.with(rail.acts().get(index)) : pick;
+            }
+        };
+
+        /** The pick once the chip at {@code index} of this row of {@code rail} is pressed; unchanged past its end. */
+        abstract Suggestions.Pick press(Suggestions.Rail rail, Suggestions.Pick pick, int index);
+    }
+
+    /**
+     * A chip of the rail was pressed: its row and its place there. The explorer resolves the place against the rail it
+     * last sent, which is the one the person saw (docs/shape.md, <i>Why {@code Picked} is an index</i>).
+     */
+    public static final Topic<Picked> PICKED_TOPIC = Topic.edge(Picked.class);
+
+    public record Picked(Slot slot, int index) {
+    }
+
     // ------------------------------------------------------------------ the explorer tells the view
 
     /**
@@ -111,6 +147,40 @@ public final class Messages {
     public record Status(String message, boolean alert) {
     }
 
+    /** One chip of the rail, worded: what it says, how many rows it reaches (0 for an action), whether it is picked. */
+    public record Chip(String label, int count, boolean on) {
+    }
+
+    /** The rail's card: the effect first ({@code Move 9 files · 6.5 GB}), then the first few names. */
+    public record Card(String headline, String detail) {
+    }
+
+    /**
+     * The whole Suggestion Rail: what it is based on (the lead file's name), each row of chips, the rows the effect
+     * would reach (marked in the list, never selected), and the card. {@link #NONE} when nothing is selected.
+     */
+    public static final Topic<Suggested> SUGGESTED_TOPIC = Topic.state(Suggested.class);
+
+    public record Suggested(String basis, List<Chip> select, List<Chip> condition, List<Chip> action,
+                            Set<Row> reach, Card card) {
+
+        /** Nothing selected: an empty rail, and no row marked. */
+        public static final Suggested NONE = new Suggested("", List.of(), List.of(), List.of(), Set.of(),
+                new Card("", ""));
+
+        public Suggested {
+            select = List.copyOf(select);
+            condition = List.copyOf(condition);
+            action = List.copyOf(action);
+            reach = Set.copyOf(reach);
+        }
+
+        /** Whether there is nothing to suggest. */
+        public boolean empty() {
+            return select.isEmpty();
+        }
+    }
+
     // ------------------------------------------------------------------ the explorer and the jobs
 
     /** Why a path is being looked at, carried through the job so its answer can be acted on. */
@@ -152,11 +222,12 @@ public final class Messages {
 
     /**
      * A folder's rows, folders first and then files, each by name. {@code problem} is why it could not be read, or null:
-     * a folder that cannot be listed is said, never thrown.
+     * a folder that cannot be listed is said, never thrown. {@code today} and {@code zone} are when it was listed: the
+     * rail's "today" needs a date, and a step may not read the clock.
      */
     public static final Topic<Listed> LISTED_TOPIC = Topic.edge(Listed.class);
 
-    public record Listed(long ticket, Path folder, List<Row> rows, String problem) {
+    public record Listed(long ticket, Path folder, List<Row> rows, String problem, LocalDate today, ZoneId zone) {
         public Listed {
             rows = List.copyOf(rows);
         }

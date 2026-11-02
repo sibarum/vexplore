@@ -4,9 +4,11 @@ import dev.sibarum.vexplore.core.Bytes;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Place;
+import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
+import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.Gui;
@@ -18,6 +20,7 @@ import dev.vexelray.gui.core.style.Paint;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.fileicons.FileFamily;
 import dev.vexelray.gui.widget.Breadcrumb;
+import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.Cue;
 import dev.vexelray.gui.widget.SplitPane;
 import dev.vexelray.gui.widget.StatusBar;
@@ -35,8 +38,8 @@ import java.util.Set;
 
 /**
  * The window, in the handoff's regions: the framework's title bar; the top bar, a breadcrumb of the folder shown; the
- * tree of places beside the file list; a status line under all of it. docs/shape.md is the sketch. The Suggestion
- * Rail comes at the list's right with M2, and the Preview Dock under it with M4.
+ * tree of places beside the file list, and the Suggestion Rail ({@link RailPanel}) at its right; a status line under
+ * all of it. docs/shape.md is the sketch. The Preview Dock comes under the list with M4.
  *
  * <h2>It holds no state</h2>
  *
@@ -82,6 +85,7 @@ final class Ui {
     private final TextField path;
     private final TreeView<Spot> tree;
     private final Table<Row> list;
+    private final RailPanel rail;
     private final StatusBar status;
     private final Motion motion;
     private final Color danger;
@@ -114,11 +118,17 @@ final class Ui {
         list.node().width(Length.FILL).height(Length.FILL);
         gui.landmark(Landmarks.LIST, list.node());
 
-        // The rail comes with M2, in a split of its own beside the list. Until it has something to say it takes no
-        // room: at 25 rem beside a list a split's minimum cannot protect (framework-notes FN-2), an empty rail left
-        // the list too narrow for a name.
+        list.rows().looks(Role.SELECTION, Look.TARGETED);
+
+        // The rail is there whenever the list is, empty or not: one that appeared with its first suggestion would move
+        // every row. It is a share of the room beside the tree rather than the handoff's 25 rem, which a split's
+        // minimum cannot protect the list from in a narrow window (framework-notes FN-2).
+        rail = new RailPanel(gui);
+        SplitPane work = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.LIST, list.node()),
+                rail.node()).sized(SplitPane.Pane.SECOND).size(Type.RAIL)
+                .minFirst(Type.LIST_MIN).minSecond(Type.RAIL_MIN);
         SplitPane body = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.CHROME, tree.node()),
-                region(Look.LIST, list.node())).size(Type.TREE);
+                work.node()).size(Type.TREE);
         body.node().width(Length.FILL).height(Length.grow(1f));
 
         status = new StatusBar(gui)
@@ -222,6 +232,22 @@ final class Ui {
             }
         }
         status.text(Landmarks.STATUS_COUNTS, b.toString());
+    }
+
+    // ------------------------------------------------------------------ the Suggestion Rail
+
+    /**
+     * What the rail suggests: its chips and card, and the rows its effect would reach marked in the list. Marked, never
+     * selected, so ignoring the rail costs nothing. A row is a value, so the explorer's rows are the list's own.
+     */
+    void suggested(Suggested s) {
+        rail.show(s);
+        list.rows().marks(s.reach());
+    }
+
+    /** The pick a chip's press stands for, or null when it is none of the rail's or changes nothing. */
+    Picked picked(Button.Toggled t) {
+        return rail.picked(t);
     }
 
     // ------------------------------------------------------------------ the tree of places

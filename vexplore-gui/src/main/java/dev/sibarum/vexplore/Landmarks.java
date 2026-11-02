@@ -27,8 +27,22 @@ final class Landmarks {
     /** The file list: a table of the folder's rows. */
     static final String LIST = "list";
 
-    /** The Suggestion Rail, at the right: from M2. */
+    /** The Suggestion Rail, at the right. */
     static final String RAIL = "rail";
+
+    /** The rail's "based on" line: the file the suggestions are worked out from. */
+    static final String RAIL_BASIS = "rail.basis";
+
+    /** What the rail says when nothing is selected. */
+    static final String RAIL_EMPTY = "rail.empty";
+
+    /** The rail's chips, each row's numbered from 0: {@code rail.select.1} is the second Select chip. */
+    static final String RAIL_SELECT = "rail.select";
+    static final String RAIL_CONDITION = "rail.condition";
+    static final String RAIL_ACTION = "rail.action";
+
+    /** The card's headline: the effect, first ({@code Move 9 files · 6.5 GB}). */
+    static final String RAIL_CARD = "rail.card";
 
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";

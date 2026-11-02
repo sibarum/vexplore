@@ -49,7 +49,12 @@ The Suggestion Rail is the sized pane of a `SplitPane` (25 rem), and the file li
 `minFirst(20 rem)` so that a narrow window takes room from the rail, never from the list. `SplitPane` uses its
 minimums only to clamp a drag (`drag`); laying out, it gives the sized pane its size and the free pane `grow(1)`, so a
 narrow window shrinks the list to whatever is left. Measured: a 1207 px window at zoom 1.563 left the list 181 px
-beside a 625 px rail. Nothing was worked around; at the handoff's 1440 px and zoom 1 it does not show.
+beside a 625 px rail. At the handoff's 1440 px and zoom 1 it does not show.
+
+Since M2 the rail is a share of the room beside the tree, a third (ruled 2026-11-02), not 25 rem: a narrow or zoomed
+window narrows it with the list, and the list stays the widest region at any size. Its Select and Condition chips sit one to a
+line and it scrolls, so a narrow rail loses width, not a chip. The gap is the same, and the table inside the list has one of
+its own (FN-8).
 
 **For the framework:** the free pane's minimum held at layout (a `minWidth` on the free box from its `min*`), and
 the sized pane giving way down to its own minimum. Every application with a side panel will meet it.
@@ -99,3 +104,40 @@ the left (`0 itemsNothing at C:\...`). The application cannot bound a slot: `min
 caps it. Vexplore's messages name a folder rather than its whole path where the breadcrumb already says where it
 is; "Nothing at" still carries the typed path, since that is what was wrong. The bar could give its right side
 what is left after the left and clip there, as a breadcrumb folds its far end.
+
+## FN-7 · A chip flips itself before the model answers 🔬
+
+The rail's Select row is one-of-several: exactly one chip is picked, and which is the explorer's call (a pick that no
+longer applies falls back to the selection). `Button.toggle` is the library's chip, and a click flips its own pressed
+state and publishes `TOGGLED` before anything has decided. So a picked chip clicked again goes dark, though nothing
+changed, and a new chip lights beside the old one until the explorer's answer arrives. `RailPanel` puts a picked
+Select or Condition chip back at once, in the frame of the click, and the explorer re-sends the whole rail on every
+`Picked`, even one that changed nothing, so every chip is shown as the model has it. Each chip is also
+`undoable(false)`: as an undo step, Ctrl+Z would flip a chip with no model behind it.
+
+**For the framework:** a chip that asks rather than flips: a press published as `PRESSED` with the chip left as it
+is, for `show` to set. Or a chip group whose one-of-N is the widget's, as `Segment` is, but laid out in lines. Every
+filter bar whose model can refuse or redirect a pick meets it.
+
+## FN-8 · A table's growing column has no minimum of its own 🔬
+
+NAME is the list's `grow(1)` column, and TYPE, SIZE and MODIFIED are rem. `Table` floors every column at its own
+1.5 rem and gives the growing one what the fixed ones leave. So in a narrow list the name, which is what a row is for,
+is the column that goes, down to its icon. Measured: a 772 px window at zoom 1, with the tree and the rail beside it,
+left NAME 1.5 rem and every other column whole. At 1024 px and above it does not show. Nothing was worked around: no
+width given to the other three survives a narrow enough window, and the rail's share (FN-2) already gives the list two
+thirds of what the tree leaves.
+
+**For the framework:** a minimum per column (`Column.of(..., Length.grow(1)).min(Length.rem(12))`), with the fixed
+columns giving way past it, last column first. Every table whose one growing column is its identity meets it.
+
+## FN-9 · Held Shift and Control have no topic 🔬
+
+The design's second principle reads a held modifier as intent: Shift held proposes where a range ends, Control held
+proposes the rule the picks are examples of. 0.1's `Intents` computed both. On 0.2 an application cannot hear which
+modifiers are held: `Seams.modifiers()` is the widget library's, and the roadmap's step 16 left the read models with
+"no topic for these yet", to be added when a witness asks. Vexplore is that witness, and asks here. Nothing was worked
+around: the rail suggests from the selection alone, and `Intents` stays in 0.1's history until a topic exists.
+
+**For the framework:** a state topic of the modifiers held, `Modifiers(Set<Modifier>)`, published on each change, so
+a step can hold the last one and suggest within the pause before the second click.

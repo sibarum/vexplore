@@ -72,13 +72,15 @@ new comes in, leaving the navigator over an empty window, building and green. Th
 `State`, the M1 messages, `Recipes`) proposed as a sketch of the records and steps, and built once agreed. Each
 reviews on its own, and a wrong shape is caught before the code is written against it.
 
-**M1. Browsing, read only.** The tree of the user's folders and drives (`TreeView`, lazy), the breadcrumb, the list
-with its columns, sort and range selection, the status line. Enter opens: a folder navigates, a file goes to `Launch`.
-A path on the command line opens that folder, or the folder with that file selected.
+**M1. Browsing, read only.** *Done 2026-11-01.* The tree of the user's folders and drives (`TreeView`, lazy), the
+breadcrumb, the list with its columns, sort and range selection, the status line. Enter opens: a folder navigates, a
+file goes to `Launch`. A path on the command line opens that folder, or the folder with that file selected.
 
-**M2. The rail states its effect.** Select, Condition, Action as chips; the rows a suggestion would reach shown with
-`ListView.marks` (marked, never selected); the card at the bottom that says what would happen first. No action runs
-yet.
+**M2. The rail states its effect.** *Done 2026-11-02.* Select, Condition, Action as chips; the rows a suggestion
+would reach shown with `ListView.marks` (marked, never selected); the card at the bottom that says what would happen
+first. No action runs yet. **(ruled 2026-11-02)** The rail is a third of the room beside the tree, not 25 rem, so a
+narrow window narrows it with the list (framework-notes FN-2). Held Shift and Control wait for a modifiers topic
+(FN-9).
 
 **M3. Actions.** Move, Copy, Archive, Delete into Vexplore's trash, Rename one, Mark. Planned by `PlanAction`, run by
 `RunAction` with a count and a cancel in the rail, undone by Ctrl+Z through a `History` whose changes send messages
@@ -120,7 +122,7 @@ taken to the framework rather than worked around for long.
 
 | Need | Where 0.2 stands | Until then |
 | --- | --- | --- |
-| **Held Shift / Ctrl as intent** (the design's second principle) | `Seams.modifiers()` is the widget library's; the roadmap gives an application a state topic once a witness asks | Vexplore asks, at M2. Suggestions work from the selection alone until it lands |
+| **Held Shift / Ctrl as intent** (the design's second principle) | `Seams.modifiers()` is the widget library's; the roadmap gives an application a state topic once a witness asks | Asked at M2 (framework-notes FN-9). Suggestions work from the selection alone until it lands |
 | **A drop onto a tree row** | `TreeView` takes only its own items; no declared drop zone (roadmap: "Vexplore is that witness") | drops between lists only (M6) |
 | **Chips that wrap** | no wrap in `FlexLayout`; `Node.wrap` planned and paused | two chips to a row, counted, as 0.1 did |
 | **Progress** | no widget | a count in the rail's notice line, from `RunAction` |
@@ -130,6 +132,7 @@ taken to the framework rather than worked around for long.
 
 ## The author's rulings
 
-All of 2026-11-01: the order stands; remote folders after providers; pictures as thumbnails, viewed in Rasterware;
+Of 2026-11-01: the order stands; remote folders after providers; pictures as thumbnails, viewed in Rasterware;
 "identical" in two tiers, content hashed only for the rows an action is about to act on (M6); M0 in two steps, the
-deletion and then the new shape as a sketch before it is built (M0).
+deletion and then the new shape as a sketch before it is built (M0). 2026-11-02: the rail a third of the room beside
+the tree (M2).

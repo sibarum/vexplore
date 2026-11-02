@@ -36,6 +36,12 @@ final class Type {
     /** A row's words: a name, a size, a time. The handoff's 13.5 px. */
     static final Length BODY = Length.rem(0.84375f);
 
+    /** The rail's chips, its section titles and the card's headline. The handoff's 13 px. */
+    static final Length RAIL_TEXT = Length.rem(0.8125f);
+
+    /** The rail's title. 17 px. */
+    static final Length HEADING = Length.rem(1.0625f);
+
     // ------------------------------------------------------------------ regions, from the handoff at 1440 x 900
 
     /** The top bar: the breadcrumb, or the path field in its place. 48 px. */
@@ -44,11 +50,18 @@ final class Type {
     /** The tree's width on a first run. 250 px. */
     static final Length TREE = Length.rem(15.625f);
 
-    /** The Suggestion Rail's width on a first run. 400 px. */
-    static final Length RAIL = Length.rem(25f);
+    /**
+     * The Suggestion Rail's width on a first run: a third of the room beside the tree, which is the handoff's 400 of
+     * 1190 px. A share rather than rem, so a narrow or zoomed window narrows the rail with the list and the list stays
+     * the widest region (framework-notes FN-2; ruled 2026-11-02).
+     */
+    static final Length RAIL = Length.percent(33.6f);
 
     /** The least a drag of the rail's divider leaves the file list (and only a drag: framework-notes FN-2). */
     static final Length LIST_MIN = Length.rem(20f);
+
+    /** The least a drag leaves the rail: two chips to a line still fit. */
+    static final Length RAIL_MIN = Length.rem(15f);
 
     // --------------------------------------------------------------- gutters
 

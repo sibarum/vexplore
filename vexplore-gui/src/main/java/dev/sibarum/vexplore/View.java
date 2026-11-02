@@ -7,17 +7,20 @@ import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Navigate;
+import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.PlacesWanted;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Status;
+import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.vexelray.framework.api.Subscribe;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.input.ClaimScope;
 import dev.vexelray.gui.core.input.Shortcut;
 import dev.vexelray.gui.widget.Breadcrumb;
+import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.ListView;
 import dev.vexelray.gui.widget.Table;
 import dev.vexelray.gui.widget.TextField;
@@ -36,9 +39,9 @@ import java.nio.file.Path;
  *
  * <p>Every decision is the {@code Explorer}'s, in {@code -core}: what a typed path names, which folder to show, what a
  * row activated does. This turns the explorer's messages into widgets ({@code Shown} is the breadcrumb and the list,
- * {@code Summary} the status line's counts) and the person's gestures into messages ({@code Go}, {@code Navigate},
- * {@code Chosen}, {@code Activated}). The one thing it answers itself is the tree of places, which is the view's and its
- * jobs': the tree asks, the view asks {@code ListPlaces} or {@code ListLevel}, and the answer goes back to the tree.
+ * {@code Summary} the status line's counts, {@code Suggested} the rail) and the person's gestures into messages
+ * ({@code Go}, {@code Navigate}, {@code Chosen}, {@code Activated}, {@code Picked}). The one thing it answers itself
+ * is the tree of places, which is the view's and its jobs': the tree asks, the view asks {@code ListPlaces} or {@code ListLevel}, and the answer goes back to the tree.
  *
  * <h2>Everything it hears is a message, in the frame</h2>
  *
@@ -70,20 +73,22 @@ final class View {
     private final Sender<Navigate> navigate;
     private final Sender<Chosen> chosen;
     private final Sender<Activated> activated;
+    private final Sender<Picked> picked;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
     private final Sender<Intent> intents;
 
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
-         Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children,
-         Sender<Intent> intents) {
+         Sender<Picked> picked, Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted,
+         Sender<TreeView.Children> children, Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
         this.go = go;
         this.navigate = navigate;
         this.chosen = chosen;
         this.activated = activated;
+        this.picked = picked;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -135,6 +140,12 @@ final class View {
     @Subscribe
     public void status(Status m) {
         ui.status(m.message(), m.alert());
+    }
+
+    /** The rail: its chips and card, and the rows it would reach marked in the list. */
+    @Subscribe
+    public void suggested(Suggested m) {
+        ui.suggested(m);
     }
 
     // ------------------------------------------------------------------ what the jobs answer
@@ -203,6 +214,15 @@ final class View {
     public void rowActivated(ListView.Activated m) {
         if (m.list().equals(ui.rowsAddress()) && m.item() instanceof Row r) {
             activated.send(new Activated(r.path()));
+        }
+    }
+
+    /** A chip of the rail pressed: its row and place, for the explorer to resolve against what it offered. */
+    @Subscribe
+    public void chipToggled(Button.Toggled m) {
+        Picked p = ui.picked(m);
+        if (p != null) {
+            picked.send(p);
         }
     }
 

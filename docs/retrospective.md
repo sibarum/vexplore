@@ -31,6 +31,51 @@ reasons and the full method.
 
 ## Milestones
 
+## M2 · the rail states its effect · 2026-11-02
+
+Three findings (FN-7 to FN-9), none architectural: a chip that decides for itself, a table column with no floor of its
+own, and a topic the roadmap already expected a witness to ask for. FN-2 was answered by the ruling rather than
+worked around: the rail is a share, not a width.
+
+### The shapes
+
+| | The promise | What happened | How it looked |
+| --- | --- | --- | --- |
+| FN-7 | A chip is a button that holds a value | It holds its own, and changes it before the model answers | a picked chip clicked again went dark; two chips lit at once for a frame |
+| FN-8 | A table gives its growing column the room | And floors it at the same 1.5 rem as any other, so it goes first | a 772 px window: icons under NAME, every date whole |
+| FN-9 | The read models get a topic when a witness asks | None yet for the modifiers held | the rail works from the selection alone; Shift and Control are only themselves |
+| FN-2 again | A split's minimum keeps a pane usable | Ruled around: the rail is a third of the room beside the tree | at 1440 px exactly the handoff; at 1024 px the list keeps every column |
+
+### What would stop each
+
+7. A chip that publishes its press and waits for `show`, or a one-of-N chip group in lines (FN-7).
+8. A minimum per column, the fixed ones giving way past it (FN-8).
+9. A state topic of the modifiers held (FN-9).
+
+### My own mistakes
+
+- **The sketch put `reach` as paths without asking the list how to mark.** `ListView.marks` takes the list's own
+  items and nothing reads them back, so paths would have needed `Ui` to keep the rows. Rows are values; the message
+  changed after it was agreed. The rule: before sketching a message a widget consumes, read the widget's setter.
+- **The rail's chips were laid out two to a line from 0.1 without a narrow run first.** The first screenshot was
+  the saved 772 px window: chips sliced flat by a column that could not scroll, and a second chip clipped out of
+  reach. Two fixes, both found by looking. Drive the narrow window and the design's size before calling a layout done.
+- **The sketch said amber for the marked rows.** The design system (and 0.1, which had measured it) keeps amber off
+  every fill. Read `Look`'s own doc before naming a colour in a proposal.
+- **A stale frame almost became a framework note.** The table's columns looked stuck after a resize; a second
+  `settle` showed them re-solved. One more frame before writing an FN.
+
+### What to keep exactly as it is
+
+- **The engine is a pure function in a step.** 0.1's `Suggestions` came back with its tests nearly unchanged, and
+  the explorer's three steps (`chosen`, `picked`, `listed`) only decide when to ask it.
+- **The pick kept is the one asked for, not the one that applied.** A pick too wide for the selection falls back,
+  and comes back when the selection allows it again, with nothing remembered beside it.
+- **The card's words are the explorer's.** `ExplorerTest` reads "Move 3 files · 60 B" with no window, as it reads the
+  status line's counts.
+- **Every rail node is built once.** Labels change and nodes hide; `ViewTest`'s cut watch passes with the rail
+  changing under it.
+
 ## M1 · browsing, read only · 2026-11-01
 
 Three findings (FN-4 to FN-6). One is close to architectural: FN-5, where a chord that moves the keyboard acts a

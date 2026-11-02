@@ -9,11 +9,11 @@ Keep an entry short enough that it does not need editing, and delete it when it 
 ## Next
 
 The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
-[rebuild.md](rebuild.md). M0 and M1 are done.
+[rebuild.md](rebuild.md). M0 to M2 are done.
 
-- [ ] **M2: the rail states its effect**, as [rebuild.md](rebuild.md) has it. The rail goes back in a split beside
-      the list, and FN-2 with it: decide what the list keeps in a narrow window before the rail takes 25 rem.
-- [ ] **M3 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
+- [ ] **M3: actions**, as [rebuild.md](rebuild.md) has it. The card gets its buttons (*Move 9 files*, *Keep as
+      Mark*) when they do something.
+- [ ] **M4 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
 
 ## Later
 
@@ -28,3 +28,10 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 - [ ] Automation coverage: `--automation=0` (or `-Dautomation=0`) opens a driving socket on a free port and prints it, and the landmarks in `Landmarks.java` are
       already the names a script would use. One scripted run through the main path is worth more than several
       unit tests of the view.
+- [ ] Held Shift and Control as intent (0.1's `Intents`): waits for a modifiers topic (framework-notes FN-9).
+- [ ] In a window under about 1000 px wide at zoom 1, the list's NAME column shrinks to its icon while TYPE, SIZE and
+      MODIFIED stay whole (framework-notes FN-8).
+- [ ] `Picked` is a chip's place, resolved against the rail the explorer last sent. A listing that lands in the frame
+      between reading a chip and clicking it can make the place name another chip.
+- [ ] The rail's "today" is the day the folder was listed; a folder left open past midnight says "today" of the day
+      before until it is listed again (M5's watching relists).

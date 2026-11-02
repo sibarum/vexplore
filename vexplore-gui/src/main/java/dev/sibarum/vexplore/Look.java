@@ -64,6 +64,15 @@ final class Look {
     /** {@code rail}: the Suggestion Rail. */
     static final Role RAIL = token(0x16131f);
 
+    /**
+     * {@code scope-wash}: rows the rail's Select and Condition would reach, marked and never selected. A violet wash,
+     * not the handoff's amber fill: the design system keeps amber off every fill, and the reach is the person's pick.
+     */
+    static final Role TARGETED = token(0x2c244c);
+
+    /** {@code anchor}: amber, as text. "based on", and later a fresh file or a conflict. Never a fill. */
+    static final Role ANCHOR = token(0xe8a85c);
+
     private static Role token(int rgb) {
         Color c = Color.rgb(rgb);
         return p -> c;
