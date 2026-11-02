@@ -14,7 +14,8 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 - [ ] **M4: the Preview Dock and the row menu**, in the four slices of [shape.md](shape.md)'s *The messages M4
       adds*. Slices 1 and 2, the dock with tiers 4 (bytes) and 3 (text), are done;
       next is tier 1, pictures and videos, with Open in Rasterware.
-- [ ] **M5 to M7** and packaging, as [rebuild.md](rebuild.md) lists them.
+- [ ] **M5 to M8** and packaging, as [rebuild.md](rebuild.md) lists them. M8 is the redesign: one of the three
+      directions on the *Vexplore Redesign* canvas, chosen first.
 
 ## Later
 

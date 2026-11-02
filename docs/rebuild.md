@@ -108,6 +108,25 @@ on, and nothing is skipped on a guess.
 
 **M7. Git.** The GIT column and the branch in the status line, asked after the listing so it never holds the rows up.
 
+**M8. The redesign.** Three directions, drawn 2026-11-02 against the rebuilt window (the scratch Downloads folder,
+`a-notes.md` in the dock), on the canvas *Vexplore Redesign*
+(<https://claude.ai/artifact/JzjQM7RGs16CLxrZpV4QQW>). None is chosen yet, and choosing one is the milestone's first
+step. Then its sketch in [shape.md](shape.md), for whatever it adds to `Messages` or `State`, before any code.
+
+- **A · Lumen**: floating panels with luminous edges. The layout stays (tree, list over dock, rail). Each family of
+  file (folder, text, video, table, PDF, data, program) gets its own colour and tile, each row a size bar, and the
+  text preview line numbers.
+- **B · Vector**: an instrument HUD. An *Arrivals* time strip over the list, with a *now* marker; numbered rows with
+  a size meter in ticks; the preview's facts as a grid (tier, encoding, lines, size, modified); the rail's steps
+  tagged *set* or *pending*, and the card as target, delta and anchor.
+- **C · Orbit**: a calm gallery. Cards grouped by day (*Today*, *Oct 30*), newest first, a text card showing its
+  first lines; *Pop out* and *Open with* on the preview; the rail worded *Which files*, *Only if*, *Then*.
+
+What the choice has to settle: whether a direction's per-family colours sit beside the design system's tokens or
+replace them (M0 put `Look` on the tokens), and what it asks of the framework. Glows and floating panels, a time strip
+and a wrapping grid of cards are each to be checked against the widget library before the sketch. A wrap is already
+missing (*Chips that wrap*, below), and every gap found goes in framework-notes as usual.
+
 **Last. Packaging.** The native builds, the ffmpeg-record zip, `installer.json`'s `appId`, the scenes in
 `docs/scenes` rewritten against the new landmarks.
 
