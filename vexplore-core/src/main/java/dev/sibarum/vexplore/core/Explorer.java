@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Activated;
+import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.Found;
@@ -10,19 +11,28 @@ import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Picked;
+import dev.sibarum.vexplore.core.Messages.Progress;
+import dev.sibarum.vexplore.core.Messages.Ran;
 import dev.sibarum.vexplore.core.Messages.Recall;
 import dev.sibarum.vexplore.core.Messages.Recalled;
+import dev.sibarum.vexplore.core.Messages.Recorded;
+import dev.sibarum.vexplore.core.Messages.Redo;
 import dev.sibarum.vexplore.core.Messages.Remember;
 import dev.sibarum.vexplore.core.Messages.Row;
+import dev.sibarum.vexplore.core.Messages.Run;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.sibarum.vexplore.core.Messages.Why;
 import dev.sibarum.vexplore.core.Suggestions.Pick;
 import dev.sibarum.vexplore.core.Suggestions.Rail;
+import dev.sibarum.vexplore.core.Work.Entry;
+import dev.sibarum.vexplore.core.Work.Running;
+import dev.sibarum.vexplore.core.Work.Way;
 import dev.vexelray.framework.api.Component;
 import dev.vexelray.framework.api.Hears;
 import dev.vexelray.framework.api.Publishes;
@@ -81,9 +91,10 @@ import java.util.Set;
  */
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
-        Activated.class, Started.class, Picked.class})
+        Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
+        Redo.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
-        Remember.class, Suggested.class})
+        Remember.class, Suggested.class, Run.class, Recorded.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -106,10 +117,11 @@ public final class Explorer {
      * @param started  the folder the application started in, shown when there is no other
      * @param armed    whether the restore is done: before then a write would overwrite what is being restored
      * @param last     the session last sent to be remembered, so an unchanged one is not written again
+     * @param work     what has been carried out and can be taken back, and the run in flight
      */
     record State(Optional<Path> folder, long asked, Optional<Path> select, List<Row> rows, LocalDate today,
                  ZoneId zone, Set<Path> selected, Pick pick, Rail rail, Optional<Path> started, boolean armed,
-                 Optional<Remember> last) {
+                 Optional<Remember> last, Work work) {
 
         State {
             rows = List.copyOf(rows);
@@ -118,45 +130,52 @@ public final class Explorer {
 
         static State initial() {
             return new State(Optional.empty(), 0L, Optional.empty(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
-                    Set.of(), Pick.NONE, Rail.EMPTY, Optional.empty(), false, Optional.empty());
+                    Set.of(), Pick.NONE, Rail.EMPTY, Optional.empty(), false, Optional.empty(), Work.NONE);
         }
 
         /** Asking for {@code value}'s listing: what was listed before is no longer what is shown. */
         State asking(Path value, Optional<Path> then) {
             return new State(Optional.of(value), asked + 1, then, List.of(), today, zone, Set.of(), Pick.NONE,
-                    Rail.EMPTY, started, armed, last);
+                    Rail.EMPTY, started, armed, last, work);
         }
 
         /** A folder's rows landed: nothing is selected or picked in it yet. */
         State withRows(Listed l) {
             return new State(folder, asked, Optional.empty(), l.rows(), l.today(), l.zone(), Set.of(), Pick.NONE,
-                    Rail.EMPTY, started, armed, last);
+                    Rail.EMPTY, started, armed, last, work);
         }
 
         State withSelected(Set<Path> value) {
-            return new State(folder, asked, select, rows, today, zone, value, pick, rail, started, armed, last);
+            return new State(folder, asked, select, rows, today, zone, value, pick, rail, started, armed, last, work);
         }
 
         State withPick(Pick value) {
-            return new State(folder, asked, select, rows, today, zone, selected, value, rail, started, armed, last);
+            return new State(folder, asked, select, rows, today, zone, selected, value, rail, started, armed, last,
+                    work);
         }
 
         State withRail(Rail value) {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, value, started, armed, last);
+            return new State(folder, asked, select, rows, today, zone, selected, pick, value, started, armed, last,
+                    work);
         }
 
         State withStarted(Path value) {
             return new State(folder, asked, select, rows, today, zone, selected, pick, rail, Optional.of(value), armed,
-                    last);
+                    last, work);
         }
 
         State withArmed() {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, true, last);
+            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, true, last, work);
         }
 
         State withLast(Remember value) {
             return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, armed,
-                    Optional.of(value));
+                    Optional.of(value), work);
+        }
+
+        State withWork(Work value) {
+            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, armed, last,
+                    value);
         }
 
         /** The row at {@code path}, or none: one the list showed before this listing, or never. */
@@ -187,6 +206,11 @@ public final class Explorer {
         Step<State, Activated> activated = b.step("activated", Explorer::activated);
         Step<State, Started> started = b.step("started", Explorer::started);
         Step<State, Picked> picked = b.step("picked", Explorer::picked);
+        Step<State, Carry> carry = b.step("carry", Explorer::carry);
+        Step<State, Progress> progress = b.step("progress", Explorer::progress);
+        Step<State, Ran> ran = b.step("ran", Explorer::ran);
+        Step<State, Undo> undo = b.step("undo", Explorer::undo);
+        Step<State, Redo> redo = b.step("redo", Explorer::redo);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -197,7 +221,12 @@ public final class Explorer {
                 .on(Messages.CHOSEN_TOPIC, chosen)
                 .on(Messages.ACTIVATED_TOPIC, activated)
                 .on(Messages.STARTED_TOPIC, started)
-                .on(Messages.PICKED_TOPIC, picked);
+                .on(Messages.PICKED_TOPIC, picked)
+                .on(Messages.CARRY_TOPIC, carry)
+                .on(Messages.PROGRESS_TOPIC, progress)
+                .on(Messages.RAN_TOPIC, ran)
+                .on(Messages.UNDO_TOPIC, undo)
+                .on(Messages.REDO_TOPIC, redo);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -226,7 +255,7 @@ public final class Explorer {
      * started in. A path is looked at before it is shown, since what was remembered may have gone.
      */
     private static State recalled(State s, Recalled r, Out out) {
-        State next = s.withStarted(r.started());
+        State next = s.withStarted(r.started()).withWork(s.work().withTrash(r.trash()));
         if (!r.arguments().isEmpty()) {
             out.send(Messages.FIND_TOPIC, new Find(r.arguments().getFirst(), Why.ARGUMENT));
             return next;
@@ -403,8 +432,108 @@ public final class Explorer {
         if (!always && rail.equals(s.rail())) {
             return s;
         }
-        out.send(Messages.SUGGESTED_TOPIC, rail.worded());
-        return s.withRail(rail);
+        State next = s.withRail(rail);
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /** The rail as it stands, its card saying how far a run has got while one goes. */
+    private static Suggested said(State s) {
+        Suggested rail = s.rail().worded();
+        return s.work().running().map(r -> rail.running(r.said())).orElse(rail);
+    }
+
+    // ------------------------------------------------------------------ carrying it out, and taking it back
+
+    /**
+     * The card's button: carry out the plan the card states. One run at a time; a second is refused on the status
+     * line rather than queued, because a queued run would act on a selection the person has since moved past.
+     */
+    private static State carry(State s, Carry c, Out out) {
+        Plan plan = s.rail().plan();
+        if (plan == null || plan.count() == 0) {
+            return s;
+        }
+        String words = s.rail().worded().card().go();
+        return start(s, plan, Way.DO, 0L, words, out);
+    }
+
+    /** Ctrl+Z on entry {@code u.entry()}: run the reverse of what it last did. */
+    private static State undo(State s, Undo u, Out out) {
+        Entry e = s.work().journal().get(u.entry());
+        if (e == null || e.undone()) {
+            return s;
+        }
+        return start(s, e.latest().reverse(), Way.UNDO, u.entry(), e.words(), out);
+    }
+
+    /** Ctrl+Y on entry {@code r.entry()}: run the reverse of its undo, which is doing it again. */
+    private static State redo(State s, Redo r, Out out) {
+        Entry e = s.work().journal().get(r.entry());
+        if (e == null || !e.undone()) {
+            return s;
+        }
+        return start(s, e.latest().reverse(), Way.REDO, r.entry(), e.words(), out);
+    }
+
+    private static State start(State s, Plan plan, Way way, long entry, String words, Out out) {
+        if (s.work().running().isPresent()) {
+            refuse(out, "Something is already being done: wait for it, or press Stop");
+            return s;
+        }
+        if (s.work().trash().isEmpty()) {
+            refuse(out, "Nothing can be done before the session is read");
+            return s;
+        }
+        Running r = new Running(s.work().runs() + 1, entry, way, words, way.going(plan), 0, plan.count());
+        out.send(Messages.RUN_TOPIC, new Run(r.run(), plan, s.work().trash().get()));
+        State next = s.withWork(s.work().starting(r));
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /** How far the run has got: the card's count. */
+    private static State progress(State s, Progress p, Out out) {
+        if (!s.work().runs(p.run())) {
+            return s;
+        }
+        State next = s.withWork(s.work().at(p.done()));
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /**
+     * What the run did. A new entry that did anything goes in the journal and the window's history; an undo or a redo
+     * changes its entry. The status line says what happened, what could not be done and why, and whether it was
+     * stopped; and the folder shown is listed again, so the list says it too.
+     */
+    private static State ran(State s, Ran r, Out out) {
+        if (!s.work().runs(r.run())) {
+            return s;
+        }
+        Running run = s.work().running().get();
+        Done d = r.done();
+        Work work;
+        if (run.way() == Way.DO) {
+            long entry = s.work().entries() + 1;
+            work = d.count() == 0 ? s.work().idle() : s.work().landed(entry, new Entry(run.words(), d, false));
+            if (d.count() > 0) {
+                out.send(Messages.RECORDED_TOPIC, new Recorded(entry, run.words()));
+            }
+        } else {
+            work = s.work().landed(run.entry(), new Entry(run.words(), d, run.way() == Way.UNDO));
+        }
+        StringBuilder words = new StringBuilder(run.way().said(run, d));
+        if (d.stopped()) {
+            words.append(". Stopped after ").append(d.count()).append(" of ").append(run.total());
+        }
+        if (!d.failed().isEmpty()) {
+            words.append(". ").append(d.failed().size()).append(" could not be: ").append(d.failed().getFirst());
+        }
+        out.send(Messages.STATUS_TOPIC, new Status(words.toString(), !d.failed().isEmpty()));
+        State next = s.withWork(work);
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next.folder().isPresent() ? show(next, next.folder().get(), Optional.empty(), out) : next;
     }
 
     // ------------------------------------------------------------------ the status line

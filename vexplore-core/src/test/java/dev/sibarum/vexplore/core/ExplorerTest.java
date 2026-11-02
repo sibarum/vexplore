@@ -76,9 +76,8 @@ class ExplorerTest {
         new Explorer(tick.inbox("explorer"));
         Inbox heard = tick.inbox("heard");
         for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC,
-                Messages.START_TOPIC,
-                Messages.STATUS_TOPIC, Messages.FIND_TOPIC,
-                Messages.RECALL_TOPIC, Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC)) {
+                Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
+                Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -96,6 +95,11 @@ class ExplorerTest {
     private <T> void tell(Topic<T> topic, T message) {
         bus.publish(topic, message);
         tick.run(System.nanoTime() + 60_000_000_000L);
+    }
+
+    /** What was sent of one kind, in order, forgetting nothing. */
+    private <T> List<T> seen(Class<T> kind) {
+        return sent.stream().filter(kind::isInstance).map(kind::cast).toList();
     }
 
     /** What was sent of one kind, in order, and forget everything sent so far. */
@@ -121,7 +125,7 @@ class ExplorerTest {
 
     /** A session with nothing to bring back: the folder the application started in is shown. */
     private void started() {
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash")));
         sent.clear();
     }
 
@@ -138,7 +142,7 @@ class ExplorerTest {
     @Test
     void theRememberedFolderIsLookedAtThenShownThenRemembered() {
         Path folder = path("sub");
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(folder), List.of(), dir));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(folder), List.of(), dir, dir.resolve("trash")));
         assertEquals(List.of(new Find(folder, Why.RESTORE_FOLDER)), took(Find.class));
         tell(Messages.FOUND_TOPIC, new Found(folder, Why.RESTORE_FOLDER, Is.FOLDER));
         assertTrue(asks(folder));
@@ -148,7 +152,7 @@ class ExplorerTest {
     @Test
     void aRememberedFolderThatHasGoneIsForgottenWithoutComplaint() {
         Path gone = path("gone");
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(gone), List.of(), dir));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(gone), List.of(), dir, dir.resolve("trash")));
         tell(Messages.FOUND_TOPIC, new Found(gone, Why.RESTORE_FOLDER, Is.NOWHERE));
         assertTrue(asks(dir), "the folder it started in");
         assertTrue(took(Status.class).isEmpty(), "the person moved it; nothing to say");
@@ -157,7 +161,7 @@ class ExplorerTest {
     @Test
     void aPathOnTheCommandLineWinsOverTheRememberedFolder() {
         Path file = path("a.txt");
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(path("sub")), List.of(file), dir));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.of(path("sub")), List.of(file), dir, dir.resolve("trash")));
         assertEquals(List.of(new Find(file, Why.ARGUMENT)), took(Find.class));
         tell(Messages.FOUND_TOPIC, new Found(file, Why.ARGUMENT, Is.FILE));
         assertEquals(List.of(dir), took(Listing.class).stream().map(Listing::folder).toList(),
@@ -166,7 +170,7 @@ class ExplorerTest {
 
     @Test
     void anUnchangedSessionIsNotRememberedTwice() {
-        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir));
+        tell(Messages.RECALLED_TOPIC, new Recalled(Optional.empty(), List.of(), dir, dir.resolve("trash")));
         assertEquals(1, took(Remember.class).size());
         tell(Messages.FOUND_TOPIC, new Found(dir, Why.GO, Is.FOLDER));
         assertTrue(took(Remember.class).isEmpty(), "the same folder again is the same session");
@@ -340,5 +344,90 @@ class ExplorerTest {
         assertEquals(2, reached(took(Suggested.class).getLast()).size(), "a video and a note are not all videos");
         tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("b.mov"))));
         assertEquals(2, reached(took(Suggested.class).getLast()).size(), "one video again, so all of them again");
+    }
+
+    // ------------------------------------------------------------------ carrying it out, and taking it back
+
+    /** Started, with {@code a.txt} and {@code b.txt} shown, {@code a.txt} selected and Delete picked. */
+    private void deleteOfAPicked() {
+        started();
+        showing(dir, file("a.txt", 10), file("b.txt", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        List<Messages.Chip> acts = took(Suggested.class).getLast().action();
+        int delete = 0;
+        while (!acts.get(delete).label().startsWith("Delete")) {
+            delete++;
+        }
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, delete));
+        sent.clear();
+    }
+
+    private Done deletedA() {
+        return new Done(Plan.Op.DELETE, List.of(new Plan.Step(path("a.txt"), dir.resolve("trash/1/a.txt"))), List.of(),
+                10L, false);
+    }
+
+    @Test
+    void theCardsButtonCarriesOutItsPlanAndTheRunIsRecorded() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        Messages.Run run = took(Messages.Run.class).getFirst();
+        assertEquals(Plan.Op.DELETE, run.plan().op());
+        assertEquals(List.of(new Plan.Step(path("a.txt"), null)), run.plan().steps(), "the run picks the trash's place");
+        assertEquals(dir.resolve("trash"), run.trash());
+
+        tell(Messages.PROGRESS_TOPIC, new Messages.Progress(run.run(), 1, 1));
+        assertEquals("Deleting · 1 of 1", took(Suggested.class).getLast().card().running());
+
+        tell(Messages.RAN_TOPIC, new Messages.Ran(run.run(), deletedA()));
+        assertEquals(List.of(new Messages.Recorded(1, "Delete 1 file")), seen(Messages.Recorded.class));
+        assertTrue(seen(Status.class).getFirst().message().startsWith("Deleted 1 file into Vexplore's trash"));
+        assertTrue(asks(dir), "the folder is listed again, so the list says what happened");
+    }
+
+    @Test
+    void anUndoRunsTheReverseAndARedoTheReverseOfThat() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long first = took(Messages.Run.class).getFirst().run();
+        tell(Messages.RAN_TOPIC, new Messages.Ran(first, deletedA()));
+        sent.clear();
+
+        tell(Messages.UNDO_TOPIC, new Messages.Undo(1));
+        Messages.Run back = took(Messages.Run.class).getFirst();
+        assertEquals(List.of(new Plan.Step(dir.resolve("trash/1/a.txt"), path("a.txt"))), back.plan().steps());
+        Done undone = new Done(Plan.Op.MOVE, back.plan().steps(), List.of(), 10L, false);
+        tell(Messages.RAN_TOPIC, new Messages.Ran(back.run(), undone));
+        assertTrue(seen(Messages.Recorded.class).isEmpty(), "an undo is not a new entry");
+        assertEquals("Undone: Delete 1 file", took(Status.class).getFirst().message());
+
+        tell(Messages.UNDO_TOPIC, new Messages.Undo(1));
+        assertTrue(took(Messages.Run.class).isEmpty(), "an entry undone is not undone twice");
+        tell(Messages.REDO_TOPIC, new Messages.Redo(1));
+        assertEquals(List.of(new Plan.Step(path("a.txt"), dir.resolve("trash/1/a.txt"))),
+                took(Messages.Run.class).getFirst().plan().steps());
+    }
+
+    @Test
+    void oneRunAtATime() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        sent.clear();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        assertTrue(sent.stream().noneMatch(m -> m instanceof Messages.Run));
+        assertTrue(took(Status.class).getFirst().alert());
+    }
+
+    @Test
+    void aRunThatCouldNotDoEverythingSaysWhatAndWhy() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long run = took(Messages.Run.class).getFirst().run();
+        tell(Messages.RAN_TOPIC, new Messages.Ran(run,
+                new Done(Plan.Op.DELETE, List.of(), List.of("a.txt: access is denied"), 10L, false)));
+        assertTrue(seen(Messages.Recorded.class).isEmpty(), "nothing done is nothing to undo");
+        Status said = took(Status.class).getFirst();
+        assertTrue(said.alert());
+        assertEquals("Deleted 0 of 1. 1 could not be: a.txt: access is denied", said.message());
     }
 }

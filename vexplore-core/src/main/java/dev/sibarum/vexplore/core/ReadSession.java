@@ -34,7 +34,16 @@ public final class ReadSession {
     }
 
     public Recalled run(Recall r) {
-        return new Recalled(path(settings.getString(FOLDER, "")), paths(launch.rest()), Path.of("").toAbsolutePath());
+        return new Recalled(path(settings.getString(FOLDER, "")), paths(launch.rest()), Path.of("").toAbsolutePath(),
+                trash());
+    }
+
+    /**
+     * Vexplore's own trash, {@code ~/.vexplore/trash}: where a delete goes, kept so it can be taken back. Never
+     * emptied yet.
+     */
+    static Path trash() {
+        return Path.of(System.getProperty("user.home"), ".vexplore", "trash");
     }
 
     private static List<Path> paths(List<String> texts) {

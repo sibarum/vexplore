@@ -98,7 +98,12 @@ public final class Suggestions {
         ARCHIVE("Archive", "Archive"),
         RENAME("Rename…", "Rename"),
         MARK("Mark for later", "Mark"),
-        DELETE("Delete (recoverable)", "Delete");
+        DELETE("Delete (recoverable)", "Delete") {
+            @Override
+            Plan plan(List<Row> targets) {
+                return Plan.delete(targets);
+            }
+        };
 
         private final String chip;
         private final String verb;
@@ -114,6 +119,14 @@ public final class Suggestions {
 
         public String verb() {
             return verb;
+        }
+
+        /**
+         * What carrying this out on {@code targets} would do, or null while it cannot be carried out yet: each action
+         * gets its plan in the slice that builds it (docs/shape.md, M3).
+         */
+        Plan plan(List<Row> targets) {
+            return null;
         }
     }
 
@@ -163,6 +176,11 @@ public final class Suggestions {
             return targets.stream().mapToLong(Row::size).sum();
         }
 
+        /** What the card's button would carry out, or null when no action is picked or it cannot be carried out yet. */
+        public Plan plan() {
+            return applied.act() == null || targets.isEmpty() ? null : applied.act().plan(targets);
+        }
+
         /** The rail in words, for the view to show: chips worded and lit, the reach, and the card. */
         public Suggested worded() {
             if (this == EMPTY || scopes.isEmpty()) {
@@ -190,8 +208,8 @@ public final class Suggestions {
             boolean folders = targets.stream().anyMatch(Row::folder);
             String counted = n + (folders ? (n == 1 ? " item" : " items") : (n == 1 ? " file" : " files"));
             long bytes = bytes();
-            String headline = (applied.act() == null ? counted : applied.act().verb() + " " + counted)
-                    + (bytes > 0 ? " · " + Bytes.format(bytes) : "");
+            String done = applied.act() == null ? counted : applied.act().verb() + " " + counted;
+            String headline = done + (bytes > 0 ? " · " + Bytes.format(bytes) : "");
             StringBuilder detail = new StringBuilder();
             int named = Math.min(n, NAMED);
             for (int i = 0; i < named; i++) {
@@ -201,7 +219,7 @@ public final class Suggestions {
                 detail.append(" and ").append(n - named).append(" more");
             }
             detail.append(n == 1 ? ", marked in the list" : ", all marked in the list");
-            return new Card(headline, detail.toString());
+            return new Card(headline, detail.toString(), plan() == null ? "" : done, "");
         }
     }
 

@@ -44,6 +44,13 @@ final class Landmarks {
     /** The card's headline: the effect, first ({@code Move 9 files · 6.5 GB}). */
     static final String RAIL_CARD = "rail.card";
 
+    /** The card's tag: {@code nothing has changed yet}, or how far a run has got ({@code Deleting · 3 of 9}). */
+    static final String RAIL_TAG = "rail.tag";
+
+    /** The card's button, which carries out what it states, and the Stop in its place while that runs. */
+    static final String RAIL_GO = "rail.go";
+    static final String RAIL_STOP = "rail.stop";
+
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";
     static final String STATUS_COUNTS = "status.counts";

@@ -2,6 +2,7 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.Intent.Command;
 import dev.sibarum.vexplore.core.Messages.Activated;
+import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Go;
 import dev.sibarum.vexplore.core.Messages.Level;
@@ -10,13 +11,18 @@ import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.PlacesWanted;
+import dev.sibarum.vexplore.core.Messages.Recorded;
+import dev.sibarum.vexplore.core.Messages.Redo;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Status;
+import dev.sibarum.vexplore.core.Messages.Stop;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.vexelray.framework.api.Subscribe;
 import dev.vexelray.gui.core.Gui;
+import dev.vexelray.gui.core.edit.History;
 import dev.vexelray.gui.core.input.ClaimScope;
 import dev.vexelray.gui.core.input.Shortcut;
 import dev.vexelray.gui.widget.Breadcrumb;
@@ -41,7 +47,8 @@ import java.nio.file.Path;
  * row activated does. This turns the explorer's messages into widgets ({@code Shown} is the breadcrumb and the list,
  * {@code Summary} the status line's counts, {@code Suggested} the rail) and the person's gestures into messages
  * ({@code Go}, {@code Navigate}, {@code Chosen}, {@code Activated}, {@code Picked}). The one thing it answers itself
- * is the tree of places, which is the view's and its jobs': the tree asks, the view asks {@code ListPlaces} or {@code ListLevel}, and the answer goes back to the tree.
+ * is the tree of places, which is the view's and its jobs': the tree asks, the view asks {@code ListPlaces} or
+ * {@code ListLevel}, and the answer goes back to the tree.
  *
  * <h2>Everything it hears is a message, in the frame</h2>
  *
@@ -74,13 +81,18 @@ final class View {
     private final Sender<Chosen> chosen;
     private final Sender<Activated> activated;
     private final Sender<Picked> picked;
+    private final Sender<Carry> carry;
+    private final Sender<Stop> stop;
+    private final Sender<Undo> undo;
+    private final Sender<Redo> redo;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
     private final Sender<Intent> intents;
 
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
-         Sender<Picked> picked, Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted,
+         Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
+         Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted,
          Sender<TreeView.Children> children, Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
@@ -89,6 +101,10 @@ final class View {
         this.chosen = chosen;
         this.activated = activated;
         this.picked = picked;
+        this.carry = carry;
+        this.stop = stop;
+        this.undo = undo;
+        this.redo = redo;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -223,6 +239,28 @@ final class View {
         Picked p = ui.picked(m);
         if (p != null) {
             picked.send(p);
+        }
+    }
+
+    /** The card's button carries out what it states; its Stop ends the run between two steps. */
+    @Subscribe
+    public void pressed(Button.Pressed m) {
+        if (ui.go(m.button())) {
+            carry.send(new Carry());
+        } else if (ui.stop(m.button())) {
+            stop.send(new Stop());
+        }
+    }
+
+    /**
+     * A run landed that can be taken back: an entry in the window's history, so Ctrl+Z asks the explorer to take it
+     * back. None in a tree built with no window, which has no history.
+     */
+    @Subscribe
+    public void recorded(Recorded m) {
+        History history = gui.history();
+        if (history != null) {
+            history.record(new Journaled(m.entry(), true, undo, redo));
         }
     }
 

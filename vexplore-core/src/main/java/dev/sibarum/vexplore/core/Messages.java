@@ -101,6 +101,32 @@ public final class Messages {
     public record Picked(Slot slot, int index) {
     }
 
+    /** The card's button: carry out what the card states. */
+    public static final Topic<Carry> CARRY_TOPIC = Topic.edge(Carry.class);
+
+    public record Carry() {
+    }
+
+    /** The card's Stop, while a run goes: ends {@link RunAction}'s run between two steps. */
+    public static final Topic<Stop> STOP_TOPIC = Topic.edge(Stop.class);
+
+    public record Stop() {
+    }
+
+    /**
+     * The window's history applied an entry: take back what entry {@code entry} did ({@link Undo}), or do it again
+     * ({@link Redo}). The history holds only the number; what the entry did is the explorer's.
+     */
+    public static final Topic<Undo> UNDO_TOPIC = Topic.edge(Undo.class);
+
+    public record Undo(long entry) {
+    }
+
+    public static final Topic<Redo> REDO_TOPIC = Topic.edge(Redo.class);
+
+    public record Redo(long entry) {
+    }
+
     // ------------------------------------------------------------------ the explorer tells the view
 
     /**
@@ -151,8 +177,14 @@ public final class Messages {
     public record Chip(String label, int count, boolean on) {
     }
 
-    /** The rail's card: the effect first ({@code Move 9 files · 6.5 GB}), then the first few names. */
-    public record Card(String headline, String detail) {
+    /**
+     * The rail's card: the effect first ({@code Move 9 files · 6.5 GB}), then the first few names. {@code go} is the
+     * button's words, or empty when there is nothing it can do yet; {@code running} is how far a run has got
+     * ({@code Deleting · 3 of 9}), or empty when none goes, and while one does the button is its Stop.
+     */
+    public record Card(String headline, String detail, String go, String running) {
+
+        public static final Card NONE = new Card("", "", "", "");
     }
 
     /**
@@ -164,9 +196,15 @@ public final class Messages {
     public record Suggested(String basis, List<Chip> select, List<Chip> condition, List<Chip> action,
                             Set<Row> reach, Card card) {
 
+        /** The same rail, its card saying how far a run has got. */
+        public Suggested running(String words) {
+            return new Suggested(basis, select, condition, action, reach,
+                    new Card(card.headline(), card.detail(), card.go(), words));
+        }
+
         /** Nothing selected: an empty rail, and no row marked. */
         public static final Suggested NONE = new Suggested("", List.of(), List.of(), List.of(), Set.of(),
-                new Card("", ""));
+                Card.NONE);
 
         public Suggested {
             select = List.copyOf(select);
@@ -179,6 +217,15 @@ public final class Messages {
         public boolean empty() {
             return select.isEmpty();
         }
+    }
+
+    /**
+     * A run landed that can be taken back: the view puts entry {@code entry} in the window's history, as
+     * {@code words} ({@code Delete 4 files}), so Ctrl+Z sends its {@link Undo}.
+     */
+    public static final Topic<Recorded> RECORDED_TOPIC = Topic.edge(Recorded.class);
+
+    public record Recorded(long entry, String words) {
     }
 
     // ------------------------------------------------------------------ the explorer and the jobs
@@ -245,6 +292,27 @@ public final class Messages {
     public record Started(Path file, String problem) {
     }
 
+    /**
+     * Carry out a plan, forward or back ({@link RunAction}): run {@code run}, the explorer's count of its runs, so its
+     * count and its answer are known as its own. A delete goes into {@code trash}.
+     */
+    public static final Topic<Run> RUN_TOPIC = Topic.edge(Run.class);
+
+    public record Run(long run, Plan plan, Path trash) {
+    }
+
+    /** How far run {@code run} has got: {@code done} of {@code total} steps. The latest is all that matters. */
+    public static final Topic<Progress> PROGRESS_TOPIC = Topic.state(Progress.class);
+
+    public record Progress(long run, int done, int total) {
+    }
+
+    /** What run {@code run} did, stopped or not. */
+    public static final Topic<Ran> RAN_TOPIC = Topic.edge(Ran.class);
+
+    public record Ran(long run, Done done) {
+    }
+
     /** Read back what the last session remembered, and what the command line named ({@link ReadSession}). */
     public static final Topic<Recall> RECALL_TOPIC = Topic.edge(Recall.class);
 
@@ -253,11 +321,11 @@ public final class Messages {
 
     /**
      * What there is to bring back, every path absolute and normalised: the folder shown, the command line's paths, and
-     * the folder the application started in, for when there is none.
+     * the folder the application started in, for when there is none, and where a delete puts things.
      */
     public static final Topic<Recalled> RECALLED_TOPIC = Topic.edge(Recalled.class);
 
-    public record Recalled(Optional<Path> folder, List<Path> arguments, Path started) {
+    public record Recalled(Optional<Path> folder, List<Path> arguments, Path started, Path trash) {
         public Recalled {
             arguments = List.copyOf(arguments);
         }

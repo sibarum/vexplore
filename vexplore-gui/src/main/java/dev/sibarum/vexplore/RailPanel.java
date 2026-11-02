@@ -52,6 +52,9 @@ final class RailPanel {
     private static final int PHRASES = 1;
     private static final int VERBS = 2;
 
+    /** The card's tag while nothing runs: the design's promise, kept until the button is pressed. */
+    private static final String UNCHANGED = "nothing has changed yet";
+
     private static final String EMPTY = "Select a file and Vexplore will say what it would do with the others. "
             + "Nothing here covers anything else, and nothing changes until you say so.";
 
@@ -66,6 +69,9 @@ final class RailPanel {
     private final Node card;
     private final Node headline;
     private final Node detail;
+    private final Node tag;
+    private final Button go;
+    private final Button stop;
 
     RailPanel(Gui gui) {
         this.gui = gui;
@@ -87,15 +93,24 @@ final class RailPanel {
 
         headline = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
         gui.landmark(Landmarks.RAIL_CARD, headline);
-        Node tag = gui.text("nothing has changed yet").font(Type.MONO).textSize(Type.SMALL).textColor(Role.FAINT)
+        tag = gui.text(UNCHANGED).font(Type.MONO).textSize(Type.SMALL).textColor(Role.FAINT)
                 .wordWrap(false);
         Node top = gui.column().width(Length.FILL).gap(Length.rem(0.2f)).scroll(false, false).clip(true)
                 .children(headline, tag);
         detail = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(true)
                 .width(Length.FILL);
+        gui.landmark(Landmarks.RAIL_TAG, tag);
+        // The one filled button on the screen: what happens if the person does nothing but agree. While a run goes,
+        // its Stop stands in the same place.
+        go = new Button(gui, "").kind(Button.Kind.PRIMARY).name(Landmarks.RAIL_GO);
+        gui.landmark(Landmarks.RAIL_GO, go.node());
+        stop = new Button(gui, "Stop").name(Landmarks.RAIL_STOP);
+        gui.landmark(Landmarks.RAIL_STOP, stop.node());
+        Node buttons = gui.row().width(Length.FILL).gap(Length.rem(0.5f)).scroll(false, false).clip(true)
+                .children(go.node(), stop.node());
         card = gui.column().width(Length.FILL).padding(Length.rem(1f)).gap(Length.rem(0.5f))
                 .background(Role.PANEL).border(Length.dp(1), Role.LINE).corner(Length.rem(0.5f))
-                .children(top, detail);
+                .children(top, detail, buttons);
 
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
@@ -119,13 +134,28 @@ final class RailPanel {
         for (Node n : sections) {
             n.visible(!none);
         }
-        card.visible(!none);
+        String running = s.card().running();
+        card.visible(!none || !running.isEmpty());
         basis.text(none ? "" : "based on " + s.basis());
         fill(select, s.select());
         fill(condition, s.condition());
         fill(action, s.action());
         headline.text(s.card().headline());
         detail.text(s.card().detail());
+        tag.text(running.isEmpty() ? UNCHANGED : running);
+        go.label(s.card().go());
+        go.node().visible(running.isEmpty() && !s.card().go().isEmpty());
+        stop.node().visible(!running.isEmpty());
+    }
+
+    /** Whether {@code address} is the card's button, which carries out what the card states. */
+    boolean go(String address) {
+        return go.address().equals(address);
+    }
+
+    /** Whether {@code address} is the card's Stop. */
+    boolean stop(String address) {
+        return stop.address().equals(address);
     }
 
     /**

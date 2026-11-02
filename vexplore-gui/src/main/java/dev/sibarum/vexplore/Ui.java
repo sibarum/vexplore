@@ -245,6 +245,16 @@ final class Ui {
         list.rows().marks(s.reach());
     }
 
+    /** Whether {@code address} is the card's button. */
+    boolean go(String address) {
+        return rail.go(address);
+    }
+
+    /** Whether {@code address} is the card's Stop. */
+    boolean stop(String address) {
+        return rail.stop(address);
+    }
+
     /** The pick a chip's press stands for, or null when it is none of the rail's or changes nothing. */
     Picked picked(Button.Toggled t) {
         return rail.picked(t);

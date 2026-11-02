@@ -8,7 +8,8 @@ the order the features come back in, and [docs/shape.md](docs/shape.md) the shap
 stands:** M2. Browsing: the tree of places, the breadcrumb and its path field, the list with its columns, sort and
 selection, the status line's counts, and Enter to go into a folder or open a file. The Suggestion Rail: select a
 file, and Select, Condition and Action chips say what Vexplore would do with the others, the rows it would reach are
-marked in the list, and a card states the effect first. No action runs yet; that is M3.
+marked in the list, and a card states the effect first. M3 is under way: Delete carries out, into Vexplore's own
+trash, and Ctrl+Z takes it back.
 
 ## Run it
 
@@ -86,6 +87,7 @@ groups the button with other Java programs, and pinning it pins Java. The native
 | Keys | Does |
 | --- | --- |
 | Ctrl+L | the path field, in the breadcrumb's place: type a folder to show it, or a file to show its folder; Enter goes, Esc puts the breadcrumb back |
+| Ctrl+Z / Ctrl+Y | take back what the rail's button did, or do it again |
 | Ctrl+= / Ctrl+- / Ctrl+0 | zoom |
 
 A click on a breadcrumb segment goes to that folder. `vexplore <path>` shows that folder, or the folder a file is in;
@@ -106,6 +108,9 @@ every message is in one file. Read these in this order.
 | `Messages.java` | **every message the parts send each other**, grouped by who sends it to whom, each record beside its topic. A record crosses as itself, so it holds only immutable values; a list it holds is copied in its constructor. |
 | `Explorer.java` | **the controller**: every decision (which folder to show, what a typed path names, what comes back next time) as a declared step on one immutable state, held by a ledger. Each message it hears runs one step. It needs no lock, because only its steps change its state and they run one at a time. |
 | `ListFolder.java`, `ListPlaces.java`, `ListLevel.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
+| `Plan.java`, `Done.java`, `Operations.java` | what an action would do, what it did, and carrying it out: nothing overwritten, a delete into Vexplore's own trash, and an undo that is the reverse plan. |
+| `RunAction.java` | **the source** that carries out a plan, forward or back, on a thread of its own, with a count and a Stop. |
+| `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
 | `Kind.java`, `Bytes.java`, `Dates.java` | what a file is, a size and a time in a person's words: no disk and no widget, so they live here. |
 | `Core.java` | the list of this module's component and jobs. The processor compiling `-gui` sees only `-gui`'s sources, so this list, named among `VexploreApp`'s starters, is how the wiring hears of them. A new component or job goes on it. |
@@ -119,6 +124,7 @@ every message is in one file. Read these in this order.
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Columns.java` | the list's columns, drawn from a row alone. |
+| `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |
 | `RailPanel.java` | the Suggestion Rail: its chips and card, every node built once and relabelled. A chip pressed is said as its row and place. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |
 

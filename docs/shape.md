@@ -207,3 +207,98 @@ Built 2026-11-02. Where the code departs from the sketch above, and why:
   when the reach grows past one.
 - **The rail is a third of the room beside the tree** (option 1 above, ruled 2026-11-02), with drag minimums of
   20 rem for the list and 15 rem for the rail.
+
+## The messages M3 adds
+
+Proposed 2026-11-02, before any of it is written. M3 makes the card's button do what the card says: Move, Copy,
+Archive, Delete into Vexplore's trash, Rename one, and Mark, each undone by Ctrl+Z. It is big enough to come in four
+slices, each a commit with its test and its ottermate run, in this order:
+
+1. **Delete, and undo.** The whole machinery with the action that needs no destination: the plan, the run with its
+   count and its Stop, the journal, Ctrl+Z and Ctrl+Y, and the folder listed again afterwards.
+2. **Move and Copy**: suggested destinations as a fourth row of chips, *Choose folder…* through `PickFile.folder`, and
+   a plan that reads the destination for collisions.
+3. **Archive and Rename**: a zip beside the files, and a name field in the card.
+4. **Marks**: *Keep as Mark*, the marks listed in the rail, recalled as the reach, kept across runs by the session
+   jobs.
+
+**0.1's `Plan` and `Operations` come back** in `-core`, as pure values and a blocking executor, with their tests.
+
+### One run does everything, undo included
+
+`RunAction` is a `@Source` (a job cannot be stopped): it carries out a plan step by step, sends a count as it goes,
+and returns what took effect. **An undo is a plan too**: the reverse of what was done (moved back, taken out of the
+trash, renamed back, and the copies and zip Vexplore made removed outright, since nothing else had them). So the
+same run, the same count and the same Stop serve both, and an undo that meets a surprise (a name taken since)
+reports it as a run does, with nothing overwritten.
+
+### Undo is the window's, the facts are the explorer's
+
+The design wants Ctrl+Z, and the window's `History` is the framework's (the ruled pattern; `ValueWidgetUndoTest`).
+It holds only numbers: when a run lands, the explorer sends `Recorded(entry, words)`, and the view records a `Change`
+whose `apply` sends `Undo(entry)`, returning one that sends `Redo(entry)`. What each entry did is in the explorer's
+state (`journal`), so the history never holds a path and the decision stays in a step.
+
+`Explorer.State` gains:
+
+| Field | Holds |
+| --- | --- |
+| `plan` | what the card's button would do, as the last `Planned` said, with its ticket |
+| `running` | the run in flight: its number, its verb, how far it has got |
+| `journal` | each entry's `Done`, by number, and whether it stands done or undone |
+| `destination`, `destinations` | the folder picked for a move or copy, and the ones suggested (slice 2) |
+| `marks` | named sets of paths (slice 4) |
+
+The view tells the explorer:
+
+| Record | Sent when |
+| --- | --- |
+| `Carry()` | the card's button: carry out the plan the card states |
+| `Stop()` | the card's Stop, while a run goes |
+| `Undo(long entry)`, `Redo(long entry)` | the window's history applies an entry |
+| `Destine(Path folder)` | *Choose folder…* answered (slice 2) |
+| `Rename(String name)` | the name field submitted (slice 3) |
+| `KeepMark()`, `Recall(int index)`, `Forget(int index)` | the marks (slice 4) |
+
+`Picked` gains a fourth `Slot`, `DESTINATION` (slice 2). The framework has a `Picked` of its own (`PickFile`'s
+answer); the two never meet but in `View`, which names the framework's in full.
+
+The explorer tells the view: `Suggested`'s `Card` gains the button's words (`Delete 4 files`, or empty when there is
+nothing to do and the detail says why), what will be left alone and why, and, while a run goes, `3 of 9` and the Stop.
+`Recorded(long entry, String words)` is an edge for the view to put in the history. After a run, the folder shown is
+listed again, so the list says what happened (M5's watching will make that unnecessary).
+
+The explorer and its parts:
+
+| Request → reply | Part | Does |
+| --- | --- | --- |
+| `Planning(long ticket, Act act, List<Row> targets, Path destination)` → `Planned(long ticket, Plan plan)` | `PlanAction`, a job | reads the destination's names for collisions; delete and rename need none and are planned in the step |
+| `Run(long run, Plan plan)` → `Ran(long run, Done done)`, sending `Progress(long run, int done, int total)`; stopped by `Stop` | `RunAction`, a source | carries out a plan, forward or back |
+| `Destining(long ticket, Path folder, Kind kind)` → `Destinations(long ticket, List<Dest> places)` | `SuggestDestinations`, a job (slice 2) | 0.1's `Destinations`: nearby folders that already hold that kind |
+
+### The trash
+
+Vexplore's own, `~/.vexplore/trash/<when>/`, as 0.1's: the only route to the system's recycle bin from Java is
+through AWT, which nothing here links, and a trash of its own is the same on every system. M3 never empties it; the
+handoff's "undoable for 30 days" is a later TODO, and the card does not promise it.
+
+### What M3 does not do
+
+Held Shift and Control (FN-9), a drop onto a tree row, and remote folders, as rebuild.md has them. One run at a
+time: `Carry` while a run goes is refused on the status line, not queued.
+
+## What M3 built differently
+
+Slice 1, delete and undo, built 2026-11-02:
+
+- **0.1's `Plan.Kind` is `Plan.Op`**, since `Kind` here is what a file is, and **`Done` is a file of its own**, with
+  `reverse()`: a move or delete moves back, a copy is removed (`Op.REMOVE`), a remove is copied again. Undo and redo
+  are both "run the reverse of what the entry last did", so the journal keeps each entry's latest `Done` and a flag.
+- **The explorer's run state is one field, `work`** (`Work`: the trash, the run in flight, the journal), not five.
+  `Work.Way` (do, undo, redo) words the card and the status line, so `ran` has no switch.
+- **`Recalled` carries the trash** (`~/.vexplore/trash`, from `ReadSession`): a step cannot read the home folder, and
+  a test gives its own.
+- **The card's tag is the run's line**: `nothing has changed yet`, then `Deleting · 3 of 9` while it runs, with Stop
+  in the button's place. No `Planning` job yet: a delete is planned in the step from the rows.
+- **Only Delete has a button in slice 1.** Every other action still states its effect, with no button, until its
+  slice (`Act.plan` is null for them).
