@@ -666,25 +666,52 @@ class ExplorerTest {
         assertEquals("Select one file to see it here", took(Messages.Docked.class).getLast().note());
     }
 
+    private Row picture(String name) {
+        return new Row(path(name), name, false, 10L, Instant.EPOCH, Kind.IMAGE);
+    }
+
+    private void openWith(Messages.OpenWith.With with) {
+        tell(Messages.OPEN_WITH_TOPIC, new Messages.OpenWith(with));
+    }
+
     @Test
-    void openInHandsOnTheFileInTheDockAndNothingWithNone() {
-        showing(dir, file("a.png", 10), file("b.png", 20));
-        tell(Messages.OPEN_IN_TOPIC, new Messages.OpenIn());
-        assertTrue(seen(Messages.Handing.class).isEmpty(), "nothing in the dock");
+    void openWithHandsOnTheFileInTheStripAndNothingWithNone() {
+        showing(dir, picture("a.png"), file("notes.txt", 20));
+        openWith(Messages.OpenWith.With.SUITED);
+        assertTrue(seen(Messages.Handing.class).isEmpty(), "nothing in the strip");
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.png"))));
-        tell(Messages.OPEN_IN_TOPIC, new Messages.OpenIn());
-        assertEquals(List.of(new Messages.Handing(path("a.png"))), took(Messages.Handing.class));
+        openWith(Messages.OpenWith.With.SUITED);
+        assertEquals(List.of(new Messages.Handing(path("a.png"), true)), took(Messages.Handing.class),
+                "a picture suits Rasterware");
+    }
+
+    @Test
+    void openWithSuitsTheFileUnlessTheMenuNamesAProgram() {
+        showing(dir, picture("a.png"), file("notes.txt", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("notes.txt"))));
+        openWith(Messages.OpenWith.With.SUITED);
+        assertEquals(List.of(new Messages.Handing(path("notes.txt"), false)), took(Messages.Handing.class),
+                "a text suits the desktop's own program");
+        openWith(Messages.OpenWith.With.RASTERWARE);
+        assertEquals(List.of(new Messages.Handing(path("notes.txt"), true)), took(Messages.Handing.class));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.png"))));
+        openWith(Messages.OpenWith.With.DESKTOP);
+        assertEquals(List.of(new Messages.Handing(path("a.png"), false)), took(Messages.Handing.class));
     }
 
     @Test
     void aHandOffSaysWhatOpenedIt() {
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.RASTERWARE, null));
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), true, Messages.HandedOff.RASTERWARE,
+                null));
         assertEquals("Opened a.png in Rasterware", took(Status.class).getFirst().message());
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.DESKTOP, null));
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), true, Messages.HandedOff.DESKTOP, null));
         Status desktop = took(Status.class).getFirst();
         assertEquals("Rasterware isn't installed, so a.png opened in the desktop's own program", desktop.message());
         assertFalse(desktop.alert());
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), Messages.HandedOff.RASTERWARE, "gone"));
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), false, Messages.HandedOff.DESKTOP, null));
+        assertEquals("Opened a.png in the desktop's own program", took(Status.class).getFirst().message());
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), true, Messages.HandedOff.RASTERWARE,
+                "gone"));
         assertTrue(took(Status.class).getFirst().alert());
     }
 

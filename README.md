@@ -125,15 +125,15 @@ every message is in one file. Read these in this order.
 | File | What belongs in it |
 | --- | --- |
 | `Recipes.java` | **what this module builds.** One `@Provides` method per part; `VexploreAppWiring`, which builds them and the components and jobs in order, is generated while it compiles. A part's phase is the latest phase of anything it takes, so there is none to declare. |
-| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenIn`, `Use`, `TwoFolders`, `Swap`, `Back`). It asks `ListPlaces` for the places itself, once the window opens. It decides nothing else. |
+| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenWith`, `Use`, `TwoFolders`, `Swap`, `Back`). It asks `ListPlaces` for the places itself, once the window opens. It decides nothing else. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Columns.java` | the list's columns, drawn from a row alone, and the *new* tag after a name. |
 | `Sidebar.java` | Orbit's sidebar: the places, flat, the one the folder shown is in filled, and the marks under them. |
 | `FolderList.java` | one file list with its header in Two Folders (FROM or TO, and the folder's name, in the accent while used) and its tags; `Ui` builds two. |
 | `Tags.java` | the rows tagged *new*: the list's second marked set, told whole, which a list cannot hold (FN-12). |
-| `DockPanel.java` | the Preview Dock under the list: one file's preview, or a note; every node built once. A picture or a video has Open in Rasterware under it. |
-| `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, and says which. In `-gui` because `Apps` is the framework shell's. |
+| `DockPanel.java` | the preview strip under the list, in Orbit's shape: one file's preview, or a note, and *Open with* beside it (a left click opens what suits the file, its menu names a program); every node built once. |
+| `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, or to the desktop's opener alone when that was named, and says which. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |
 | `RailPanel.java` | the Suggestion Rail in Orbit's words (Which files, Only if, Then): pills, six action tiles and the card with its round run button, every node built once and relabelled. A pill or a tile pressed is said as its row and place. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |

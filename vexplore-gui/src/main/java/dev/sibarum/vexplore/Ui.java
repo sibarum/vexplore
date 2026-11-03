@@ -357,9 +357,14 @@ final class Ui {
         return rail.go(address);
     }
 
-    /** Whether {@code address} is the dock's Open in Rasterware. */
-    boolean openIn(String address) {
-        return dock.open(address);
+    /** Whether {@code address} is the preview strip's Open with. */
+    boolean openWith(String address) {
+        return dock.openWith(address);
+    }
+
+    /** Open with's node, for the menu the view declares on it. */
+    Node openWithNode() {
+        return dock.openWithNode();
     }
 
     /** Whether {@code address} is the card's Stop. */

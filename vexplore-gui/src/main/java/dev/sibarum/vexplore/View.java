@@ -14,7 +14,8 @@ import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
-import dev.sibarum.vexplore.core.Messages.OpenIn;
+import dev.sibarum.vexplore.core.Messages.OpenWith;
+import dev.sibarum.vexplore.core.Messages.OpenWith.With;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
@@ -44,6 +45,8 @@ import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.edit.History;
 import dev.vexelray.gui.core.input.ClaimScope;
 import dev.vexelray.gui.core.input.Shortcut;
+import dev.vexelray.gui.fileicons.FileFamily;
+import dev.vexelray.gui.icons.Icon;
 import dev.vexelray.gui.widget.Breadcrumb;
 import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.ListView;
@@ -112,7 +115,7 @@ final class View {
     private final Sender<Rename> rename;
     private final Sender<RecallMark> recallMark;
     private final Sender<ForgetMark> forgetMark;
-    private final Sender<OpenIn> openIn;
+    private final Sender<OpenWith> openWith;
     private final Sender<Menu> menu;
     private final Sender<Use> use;
     private final Sender<TwoFolders> twoFolders;
@@ -134,7 +137,7 @@ final class View {
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
-         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenIn> openIn, Sender<Menu> menu,
+         Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
          Sender<PlacesWanted> placesWanted, Sender<Back> back,
          Sender<Intent> intents) {
@@ -154,7 +157,7 @@ final class View {
         this.rename = rename;
         this.recallMark = recallMark;
         this.forgetMark = forgetMark;
-        this.openIn = openIn;
+        this.openWith = openWith;
         this.menu = menu;
         this.use = use;
         this.twoFolders = twoFolders;
@@ -163,6 +166,11 @@ final class View {
         this.back = back;
         this.intents = intents;
         shortcuts();
+        // Open with's menu: a left click opens what suits the file, and the menu names the program instead (FN-15).
+        gui.menu(ui.openWithNode(), dev.vexelray.gui.core.input.Menu.builder()
+                .item(FileFamily.IMAGES, "Rasterware", openWith, new OpenWith(With.RASTERWARE))
+                .item(Icon.DISPLAY, "The desktop's own program", openWith, new OpenWith(With.DESKTOP))
+                .build());
     }
 
     /**
@@ -278,7 +286,7 @@ final class View {
         }
     }
 
-    /** Enter or a double click on a row: the explorer goes into a folder or opens a file. Enter on a place goes there. */
+    /** Enter or a double click on a row: the explorer goes into a folder or opens a file. Enter on a place goes. */
     @Subscribe
     public void rowActivated(ListView.Activated m) {
         Side side = ui.rowsSide(m.list());
@@ -337,8 +345,8 @@ final class View {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {
             stop.send(new Stop());
-        } else if (ui.openIn(m.button())) {
-            openIn.send(new OpenIn());
+        } else if (ui.openWith(m.button())) {
+            openWith.send(new OpenWith(With.SUITED));
         } else if (ui.back(m.button())) {
             back();
         } else if (ui.up(m.button())) {

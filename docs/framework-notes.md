@@ -195,3 +195,16 @@ focused. Vexplore keeps the count after the words, `Just this file · 1`, as it 
 
 **For the framework:** a button with a trailing slot (`Button.trailing(Node)` or a `badge(String)`), inside its press,
 its focus and its pressed look. A chip with a count, a tab with a number, a menu item with a shortcut all meet it.
+
+## FN-15 · A button cannot open a menu 🔬
+
+Orbit's preview strip (M8, slice 4) has *Open with*: a button whose menu names the program, Rasterware or the
+desktop's own. An application declares a menu only as a node's context menu (`Gui.menu`, opened by a right click);
+opening one from a left click is `Seams.openMenu`, which is the widget library's and the host's, and which a `@View`
+may not import (threading.md, T7.2). Vexplore's *Open with* opens the file with the program that suits it on a left
+click (Rasterware for a picture or a video, else the desktop's), and declares the two programs as its context menu, so
+a right click names one. A person who does not think to right-click never sees the choice.
+
+**For the framework:** a menu button, declared as a context menu is (`Gui.menuButton(node, menu)`, or
+`Button.menu(Menu)`): the menu opens under the button on a left click, Enter or Space, and closes as a context menu
+does. Every *Open with*, *Sort by* and overflow button meets it.

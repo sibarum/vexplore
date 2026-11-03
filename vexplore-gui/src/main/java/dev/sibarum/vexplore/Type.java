@@ -57,8 +57,8 @@ final class Type {
      */
     static final Length RAIL = Length.percent(33.6f);
 
-    /** The Preview Dock's height on a first run: two fifths of the column it shares with the list. */
-    static final Length DOCK = Length.percent(40f);
+    /** The preview strip's height on a first run: Orbit's 168 px. A split's pane, so the person can make it taller. */
+    static final Length DOCK = Length.rem(10.5f);
 
     /** The least a drag of the dock's divider leaves the list: a few rows. */
     static final Length LIST_MIN_HEIGHT = Length.rem(10f);

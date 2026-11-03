@@ -7,10 +7,12 @@ import dev.vexelray.gui.core.Feed;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
+import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
 import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
-import dev.vexelray.gui.widget.Button;
+import dev.vexelray.gui.icons.Icon;
+import dev.vexelray.gui.widget.IconButton;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,10 +43,10 @@ final class DockPanel {
     private static final int CELLS = 32;
 
     /**
-     * The most a picture takes, in rem: the dock's height on a first run less its header and Open in Rasterware under
-     * it, and most of its width.
+     * The most a picture takes, in rem: the strip's height on a first run (Orbit's 168 px) less its header, and most
+     * of its width beside Open with.
      */
-    private static final float PICTURE_H = 12f;
+    private static final float PICTURE_H = 6f;
     private static final float PICTURE_W = 36f;
 
     private final Node node;
@@ -60,7 +62,7 @@ final class DockPanel {
     private final List<Node> cells = new ArrayList<>();
     private final Node strings;
     private final Node picture;
-    private final Button open;
+    private final IconButton openWith;
 
     DockPanel(Gui gui) {
         name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
@@ -101,18 +103,25 @@ final class DockPanel {
 
         picture = gui.box().corner(Length.rem(0.25f)).visible(false);
         gui.landmark(Landmarks.DOCK_PICTURE, picture);
-        // Vexplore has no viewer of its own: a picture or a video is viewed in the suite's.
-        open = new Button(gui, "Open in Rasterware").name(Landmarks.DOCK_OPEN);
-        open.node().visible(false);
-        gui.landmark(Landmarks.DOCK_OPEN, open.node());
-        Node stage = gui.column().width(Length.FILL).gap(Length.rem(0.6f)).alignItems(AlignItems.CENTER)
-                .children(picture, open.node());
+        Node stage = gui.column().width(Length.FILL).alignItems(AlignItems.CENTER).children(picture);
 
         Node content = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(0.8f))
                 .scroll(true, true).clip(true).children(note, stage, measure, body);
-        node = gui.column().width(Length.FILL).height(Length.FILL).padding(Length.rem(0.9f), Length.rem(1.25f))
-                .gap(Length.rem(0.8f)).background(Look.LIST).corner(Look.PANEL_CORNER).clip(true)
+        Node main = gui.column().width(Length.grow(1f)).height(Length.FILL).gap(Length.rem(0.6f)).clip(true)
                 .children(header, content);
+        // Open with, in a column at the strip's right as Orbit draws it, an icon and its words on a pill. A left click
+        // opens the file with what suits it (Vexplore has no viewer of its own: a picture or a video is Rasterware's);
+        // the view declares its menu, which names one (framework-notes FN-15).
+        openWith = new IconButton(gui, Icon.OPEN, "Open with").name(Landmarks.DOCK_OPEN)
+                .tile(Length.dp(40), Length.dp(16));
+        openWith.node().direction(Direction.ROW).width(Length.FILL).height(Length.dp(40)).corner(Length.dp(20))
+                .gap(Length.dp(8));
+        openWith.node().visible(false);
+        gui.landmark(Landmarks.DOCK_OPEN, openWith.node());
+        Node side = gui.column().width(Length.dp(150)).gap(Length.dp(8)).children(openWith.node());
+        node = gui.row().width(Length.FILL).height(Length.FILL).padding(Length.rem(0.9f), Length.rem(1.25f))
+                .gap(Length.rem(1.1f)).background(Look.LIST).corner(Look.PANEL_CORNER).clip(true)
+                .children(main, side);
         gui.landmark(Landmarks.DOCK, node);
         show(new Docked(java.util.Optional.empty(), "Select one file to see it here"));
     }
@@ -121,9 +130,14 @@ final class DockPanel {
         return node;
     }
 
-    /** Whether {@code address} is Open in Rasterware. */
-    boolean open(String address) {
-        return open.address().equals(address);
+    /** Whether {@code address} is Open with. */
+    boolean openWith(String address) {
+        return openWith.address().equals(address);
+    }
+
+    /** Open with's node, for the menu the view declares on it. */
+    Node openWithNode() {
+        return openWith.node();
     }
 
     /** Show what the explorer says the dock holds. */
@@ -153,7 +167,7 @@ final class DockPanel {
         }
         // Hidden with its picture still on it, so it fades out rather than going blank first.
         picture.visible(feed != null);
-        open.node().visible(feed != null);
+        openWith.node().visible(p != null && p.tier() != Preview.Tier.FOLDER);
         measure.visible(bytes);
         if (bytes) {
             entropy.text(String.format(Locale.ROOT, "Entropy %.1f bits per byte", p.entropy()));

@@ -786,3 +786,19 @@ Slice 3, the rail, built 2026-11-03:
   while a run goes.
 - **The tiles do not stretch to the rail's width.** A tile is a fixed square; Orbit's grid fills its column. Left as it
   is.
+
+Slice 4, the preview strip, built 2026-11-03:
+
+- **Orbit's strip**, 168 px tall on a first run (`Type.DOCK`), still a split's pane the person can make taller; the
+  preview at the left and a column of buttons at the right. A picture is drawn at most 6 rem tall, to fit.
+- ***Open with* replaces *Open in Rasterware***, for any file, not only a picture: `OpenWith(With)`, where `With` is
+  `SUITED`, `RASTERWARE` or `DESKTOP`. A left click is `SUITED`, which the explorer turns into Rasterware for a picture
+  or a video and the desktop's own program for anything else, by the row's kind. `Handing` and `HandedOff` say whether
+  Rasterware was asked, so the status line tells *Rasterware isn't installed* from *opened in the desktop's own
+  program*, which was asked for.
+- **The menu is a right click** (FN-15): a button cannot open a menu on a left click, so the two programs are *Open
+  with*'s context menu, declared by the view (`Gui.menu`), each with its icon from the VexelRay sets.
+- ***Open with* is an `IconButton` laid as a row**: `tile` gives it its name beside the icon, and its node is turned to a
+  row and a pill. An off-label use of the tile, and the least that keeps the press, focus and look the button's own.
+- **Pop out is not built.** `Popout` wants the application's `GuiApp` and a window declared in a recipe, a change to
+  `Recipes.java`, which is proposed rather than made: its own slice, if wanted.

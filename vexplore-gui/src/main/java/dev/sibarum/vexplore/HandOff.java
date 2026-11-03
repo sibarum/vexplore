@@ -27,26 +27,30 @@ public final class HandOff {
     static final String RASTERWARE = "pix";
 
     public HandedOff run(Handing h) {
-        return handOff(h.file(), Apps.registryDir(), f -> NativePlatform.current().open(f));
+        return handOff(h.file(), h.rasterware(), Apps.registryDir(), f -> NativePlatform.current().open(f));
     }
 
-    /** As {@link #run}, against {@code registry} and with {@code open} for the desktop's opener. */
-    static HandedOff handOff(Path file, Optional<Path> registry, Predicate<String> open) {
+    /**
+     * As {@link #run}, against {@code registry} and with {@code open} for the desktop's opener. Not {@code rasterware},
+     * the desktop's opener alone: the strip's Open with named it.
+     */
+    static HandedOff handOff(Path file, boolean rasterware, Optional<Path> registry, Predicate<String> open) {
         String path = file.toAbsolutePath().toString();
         try {
-            if (registry.isPresent() && Apps.spawn(registry.get(), RASTERWARE, path).isPresent()) {
-                return new HandedOff(file, HandedOff.RASTERWARE, null);
+            if (rasterware && registry.isPresent() && Apps.spawn(registry.get(), RASTERWARE, path).isPresent()) {
+                return new HandedOff(file, true, HandedOff.RASTERWARE, null);
             }
         } catch (IOException | RuntimeException e) {
-            return new HandedOff(file, HandedOff.RASTERWARE, "Rasterware would not start: " + why(e));
+            return new HandedOff(file, true, HandedOff.RASTERWARE, "Rasterware would not start: " + why(e));
         }
         try {
             if (open.test(path)) {
-                return new HandedOff(file, HandedOff.DESKTOP, null);
+                return new HandedOff(file, rasterware, HandedOff.DESKTOP, null);
             }
-            return new HandedOff(file, HandedOff.DESKTOP, "Rasterware isn't installed, and this desktop has no opener");
+            return new HandedOff(file, rasterware, HandedOff.DESKTOP, rasterware
+                    ? "Rasterware isn't installed, and this desktop has no opener" : "this desktop has no opener");
         } catch (RuntimeException e) {
-            return new HandedOff(file, HandedOff.DESKTOP, why(e));
+            return new HandedOff(file, rasterware, HandedOff.DESKTOP, why(e));
         }
     }
 

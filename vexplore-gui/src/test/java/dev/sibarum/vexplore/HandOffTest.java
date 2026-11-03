@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,7 +24,7 @@ class HandOffTest {
     @Test
     void notInstalledIsTheDesktopsOpenerAndSaysSo() {
         List<String> opened = new ArrayList<>();
-        HandedOff h = HandOff.handOff(dir.resolve("a.png"), Optional.of(dir), opened::add);
+        HandedOff h = HandOff.handOff(dir.resolve("a.png"), true, Optional.of(dir), opened::add);
         assertEquals(HandedOff.DESKTOP, h.to());
         assertNull(h.problem());
         assertEquals(List.of(dir.resolve("a.png").toAbsolutePath().toString()), opened);
@@ -31,7 +32,7 @@ class HandOffTest {
 
     @Test
     void noOpenerEitherIsSaid() {
-        HandedOff h = HandOff.handOff(dir.resolve("a.png"), Optional.empty(), f -> false);
+        HandedOff h = HandOff.handOff(dir.resolve("a.png"), true, Optional.empty(), f -> false);
         assertEquals(HandedOff.DESKTOP, h.to());
         assertTrue(h.problem().startsWith("Rasterware isn't installed"), h.problem());
     }
@@ -43,9 +44,21 @@ class HandOffTest {
         Files.writeString(dir.resolve(HandOff.RASTERWARE + ".json"), "{\"commands\": {\"" + HandOff.RASTERWARE
                 + "\": {\"path\": \"" + java.replace("\\", "\\\\") + "\"}}}");
         List<String> opened = new ArrayList<>();
-        HandedOff h = HandOff.handOff(dir.resolve("a.png"), Optional.of(dir), opened::add);
+        HandedOff h = HandOff.handOff(dir.resolve("a.png"), true, Optional.of(dir), opened::add);
         assertEquals(HandedOff.RASTERWARE, h.to());
         assertNull(h.problem());
         assertTrue(opened.isEmpty(), "the desktop's opener is not asked");
+    }
+
+    @Test
+    void theDesktopNamedIsTheDesktopEvenWithRasterwareInstalled() throws Exception {
+        String java = ProcessHandle.current().info().command().orElseThrow();
+        Files.writeString(dir.resolve(HandOff.RASTERWARE + ".json"), "{\"commands\": {\"" + HandOff.RASTERWARE
+                + "\": {\"path\": \"" + java.replace("\\", "\\\\") + "\"}}}");
+        List<String> opened = new ArrayList<>();
+        HandedOff h = HandOff.handOff(dir.resolve("a.txt"), false, Optional.of(dir), opened::add);
+        assertEquals(HandedOff.DESKTOP, h.to());
+        assertFalse(h.rasterware(), "Rasterware was not asked");
+        assertEquals(List.of(dir.resolve("a.txt").toAbsolutePath().toString()), opened);
     }
 }

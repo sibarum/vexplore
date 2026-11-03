@@ -95,8 +95,8 @@ final class Landmarks {
     /** A picture's thumbnail, or a video's poster frame. */
     static final String DOCK_PICTURE = "dock.picture";
 
-    /** Open in Rasterware, under a picture or a poster frame. */
-    static final String DOCK_OPEN = "dock.open";
+    /** The preview strip's Open with: a left click opens the file with what suits it, its menu names a program. */
+    static final String DOCK_OPEN = "dock.open-with";
 
     /** The status line, and its slots: the counts at the left, what was said at the right. */
     static final String STATUS = "status";

@@ -27,7 +27,8 @@ import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
-import dev.sibarum.vexplore.core.Messages.OpenIn;
+import dev.sibarum.vexplore.core.Messages.OpenWith;
+import dev.sibarum.vexplore.core.Messages.OpenWith.With;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
@@ -131,7 +132,7 @@ import java.util.Set;
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
-        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class,
+        Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
         Back.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
@@ -341,7 +342,7 @@ public final class Explorer {
         Step<State, RecallMark> recallMark = b.step("recallMark", Explorer::recallMark);
         Step<State, ForgetMark> forgetMark = b.step("forgetMark", Explorer::forgetMark);
         Step<State, Previewed> previewed = b.step("previewed", Explorer::previewed);
-        Step<State, OpenIn> openIn = b.step("openIn", Explorer::openIn);
+        Step<State, OpenWith> openWith = b.step("openWith", Explorer::openWith);
         Step<State, HandedOff> handedOff = b.step("handedOff", Explorer::handedOff);
         Step<State, Menu> menu = b.step("menu", Explorer::menu);
         Step<State, Stirred> stirred = b.step("stirred", Explorer::stirred);
@@ -374,7 +375,7 @@ public final class Explorer {
                 .on(Messages.RECALL_MARK_TOPIC, recallMark)
                 .on(Messages.FORGET_MARK_TOPIC, forgetMark)
                 .on(Messages.PREVIEWED_TOPIC, previewed)
-                .on(Messages.OPEN_IN_TOPIC, openIn)
+                .on(Messages.OPEN_WITH_TOPIC, openWith)
                 .on(Messages.HANDED_OFF_TOPIC, handedOff)
                 .on(Messages.MENU_TOPIC, menu)
                 .on(Messages.STIRRED_TOPIC, stirred)
@@ -1088,24 +1089,37 @@ public final class Explorer {
     }
 
     /**
-     * The dock's Open in Rasterware: the file it previews, handed on. Vexplore has no viewer of its own, so a picture
-     * or a video is viewed in Rasterware. With no file in the dock (the selection moved on under the pointer) nothing is.
+     * The strip's Open with: the file it previews, handed on. Vexplore has no viewer of its own, so a picture or a
+     * video suits Rasterware, and anything else the desktop's own program; the button's menu names either. With no
+     * file in the strip (the selection moved on under the pointer) nothing is.
      */
-    private static State openIn(State s, OpenIn o, Out out) {
-        s.work().dock().path().ifPresent(p -> out.send(Messages.HANDING_TOPIC, new Handing(p)));
+    private static State openWith(State s, OpenWith o, Out out) {
+        if (s.work().dock().path().isEmpty()) {
+            return s;
+        }
+        Path file = s.work().dock().path().get();
+        Kind kind = s.row(file).map(Row::kind).orElse(Kind.ofExtension(Kind.extension(ListFolder.name(file))));
+        boolean rasterware = o.with() == With.RASTERWARE
+                || (o.with() == With.SUITED && (kind == Kind.IMAGE || kind == Kind.VIDEO));
+        out.send(Messages.HANDING_TOPIC, new Handing(file, rasterware));
         return s;
     }
 
-    /** What a hand-off came to, and what opened it: the desktop's opener is said, since Rasterware was asked. */
+    /**
+     * What a hand-off came to, and what opened it: the desktop's opener standing in for Rasterware is said, since
+     * Rasterware was asked.
+     */
     private static State handedOff(State s, HandedOff h, Out out) {
         String name = ListFolder.name(h.file());
         if (h.problem() != null) {
             refuse(out, "Can't open " + name + ": " + h.problem());
         } else if (HandedOff.RASTERWARE.equals(h.to())) {
             out.send(Messages.STATUS_TOPIC, new Status("Opened " + name + " in Rasterware", false));
-        } else {
+        } else if (h.rasterware()) {
             out.send(Messages.STATUS_TOPIC, new Status("Rasterware isn't installed, so " + name
                     + " opened in the desktop's own program", false));
+        } else {
+            out.send(Messages.STATUS_TOPIC, new Status("Opened " + name + " in the desktop's own program", false));
         }
         return s;
     }
