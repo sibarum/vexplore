@@ -624,6 +624,99 @@ marked set, which is what the handoff draws ("5 highlighted for the suggested mo
 - **Conflicts kept as `name (2).ext`**: slice 4's *keep the newer* needs `Plan` to rename the older copy aside, which
   it does not do; if it is more than a step, it is left for a fifth slice and said then.
 
+### Slices 3 to 5, against Orbit's Two folders board
+
+Re-planned 2026-11-03, before any of it is written, when Orbit gained *Orbit · Two folders* on the *Vexplore Redesign*
+canvas. That board replaces screen 05 as the picture, and it has no STATUS column: each folder is a gallery whose
+sections **are** the comparison (*Only here*, *Different in both*, *Identical*, each with its count, marked by a dot
+with a plus, a bang or an equals), so the comparison is a grouping, not a word per row. It also draws:
+
+- **No places sidebar** in Two Folders: the two panes and the rail take the width.
+- **Each pane's own header**: its tag (FROM in violet, TO in a cyan of its own), Back, Up and *Choose folder*, the
+  folder's name large with its path under it in mono, and its count.
+- **A top bar** that says *Compare & move* and `Downloads → Videos` where the breadcrumb and Back and Up were.
+- **A strip between the panes**, 44 px: a violet disc with the arrow FROM → TO, and Swap under it.
+- **The rail** as the comparison's three count tiles, and cards such as *Replace kiln-cam.mp4 with newer* and
+  *Skip clip-a.mp4*.
+- **The dock** with a conflict's two copies side by side, newer and older, and *Keep newer* and *Keep both*.
+- While a drag goes: ghost cards in TO, a *While dragging* card, the target ringed; and a filter chip per pane.
+
+So the rest of M6 is three slices (the four in the list above are superseded from 3 on):
+
+3. **The comparison, and Two Folders' frame**, below. Built and committed in two steps, the comparison in `-core`
+   first, then the frame.
+4. **The rail from the comparison**: the count tiles and the cards, and the rows a card would skip or remove as
+   identical hashed first, by a `HashFiles` source with a count and a Stop, as ruled.
+5. **A conflict in the dock**: both copies side by side, *Keep newer* and *Keep both*. *Keep both* needs `Plan` to
+   rename a copy aside, which it does not do; if that is more than a step, *Keep both* waits and is said.
+
+With the gallery (M8's slice 6), later: the sections as cards, the ghosts, *While dragging*, the ringed target and the
+filter. Until then the list stands in for the gallery, in Two Folders as in one.
+
+#### The comparison
+
+A pure `Compare` in `-core`: two listings in, each row's `Relation` out, one pass over each with a map by name, tested
+without a window at fifty thousand rows a side. Names match exactly, as `Plan` matches them for a collision. The
+ruling's first tier only: the listings decide.
+
+| `Relation` | When | Its group (the board's section) |
+| --- | --- | --- |
+| `ONLY_HERE` | no row of that name on the other side | *Only here* |
+| `NEWER`, `OLDER` | a file of that name there, a different size; this one's time is later, or earlier | *Different in both* |
+| `DIFFERENT` | a different size and the same time, or a file there and a folder here | *Different in both* |
+| `PROBABLY_IDENTICAL` | the same size, a different time | *Probably identical* |
+| `IDENTICAL` | the same size and the same time | *Identical* |
+| `IN_BOTH` | a folder of that name on both sides; what is inside each is not compared | *In both* |
+
+- **"The same time" is within two seconds**, since FAT keeps times to two seconds and a copy to a stick and back
+  would otherwise be *probably identical* to itself.
+- **Probably identical is a group of its own**, which the board does not draw: the ruling says it is shown as such,
+  not guessed, and folding it into *Identical* would be guessing. Folders in both are a group too, since the board
+  draws no folder and a folder is neither identical nor different from its name.
+- **Only here is said from each side**, as the board says it on both panes (screen 05 said *only there* on TO's).
+
+The explorer compares whenever either listing lands, on Swap, and not at all in one folder.
+
+#### The messages
+
+| Record | Change | Why |
+| --- | --- | --- |
+| `Compared(Side side, Map<Path, Relation> rows)` | new; state, keyed by side as `Shown` and `Fresh` are | each list's rows and their relation; replaces the sketch's `Compared(from, to)`, so each list keeps its latest as it keeps its rows. Empty in one folder |
+| `Relation` | new enum, with its group's words and its own (`newer here`) | what the list and, in slice 4, the rail say |
+| `Navigate(Optional<Side> side, Path folder)` | gains `side` | a pane's Up and its *Choose folder* say which pane; empty is the list used, as every way in today means |
+| `Back(Optional<Side> side)` | gains `side` | a pane's Back; empty is Alt+Left's, the list used |
+
+A pane's button uses its pane, as a click in it does (`Use`), inside the one step, so no order of messages can leave
+the rail on the other list (slice 1's rule). *Choose folder* asks the system's folder picker, as the rail's
+destination does, with an id per side, and its answer is a `Navigate` with that side.
+
+#### The frame, against the list
+
+- **The sidebar is hidden in Two Folders** and shown again in one: faded, as any node shown and hidden is. It gives
+  each list's NAME about 100 px back (FN-8).
+- **Each list's heading grows the board's**: the tag a filled pill in its side's colours (the used list's lit, the
+  other's dimmed, as slice 1 has it), three round `IconButton`s (`Icon` back and up, and folder), the name in TITLE
+  with the path under it in mono, and the count. In one folder the heading stays M8's.
+- **The top bar in Two Folders** hides Back, Up and the pills, and shows *Compare & move* and `FROM → TO` by the
+  folders' names, which the view has from the two `Shown`s.
+- **The strip between the lists** takes the place of the split's gutter: 44 dp, not dragged, the lists sharing the
+  width evenly, with the arrow on a violet disc (`Icon` arrow-right) and Swap, which leaves TO's header.
+- **The group in the list, until the gallery**: the board's section dot at the head of each NAME cell, before the
+  type icon, in the section's colours: a plus on violet for *only here*, a bang on amber for different, an equals on
+  dim for identical, and the same equals hollow for probably identical; nothing for a folder in both. The dot's
+  word (`newer here`) is its accessible name, so a script reads it. Taken from `Tags` grown into FN-12's general
+  shape, named sets of nodes for the rows realized (`new`, and one per `Relation`), since a cell is built once and
+  its row's relation changes when the other folder does. The bang and the equals are not in the suite's set, so they
+  are Vexplore's, baked into `VexploreIcon` as distance fields; the plus is the suite's.
+- **New tokens**: TO's tag, `0x12303d` and `0xc7f0ff`; FROM's is the violet wash `0x2d2547` with `0xd8c8ff`.
+- **New landmarks**: each pane's Back, Up and *Choose folder*, the strip's Swap (Swap's moves there), the top bar's
+  title, and a row's dot.
+
+#### Not in slice 3
+
+- The rail's tiles and cards (slice 4), the dock's conflict (slice 5), the gallery's sections, ghosts and filter.
+- Sorting the list by group: the table sorts by a column, and the group is not one. The gallery orders by it.
+
 ## What M6 built differently
 
 Slice 1, two lists, built 2026-11-02:
