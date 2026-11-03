@@ -643,6 +643,22 @@ Slice 1, two lists, built 2026-11-02:
   keep their 21 rem, so NAME shrinks to its icon in both (framework-notes FN-8, which one folder meets only under
   about 1000 px). Hiding the tree in Two Folders, as screen 05 does, gives NAME about 140 px; the choice is open.
 
+Slice 2, the drag, built 2026-11-03 (after M8's slices 1 to 5):
+
+- **No job plans a drop.** The explorer already holds the other list's rows, which are the names a drop could collide
+  with, so `dropped` plans it in the step with `Plan.to`, as `PlanAction` plans a move or a copy, and runs it at once:
+  letting go is the person agreeing. *Moved 2 files to clips*, then Ctrl+Z, *Undone: Move 2 files to clips*. What was
+  left alone is in the words (*, 1 left alone (a file of that name is already there)*); nothing at all to do is
+  refused and said, and nothing runs.
+- **`Pair` carries the drop's `Plan.Op`**: a move when both folders' roots are one drive, a copy across two. The view
+  declares each list's drop again with every `Pair` (a declaration replaces the last), so the label the pointer
+  carries is the effect the drop will have.
+- **Two payload types, `FROM_ROWS` and `TO_ROWS`**: each list carries its own and takes only the other's.
+- **A run lists both folders again**, which slice 1 already did, so both lists show the drop at once.
+- **Seen live, with a step-by-step gesture.** `ottermate`'s one-step `drag` carried and put down with no frame between
+  that a person would have seen, and the framework's rule is that such a drop commits nothing; `down`, `move`, `settle`,
+  `up` and a `click` to put the latched carry down moved the file. A copy across two drives is tested, not driven.
+
 ## The messages M8 adds
 
 Proposed 2026-11-02, before any of it is written. **(ruled 2026-11-02)** Orbit (*C · Orbit* on the *Vexplore

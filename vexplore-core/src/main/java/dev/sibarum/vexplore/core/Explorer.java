@@ -10,6 +10,7 @@ import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Destinations;
 import dev.sibarum.vexplore.core.Messages.Destining;
 import dev.sibarum.vexplore.core.Messages.Docked;
+import dev.sibarum.vexplore.core.Messages.Dropped;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
@@ -134,7 +135,7 @@ import java.util.Set;
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
-        Back.class})
+        Back.class, Dropped.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
@@ -352,6 +353,7 @@ public final class Explorer {
         Step<State, TwoFolders> twoFolders = b.step("twoFolders", Explorer::twoFolders);
         Step<State, Swap> swap = b.step("swap", Explorer::swap);
         Step<State, Back> back = b.step("back", Explorer::back);
+        Step<State, Dropped> dropped = b.step("dropped", Explorer::dropped);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -384,7 +386,8 @@ public final class Explorer {
                 .on(Messages.USE_TOPIC, use)
                 .on(Messages.TWO_FOLDERS_TOPIC, twoFolders)
                 .on(Messages.SWAP_TOPIC, swap)
-                .on(Messages.BACK_TOPIC, back);
+                .on(Messages.BACK_TOPIC, back)
+                .on(Messages.DROPPED_TOPIC, dropped);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -548,9 +551,60 @@ public final class Explorer {
         out.send(Messages.SUMMARY_TOPIC, new Summary(s.rows().size(), beside, s.selected().size(), bytes));
     }
 
-    /** Whether there are two lists, which is used, and its folder, for the breadcrumb and the top bar. */
+    /**
+     * Whether there are two lists, which is used, and its folder, for the breadcrumb and the top bar; and what a drop
+     * between them does, for the lists to declare while rows are carried.
+     */
     private static void pair(State s, Out out) {
-        out.send(Messages.PAIR_TOPIC, new Pair(s.to().isPresent(), s.used(), s.folder(), !s.pane().back().isEmpty()));
+        out.send(Messages.PAIR_TOPIC, new Pair(s.to().isPresent(), s.used(), s.folder(), !s.pane().back().isEmpty(),
+                drop(s)));
+    }
+
+    /**
+     * What a drop between the two lists does: a move when both folders are on one drive, which costs nothing and
+     * leaves no copy behind, and a copy across two, which a move would turn into a copy and a delete. Held keys (0.1's
+     * Ctrl to copy, Shift to move) wait on a modifiers topic (framework-notes FN-9).
+     */
+    static Plan.Op drop(State s) {
+        Optional<Path> from = s.pane(Side.FROM).folder().map(Path::getRoot);
+        Optional<Path> to = s.to().flatMap(Pane::folder).map(Path::getRoot);
+        return from.isPresent() && from.equals(to) ? Plan.Op.MOVE : Plan.Op.COPY;
+    }
+
+    /**
+     * Rows of one list let go on the other: planned against the names the other folder holds, as {@code PlanAction}
+     * plans a move or a copy, so nothing goes over a name already there, and carried out at once, since letting go is
+     * the person agreeing to it. What was left alone is said; nothing at all to do is said rather than run. Undone by
+     * Ctrl+Z, as anything carried out is.
+     */
+    private static State dropped(State s, Dropped d, Out out) {
+        Side from = d.onto().other();
+        Optional<Path> into = s.pane(d.onto()).folder();
+        if (s.to().isEmpty() || into.isEmpty() || d.held().isEmpty()) {
+            return s;
+        }
+        List<Row> rows = new ArrayList<>();
+        for (Path p : d.held()) {
+            s.pane(from).row(p).ifPresent(rows::add);
+        }
+        Set<String> taken = new HashSet<>();
+        for (Row r : s.pane(d.onto()).rows()) {
+            taken.add(r.name());
+        }
+        Plan.Op op = drop(s);
+        Plan plan = Plan.to(op, rows, into.get(), taken);
+        String where = ListFolder.name(into.get());
+        if (plan.count() == 0) {
+            Plan.Skip first = plan.skipped().isEmpty() ? null : plan.skipped().getFirst();
+            refuse(out, "Nothing to " + (op == Plan.Op.MOVE ? "move" : "copy") + " to " + where
+                    + (first == null ? "" : ": " + ListFolder.name(first.path()) + ", " + first.reason()));
+            return s;
+        }
+        String files = plan.count() == 1 ? " file" : " files";
+        String words = (op == Plan.Op.MOVE ? "Move " : "Copy ") + plan.count() + files
+                + " to " + where + (plan.skipped().isEmpty() ? "" : ", " + plan.skipped().size() + " left alone ("
+                + plan.skipped().getFirst().reason() + ")");
+        return start(s, plan, Way.DO, 0L, words, out);
     }
 
     /**

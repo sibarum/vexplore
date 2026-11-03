@@ -125,7 +125,7 @@ every message is in one file. Read these in this order.
 | File | What belongs in it |
 | --- | --- |
 | `Recipes.java` | **what this module builds.** One `@Provides` method per part; `VexploreAppWiring`, which builds them and the components and jobs in order, is generated while it compiles. A part's phase is the latest phase of anything it takes, so there is none to declare. |
-| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenWith`, `Use`, `TwoFolders`, `Swap`, `Back`). It asks `ListPlaces` for the places itself, once the window opens. It decides nothing else. |
+| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenWith`, `Use`, `TwoFolders`, `Swap`, `Back`, `Dropped`). It asks `ListPlaces` for the places itself, once the window opens. It decides nothing else. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Columns.java` | the list's columns, drawn from a row alone, and the *new* tag after a name. |

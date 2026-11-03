@@ -104,6 +104,18 @@ public final class Messages {
     public record Use(Side side) {
     }
 
+    /**
+     * Rows of one list dropped on the other, by path, in the order shown: they go into the folder {@code onto} shows,
+     * moved within one drive and copied across two, as {@link Pair} said while they were carried.
+     */
+    public static final Topic<Dropped> DROPPED_TOPIC = Topic.edge(Dropped.class);
+
+    public record Dropped(Side onto, List<Path> held) {
+        public Dropped {
+            held = List.copyOf(held);
+        }
+    }
+
     /** Which row of the rail a chip is in. Each knows how a chip at its place changes the pick. */
     public enum Slot {
         SELECT {
@@ -253,11 +265,13 @@ public final class Messages {
 
     /**
      * Whether there are two lists, which is used, the used list's folder, which the breadcrumb and the path field show
-     * (none before the first listing), and whether that list has a folder to go Back to. The latest is all that matters.
+     * (none before the first listing), whether that list has a folder to go Back to, and what a drop from one list on
+     * the other does: {@code MOVE} within one drive, {@code COPY} across two, as the lists declare it. The latest is all
+     * that matters.
      */
     public static final Topic<Pair> PAIR_TOPIC = Topic.state(Pair.class);
 
-    public record Pair(boolean two, Side used, Optional<Path> at, boolean back) {
+    public record Pair(boolean two, Side used, Optional<Path> at, boolean back, Plan.Op drop) {
     }
 
     /** Say something on the status line. {@code alert}: something was refused or failed, so draw the eye to it. */

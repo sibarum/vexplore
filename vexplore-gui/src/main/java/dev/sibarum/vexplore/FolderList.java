@@ -6,6 +6,8 @@ import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
+import dev.vexelray.gui.core.drop.DropEffect;
+import dev.vexelray.gui.core.drop.PayloadType;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
@@ -120,6 +122,22 @@ final class FolderList {
     void side(boolean two, boolean used) {
         side.visible(two);
         side.textColor(used ? Role.ACCENT : Role.DIM);
+    }
+
+    /**
+     * Let its rows be carried as {@code type}: the selection, or the row grabbed. The label rides with the pointer: a
+     * file's name, or how many.
+     */
+    void carries(PayloadType<List<Row>> type) {
+        table.rows().draggable(type, rows -> rows.size() == 1 ? rows.getFirst().name() : rows.size() + " files");
+    }
+
+    /**
+     * Take the other list's rows, {@code type}, meaning {@code effect}: declared again whenever the two folders change,
+     * since what a drop does depends on their drives, and a declaration replaces the last.
+     */
+    void takes(PayloadType<List<Row>> type, DropEffect effect) {
+        table.rows().droppable(type, effect);
     }
 
     /** The rows the rail would reach, marked; none on the list not used. */

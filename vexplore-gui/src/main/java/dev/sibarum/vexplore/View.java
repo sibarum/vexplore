@@ -7,6 +7,7 @@ import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Docked;
+import dev.sibarum.vexplore.core.Messages.Dropped;
 import dev.sibarum.vexplore.core.Messages.Fresh;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Go;
@@ -36,6 +37,7 @@ import dev.sibarum.vexplore.core.Messages.Swap;
 import dev.sibarum.vexplore.core.Messages.TwoFolders;
 import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.sibarum.vexplore.core.Messages.Use;
+import dev.sibarum.vexplore.core.Plan;
 import dev.sibarum.vexplore.core.Preview;
 import dev.vexelray.framework.api.Subscribe;
 import dev.vexelray.framework.core.PickFile;
@@ -57,6 +59,8 @@ import sibarum.tactroller.api.Key;
 import sibarum.tactroller.api.Modifier;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -122,6 +126,7 @@ final class View {
     private final Sender<Swap> swap;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<Back> back;
+    private final Sender<Dropped> dropped;
     private final Sender<Intent> intents;
 
     /** The dock's picture, and the one it replaced, which may still be fading out: the view's to give back. */
@@ -132,14 +137,14 @@ final class View {
      * Whether there are two lists and which is used, as the explorer last said: which list the rail's reach is marked
      * in, and which side the counts are.
      */
-    private Pair pair = new Pair(false, Side.FROM, Optional.empty(), false);
+    private Pair pair = new Pair(false, Side.FROM, Optional.empty(), false, Plan.Op.COPY);
 
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
-         Sender<PlacesWanted> placesWanted, Sender<Back> back,
+         Sender<PlacesWanted> placesWanted, Sender<Back> back, Sender<Dropped> dropped,
          Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
@@ -164,6 +169,7 @@ final class View {
         this.swap = swap;
         this.placesWanted = placesWanted;
         this.back = back;
+        this.dropped = dropped;
         this.intents = intents;
         shortcuts();
         // Open with's menu: a left click opens what suits the file, and the menu names the program instead (FN-15).
@@ -309,6 +315,25 @@ final class View {
         } else if (m.list().equals(ui.placesAddress()) && m.item() instanceof Place p) {
             navigate.send(new Navigate(p.path()));
         }
+    }
+
+    /**
+     * Rows of one list let go on the other: the explorer moves or copies them there, as the lists said while they were
+     * carried. A list takes only the other's rows, so the list landed on is the one they go to.
+     */
+    @Subscribe
+    public void landed(ListView.Landed m) {
+        Side side = ui.rowsSide(m.list());
+        if (side == null || !(m.held() instanceof List<?> held)) {
+            return;
+        }
+        List<Path> paths = new ArrayList<>();
+        for (Object o : held) {
+            if (o instanceof Row r) {
+                paths.add(r.path());
+            }
+        }
+        dropped.send(new Dropped(side, paths));
     }
 
     /**

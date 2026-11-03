@@ -47,6 +47,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * The controller, alone: no window and no jobs. The {@link Explorer} owns an inbox on a tick of this test's, as it will
@@ -824,6 +825,8 @@ class ExplorerTest {
     // ------------------------------------------------------------------ Two Folders
 
     private static final ZoneOffset UTC = ZoneOffset.UTC;
+    private static final Plan.Op MOVE = Plan.Op.MOVE;
+    private static final Plan.Op COPY = Plan.Op.COPY;
 
     /** Two Folders on, both lists showing {@code dir}'s rows, FROM used, and nothing sent remembered. */
     private void twoFolders(Row... rows) {
@@ -837,7 +840,8 @@ class ExplorerTest {
     void twoFoldersOpensToOnTheFolderFromShows() {
         showing(dir, file("a.txt", 1));
         tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
-        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir), false), seen(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir), false, MOVE),
+                seen(Messages.Pair.class).getLast());
         Listing to = asked();
         assertEquals(dir, to.folder());
         tell(Messages.LISTED_TOPIC, new Listed(to.ticket(), dir, List.of(file("a.txt", 1)), null, TODAY, UTC));
@@ -851,14 +855,16 @@ class ExplorerTest {
     void theListClickedIsTheOneTheTreeDrives() {
         twoFolders(file("a.txt", 1), folder("sub"));
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.TO, Set.of(path("a.txt"))));
-        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(dir), false), took(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(dir), false, MOVE),
+                took(Messages.Pair.class).getLast());
         tell(Messages.NAVIGATE_TOPIC, new Navigate(path("sub")));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(), null, TODAY, UTC));
         assertEquals(List.of(new Shown(Side.TO, path("sub"), List.of(), Set.of())), seen(Shown.class));
-        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(path("sub")), true),
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(path("sub")), true, MOVE),
                 took(Messages.Pair.class).getLast());
         tell(Messages.USE_TOPIC, new Messages.Use(Side.FROM));
-        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir), false), took(Messages.Pair.class).getLast(),
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir), false, MOVE),
+                took(Messages.Pair.class).getLast(),
                 "FROM still shows the folder it did");
     }
 
@@ -895,7 +901,7 @@ class ExplorerTest {
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(), null, TODAY, UTC));
         sent.clear();
         tell(Messages.SWAP_TOPIC, new Messages.Swap());
-        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(path("sub")), true),
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(path("sub")), true, MOVE),
                 seen(Messages.Pair.class).getLast(), "sub is still used, now on the left");
         List<Shown> shown = seen(Shown.class);
         assertTrue(shown.contains(new Shown(Side.FROM, path("sub"), List.of(), Set.of())));
@@ -911,7 +917,8 @@ class ExplorerTest {
         sent.clear();
         tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
         assertEquals(List.of(new Messages.Unwatch(Side.TO)), seen(Messages.Unwatch.class));
-        assertEquals(new Messages.Pair(false, Side.FROM, Optional.of(dir), false), took(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(false, Side.FROM, Optional.of(dir), false, COPY),
+                took(Messages.Pair.class).getLast());
         tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.TO, dir));
         assertTrue(seen(Listing.class).isEmpty(), "there is no TO to list");
     }
@@ -957,5 +964,49 @@ class ExplorerTest {
         }
         tell(Messages.BACK_TOPIC, new Messages.Back());
         assertTrue(seen(Listing.class).isEmpty(), "twenty kept, and a stir's listing added none");
+    }
+
+    // ------------------------------------------------------------------ the drag
+
+    /** Started, Two Folders with FROM showing a.txt and b.txt, and TO in sub, holding {@code there}. */
+    private void twoFoldersToSub(Row... there) {
+        started();
+        twoFolders(file("a.txt", 10), file("b.txt", 20));
+        tell(Messages.USE_TOPIC, new Messages.Use(Side.TO));
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("sub")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(there), null, TODAY, UTC));
+        sent.clear();
+    }
+
+    @Test
+    void rowsDroppedOnTheOtherListAreMovedThereAtOnce() {
+        twoFoldersToSub();
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"), path("b.txt"))));
+        Messages.Run run = took(Messages.Run.class).getLast();
+        assertEquals(MOVE, run.plan().op(), "one drive: a move");
+        assertEquals(List.of(path("sub").resolve("a.txt"), path("sub").resolve("b.txt")),
+                run.plan().steps().stream().map(Plan.Step::to).toList());
+    }
+
+    @Test
+    void aDropLeavesAloneWhatWouldGoOverANameAndSaysSo() {
+        twoFoldersToSub(new Row(path("sub").resolve("a.txt"), "a.txt", false, 5L, Instant.EPOCH, Kind.TEXT));
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"))));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "nothing to run");
+        Status said = took(Status.class).getLast();
+        assertTrue(said.alert());
+        assertEquals("Nothing to move to sub: a.txt, a file of that name is already there", said.message());
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"), path("b.txt"))));
+        assertEquals(1, took(Messages.Run.class).getLast().plan().count(), "b.txt goes, a.txt is left alone");
+    }
+
+    @Test
+    void aDropAcrossTwoDrivesIsACopy() {
+        assumeTrue(java.io.File.separatorChar == '\\', "drives are Windows'");
+        Pane onC = Pane.NONE.asking(Path.of("C:\\a"), Set.of(), 1L);
+        Explorer.State across = Explorer.State.initial().withPane(Side.FROM, onC).withTo(Optional.of(Path.of("D:\\b")));
+        assertEquals(COPY, Explorer.drop(across));
+        Explorer.State one = Explorer.State.initial().withPane(Side.FROM, onC).withTo(Optional.of(Path.of("C:\\b")));
+        assertEquals(MOVE, Explorer.drop(one));
     }
 }

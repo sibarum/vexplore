@@ -12,10 +12,13 @@ import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Plan;
 import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.Node;
+import dev.vexelray.gui.core.drop.DropEffect;
+import dev.vexelray.gui.core.drop.PayloadType;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
 import dev.vexelray.gui.core.layout.Length;
@@ -81,6 +84,10 @@ final class Ui {
     private static final Length ROUND = Length.dp(40);
     private static final Length ROUND_ICON = Length.dp(18);
 
+    /** The rows of each list, as a drag carries them: two types, so each list takes only the other's. */
+    private static final PayloadType<List<Row>> FROM_ROWS = PayloadType.of("vexplore.from-rows");
+    private static final PayloadType<List<Row>> TO_ROWS = PayloadType.of("vexplore.to-rows");
+
     private final Gui gui;
     private final Breadcrumb<Path> crumbs;
     private final TextField path;
@@ -145,6 +152,10 @@ final class Ui {
         from = new FolderList(gui, Landmarks.LIST, Landmarks.HEADER_FROM, "FROM");
         to = new FolderList(gui, Landmarks.LIST_TO, Landmarks.HEADER_TO, "TO");
         to.node().visible(false);
+        // Each list carries its rows as a type of its own and takes only the other's, so a list never offers to take what
+        // came from itself. What a drop does is declared with each Pair, from the two folders' drives.
+        from.carries(FROM_ROWS);
+        to.carries(TO_ROWS);
         swap = new Button(gui, "Swap sides").kind(Button.Kind.GHOST).name(Landmarks.SWAP);
         gui.landmark(Landmarks.SWAP, swap.node());
         to.append(swap.node());
@@ -276,6 +287,9 @@ final class Ui {
      */
     void pair(Pair p) {
         to.node().visible(p.two());
+        DropEffect effect = p.drop() == Plan.Op.MOVE ? DropEffect.MOVE : DropEffect.COPY;
+        from.takes(TO_ROWS, effect);
+        to.takes(FROM_ROWS, effect);
         from.side(p.two(), p.used() == Side.FROM);
         to.side(p.two(), p.used() == Side.TO);
         one.on(!p.two());
