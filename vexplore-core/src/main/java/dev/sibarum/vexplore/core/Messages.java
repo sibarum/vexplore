@@ -38,6 +38,19 @@ public final class Messages {
     private Messages() {
     }
 
+    /**
+     * Which list: FROM, the one there always is, on the left; TO, the second, on the right in Two Folders. A list's
+     * messages say which it is, since both may show one folder and a path cannot tell them apart.
+     */
+    public enum Side {
+        FROM, TO;
+
+        /** The list across from this one. */
+        public Side other() {
+            return this == FROM ? TO : FROM;
+        }
+    }
+
     // ------------------------------------------------------------------ the view asks the explorer
 
     /** The path field was submitted: what the text names is the explorer's call. */
@@ -52,10 +65,10 @@ public final class Messages {
     public record Navigate(Path folder) {
     }
 
-    /** What is selected in the list, as the list last said: its rows turned back into their paths by the view. */
+    /** What is selected in a list, as it last said: its rows turned back into their paths by the view. */
     public static final Topic<Chosen> CHOSEN_TOPIC = Topic.edge(Chosen.class);
 
-    public record Chosen(Set<Path> paths) {
+    public record Chosen(Side side, Set<Path> paths) {
         public Chosen {
             paths = Set.copyOf(paths);
         }
@@ -64,7 +77,25 @@ public final class Messages {
     /** Enter or a double click on a row: a folder is gone into, a file opened. */
     public static final Topic<Activated> ACTIVATED_TOPIC = Topic.edge(Activated.class);
 
-    public record Activated(Path path) {
+    public record Activated(Side side, Path path) {
+    }
+
+    /** The top bar's Two folders ({@code on}) or Back to one folder. */
+    public static final Topic<TwoFolders> TWO_FOLDERS_TOPIC = Topic.edge(TwoFolders.class);
+
+    public record TwoFolders(boolean on) {
+    }
+
+    /** The top bar's Swap sides: FROM shows what TO did, and TO what FROM did. */
+    public static final Topic<Swap> SWAP_TOPIC = Topic.edge(Swap.class);
+
+    public record Swap() {
+    }
+
+    /** A click in a list: the tree, the breadcrumb, the rail and the dock now work from that one. */
+    public static final Topic<Use> USE_TOPIC = Topic.edge(Use.class);
+
+    public record Use(Side side) {
     }
 
     /** Which row of the rail a chip is in. Each knows how a chip at its place changes the pick. */
@@ -115,7 +146,7 @@ public final class Messages {
      */
     public static final Topic<Menu> MENU_TOPIC = Topic.edge(Menu.class);
 
-    public record Menu(String action) {
+    public record Menu(Side side, String action) {
         public static final String OPEN = "open";
     }
 
@@ -192,23 +223,35 @@ public final class Messages {
     }
 
     /**
-     * What the list shows: a folder, its rows in the listing's order, and the rows to select once they are in (a file
-     * named on the command line or typed, or a mark's rows). The breadcrumb is the folder's own parts. The latest is all
-     * that matters.
+     * What a list shows: a folder, its rows in the listing's order, and the rows to select once they are in (a file
+     * named on the command line or typed, or a mark's rows). Keyed by the list, so each keeps its latest. The
+     * breadcrumb follows {@link Pair}, the folder of the list used.
      */
-    public static final Topic<Shown> SHOWN_TOPIC = Topic.state(Shown.class);
+    public static final Topic<Shown> SHOWN_TOPIC = Topic.state(Shown.class, Shown::side);
 
-    public record Shown(Path folder, List<Row> rows, Set<Path> select) {
+    public record Shown(Side side, Path folder, List<Row> rows, Set<Path> select) {
         public Shown {
             rows = List.copyOf(rows);
             select = Set.copyOf(select);
         }
     }
 
-    /** The status line's counts, for the view to put into words: rows, rows selected, and the selected files' bytes. */
+    /**
+     * The status line's counts, for the view to put into words: the used list's rows, the other's in Two Folders, and
+     * of the used list's, the rows selected and the selected files' bytes.
+     */
     public static final Topic<Summary> SUMMARY_TOPIC = Topic.state(Summary.class);
 
-    public record Summary(int items, int selected, long bytes) {
+    public record Summary(int items, Optional<Integer> beside, int selected, long bytes) {
+    }
+
+    /**
+     * Whether there are two lists, which is used, and the used list's folder, which the breadcrumb and the path field
+     * show, or none before the first listing. The latest is all that matters.
+     */
+    public static final Topic<Pair> PAIR_TOPIC = Topic.state(Pair.class);
+
+    public record Pair(boolean two, Side used, Optional<Path> at) {
     }
 
     /** Say something on the status line. {@code alert}: something was refused or failed, so draw the eye to it. */
@@ -313,9 +356,9 @@ public final class Messages {
      * The rows to tag <em>new</em>: what landed in the folder shown lately, by path. Tagged, never selected or marked.
      * The latest is all that matters.
      */
-    public static final Topic<Fresh> FRESH_TOPIC = Topic.state(Fresh.class);
+    public static final Topic<Fresh> FRESH_TOPIC = Topic.state(Fresh.class, Fresh::side);
 
-    public record Fresh(Set<Path> paths) {
+    public record Fresh(Side side, Set<Path> paths) {
         public Fresh {
             paths = Set.copyOf(paths);
         }
@@ -491,39 +534,39 @@ public final class Messages {
     }
 
     /**
-     * Watch the folder shown ({@link WatchFolder}). Unkeyed, so a new one stops the last: one folder is watched, the one
-     * shown.
+     * Watch the folder a list shows ({@link WatchFolder}). Keyed by the list, so each has a run, and a new one for a
+     * list stops its last.
      */
-    public static final Topic<Watch> WATCH_TOPIC = Topic.edge(Watch.class);
+    public static final Topic<Watch> WATCH_TOPIC = Topic.edge(Watch.class, Watch::side);
 
-    public record Watch(Path folder) {
+    public record Watch(Side side, Path folder) {
     }
 
-    /** Watch nothing: the folder asked for could not be read, and the one before it is no longer shown. */
-    public static final Topic<Unwatch> UNWATCH_TOPIC = Topic.edge(Unwatch.class);
+    /** Watch nothing for a list: the folder asked for could not be read, and the one before it is no longer shown. */
+    public static final Topic<Unwatch> UNWATCH_TOPIC = Topic.edge(Unwatch.class, Unwatch::side);
 
-    public record Unwatch() {
+    public record Unwatch(Side side) {
     }
 
     /** Why the watch on {@code folder} ended: stopped, or {@code problem} (the folder went), else null. */
     public static final Topic<Unwatched> UNWATCHED_TOPIC = Topic.edge(Unwatched.class);
 
-    public record Unwatched(Path folder, String problem) {
+    public record Unwatched(Side side, Path folder, String problem) {
     }
 
     /** Something in {@code folder} changed on the disk: list it again. Sent once a burst is over, not per file. */
     public static final Topic<Stirred> STIRRED_TOPIC = Topic.edge(Stirred.class);
 
-    public record Stirred(Path folder) {
+    public record Stirred(Side side, Path folder) {
     }
 
     /**
      * What landed in {@code folder} lately ({@link WatchFolder}), the whole set each time it grows or something leaves
      * it. A state topic: only the latest matters.
      */
-    public static final Topic<Freshness> FRESHNESS_TOPIC = Topic.state(Freshness.class);
+    public static final Topic<Freshness> FRESHNESS_TOPIC = Topic.state(Freshness.class, Freshness::side);
 
-    public record Freshness(Path folder, Set<Path> fresh) {
+    public record Freshness(Side side, Path folder, Set<Path> fresh) {
         public Freshness {
             fresh = Set.copyOf(fresh);
         }

@@ -11,6 +11,7 @@ import dev.sibarum.vexplore.core.Messages.Recalled;
 import dev.sibarum.vexplore.core.Messages.Remember;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
+import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Listed;
@@ -81,7 +82,7 @@ class ExplorerTest {
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
                 Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC,
-                Messages.FRESH_TOPIC)) {
+                Messages.FRESH_TOPIC, Messages.PAIR_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -253,18 +254,18 @@ class ExplorerTest {
     @Test
     void theStatusLineCountsWhatIsSelected() {
         showing(dir, folder("sub"), file("a.txt", 10), file("b.txt", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("sub"), path("a.txt"))));
-        assertEquals(List.of(new Summary(3, 2, 10L)), took(Summary.class));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("sub"), path("a.txt"))));
+        assertEquals(List.of(new Summary(3, Optional.empty(), 2, 10L)), took(Summary.class));
     }
 
     @Test
     void activatingAFolderShowsItAndAFileOpensIt() {
         showing(dir, folder("sub"), file("a.txt", 10));
-        tell(Messages.ACTIVATED_TOPIC, new Activated(path("sub")));
+        tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("sub")));
         assertTrue(asks(path("sub")));
         sent.clear();
         showing(dir, folder("sub"), file("a.txt", 10));
-        tell(Messages.ACTIVATED_TOPIC, new Activated(path("a.txt")));
+        tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("a.txt")));
         assertEquals(List.of(new Start(path("a.txt"))), took(Start.class));
     }
 
@@ -274,20 +275,20 @@ class ExplorerTest {
         tell(Messages.NAVIGATE_TOPIC, new Navigate(locked));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), locked, List.of(), "access is denied", TODAY,
                 ZoneOffset.UTC));
-        assertTrue(sent.contains(new Shown(locked, List.of(), Set.of())), "the breadcrumb where it was asked");
+        assertTrue(sent.contains(new Shown(Side.FROM, locked, List.of(), Set.of())), "the breadcrumb where it was asked");
         assertTrue(took(Status.class).getFirst().alert());
     }
 
     @Test
     void theMenusOpenIsEntersOnTheOneSelected() {
         showing(dir, folder("sub"), file("a.txt", 10), file("b.txt", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
         sent.clear();
-        tell(Messages.MENU_TOPIC, new Messages.Menu(Messages.Menu.OPEN));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.OPEN));
         assertEquals(List.of(new Start(path("a.txt"))), took(Start.class));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"), path("b.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
         sent.clear();
-        tell(Messages.MENU_TOPIC, new Messages.Menu(Messages.Menu.OPEN));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.OPEN));
         assertTrue(seen(Start.class).isEmpty(), "never several programs at once");
         assertTrue(took(Status.class).getFirst().alert());
     }
@@ -295,17 +296,17 @@ class ExplorerTest {
     @Test
     void theMenusActionIsPickedOnTheRailAndNotCarriedOut() {
         showing(dir, video("a.mp4", 10), video("b.mov", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         sent.clear();
-        tell(Messages.MENU_TOPIC, new Messages.Menu(Suggestions.Act.DELETE.name()));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Suggestions.Act.DELETE.name()));
         assertEquals("Delete 1 file · 10 B", took(Suggested.class).getLast().card().headline());
         assertTrue(seen(Messages.Run.class).isEmpty(), "the card's button carries it out");
-        tell(Messages.MENU_TOPIC, new Messages.Menu(Suggestions.Act.DELETE.name()));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Suggestions.Act.DELETE.name()));
         assertTrue(seen(Suggested.class).isEmpty(), "chosen again, it stays picked");
 
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"), path("b.mov"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"), path("b.mov"))));
         sent.clear();
-        tell(Messages.MENU_TOPIC, new Messages.Menu(Suggestions.Act.RENAME.name()));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Suggestions.Act.RENAME.name()));
         assertEquals("Rename is not offered for these", took(Status.class).getFirst().message());
     }
 
@@ -329,7 +330,7 @@ class ExplorerTest {
     @Test
     void aSelectionIsSuggestedOnAndAChipWidensWhatItReaches() {
         showing(dir, video("a.mp4", 10), video("b.mov", 20), file("notes.txt", 5), video("c.mkv", 30));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         Suggested one = took(Suggested.class).getLast();
         assertEquals("a.mp4", one.basis());
         assertEquals(Set.of(path("a.mp4")), reached(one), "ignoring the rail costs nothing: it reaches the selection");
@@ -353,8 +354,8 @@ class ExplorerTest {
     @Test
     void nothingSelectedIsAnEmptyRailAndAChipPressedThenDoesNothing() {
         showing(dir, video("a.mp4", 10), video("b.mov", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of()));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of()));
         assertEquals(Suggested.NONE, took(Suggested.class).getLast());
         tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
         assertTrue(took(Suggested.class).isEmpty());
@@ -363,24 +364,24 @@ class ExplorerTest {
     @Test
     void aNewFolderPutsThePickDown() {
         showing(dir, video("a.mp4", 10), video("b.mov", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
         tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(video("a.mp4", 10), video("b.mov", 20)),
                 null, TODAY, ZoneOffset.UTC));
         assertEquals(Suggested.NONE, took(Suggested.class).getLast(), "the rail is put away as the rows land");
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         assertEquals(Set.of(path("a.mp4")), reached(took(Suggested.class).getLast()));
     }
 
     @Test
     void aPickTooWideForTheSelectionFallsBackAndComesBack() {
         showing(dir, video("a.mp4", 10), video("b.mov", 20), file("notes.txt", 5));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"), path("notes.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"), path("notes.txt"))));
         assertEquals(2, reached(took(Suggested.class).getLast()).size(), "a video and a note are not all videos");
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("b.mov"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("b.mov"))));
         assertEquals(2, reached(took(Suggested.class).getLast()).size(), "one video again, so all of them again");
     }
 
@@ -390,7 +391,7 @@ class ExplorerTest {
     private void deleteOfAPicked() {
         started();
         showing(dir, file("a.txt", 10), file("b.txt", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
         List<Messages.Chip> acts = took(Suggested.class).getLast().action();
         int delete = 0;
         while (!acts.get(delete).label().startsWith("Delete")) {
@@ -475,7 +476,7 @@ class ExplorerTest {
     private void moveOfAPicked() {
         started();
         showing(dir, video("a.mp4", 10), video("b.mp4", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, 0));
     }
 
@@ -544,7 +545,7 @@ class ExplorerTest {
         Listing again = asked();
         tell(Messages.LISTED_TOPIC, new Listed(again.ticket(), dir, List.of(file("a.txt", 10), file("b.txt", 20)), null,
                 TODAY, ZoneOffset.UTC));
-        assertEquals(new Summary(2, 1, 10L), seen(Summary.class).getLast(), "a.txt is still there, and still selected");
+        assertEquals(new Summary(2, Optional.empty(), 1, 10L), seen(Summary.class).getLast(), "a.txt is still there, and still selected");
         assertEquals(Set.of(path("a.txt")), reached(took(Suggested.class).getLast()));
     }
 
@@ -563,7 +564,7 @@ class ExplorerTest {
     void anArchiveGoesBesideItsFilesUnderANameNotTaken() {
         started();
         showing(dir, file("a.txt", 10), file("b.txt", 20), file("Archive.zip", 5));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"), path("b.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
         picked("Archive");
         assertEquals("Archive 2 files", took(Suggested.class).getLast().card().go());
         tell(Messages.CARRY_TOPIC, new Messages.Carry());
@@ -576,7 +577,7 @@ class ExplorerTest {
     void renamingAsksForANameOnceAndEnterCarriesItOut() {
         started();
         showing(dir, file("a.txt", 10), file("b.txt", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
         picked("Rename");
         assertEquals(List.of(new Messages.Naming("a.txt")), seen(Messages.Naming.class));
         Suggested rail = took(Suggested.class).getLast();
@@ -603,7 +604,7 @@ class ExplorerTest {
     void keepingAMarkNamesItListsItAndRemembersIt() {
         started();
         showing(dir, video("a.mp4", 10), video("b.mp4", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
         picked("Mark");
         assertEquals("Keep as Mark", took(Suggested.class).getLast().card().go());
@@ -639,10 +640,10 @@ class ExplorerTest {
     @Test
     void oneFileSelectedIsPreviewedAndALatePreviewIsDropped() {
         showing(dir, file("a.txt", 10), file("b.txt", 20));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
         Messages.Previewing first = took(Messages.Previewing.class).getFirst();
         assertEquals(path("a.txt"), first.path());
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("b.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("b.txt"))));
         Messages.Previewing second = took(Messages.Previewing.class).getFirst();
 
         Preview a = new Preview(path("a.txt"), Preview.Tier.BYTES, "unknown binary", 10,
@@ -658,10 +659,10 @@ class ExplorerTest {
     @Test
     void noneOrSeveralSelectedIsANote() {
         showing(dir, file("a.txt", 1024), file("b.txt", 2048));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.txt"), path("b.txt"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
         assertEquals("2 selected · 3 KB", took(Messages.Docked.class).getLast().note());
         assertTrue(seen(Messages.Previewing.class).isEmpty());
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of()));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of()));
         assertEquals("Select one file to see it here", took(Messages.Docked.class).getLast().note());
     }
 
@@ -670,7 +671,7 @@ class ExplorerTest {
         showing(dir, file("a.png", 10), file("b.png", 20));
         tell(Messages.OPEN_IN_TOPIC, new Messages.OpenIn());
         assertTrue(seen(Messages.Handing.class).isEmpty(), "nothing in the dock");
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.png"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.png"))));
         tell(Messages.OPEN_IN_TOPIC, new Messages.OpenIn());
         assertEquals(List.of(new Messages.Handing(path("a.png"))), took(Messages.Handing.class));
     }
@@ -690,7 +691,7 @@ class ExplorerTest {
     // ------------------------------------------------------------------ the folder watched
 
     private void stir(Path folder) {
-        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(folder));
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.FROM, folder));
     }
 
     @Test
@@ -698,7 +699,7 @@ class ExplorerTest {
         tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
         assertTrue(seen(Messages.Watch.class).isEmpty(), "not before its rows land");
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
-        assertEquals(List.of(new Messages.Watch(dir)), took(Messages.Watch.class));
+        assertEquals(List.of(new Messages.Watch(Side.FROM, dir)), took(Messages.Watch.class));
         stir(dir);
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
         assertTrue(took(Messages.Watch.class).isEmpty(), "already watched");
@@ -712,7 +713,7 @@ class ExplorerTest {
     @Test
     void aStirListsTheFolderAgainAndKeepsTheSelectionAndThePick() {
         showing(dir, video("a.mp4", 10), video("b.mov", 20), file("notes.txt", 5));
-        tell(Messages.CHOSEN_TOPIC, new Chosen(Set.of(path("a.mp4"))));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.mp4"))));
         tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 1));
         sent.clear();
         stir(dir);
@@ -745,12 +746,12 @@ class ExplorerTest {
     @Test
     void aWatchThatEndedOnTheFolderShownIsAskedAgainWhenItIsShownAgain() {
         showing(dir);
-        tell(Messages.UNWATCHED_TOPIC, new Messages.Unwatched(dir, "it was moved or removed"));
+        tell(Messages.UNWATCHED_TOPIC, new Messages.Unwatched(Side.FROM, dir, "it was moved or removed"));
         stir(dir);
         assertTrue(seen(Listing.class).isEmpty(), "no longer watched");
         tell(Messages.NAVIGATE_TOPIC, new Navigate(dir));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(), null, TODAY, ZoneOffset.UTC));
-        assertEquals(List.of(new Messages.Watch(dir)), took(Messages.Watch.class));
+        assertEquals(List.of(new Messages.Watch(Side.FROM, dir)), took(Messages.Watch.class));
     }
 
     @Test
@@ -758,24 +759,24 @@ class ExplorerTest {
         Path a = path("a");
         Path b = path("b");
         showing(a);
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
-        assertEquals(List.of(new Messages.Fresh(Set.of(a.resolve("new.mp4")))), took(Messages.Fresh.class));
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, a, Set.of(a.resolve("new.mp4"))));
+        assertEquals(List.of(new Messages.Fresh(Side.FROM, Set.of(a.resolve("new.mp4")))), took(Messages.Fresh.class));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, a, Set.of(a.resolve("new.mp4"))));
         assertTrue(took(Messages.Fresh.class).isEmpty(), "told again, nothing changed");
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(b, Set.of(b.resolve("other.txt"))));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, b, Set.of(b.resolve("other.txt"))));
         assertTrue(took(Messages.Fresh.class).isEmpty(), "b is not shown");
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of()));
-        assertEquals(List.of(new Messages.Fresh(Set.of())), took(Messages.Fresh.class), "its time is up");
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, a, Set.of()));
+        assertEquals(List.of(new Messages.Fresh(Side.FROM, Set.of())), took(Messages.Fresh.class), "its time is up");
     }
 
     @Test
     void goingElsewherePutsTheTagsDown() {
         Path a = path("a");
         showing(a);
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, a, Set.of(a.resolve("new.mp4"))));
         sent.clear();
         showing(path("b"));
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("late.mp4"))));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, a, Set.of(a.resolve("late.mp4"))));
         assertTrue(seen(Messages.Fresh.class).isEmpty(), "a left");
         tell(Messages.NAVIGATE_TOPIC, new Navigate(a));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), a, List.of(), null, TODAY, ZoneOffset.UTC));
@@ -786,10 +787,104 @@ class ExplorerTest {
     void goingElsewhereSaysTheTagsAreDown() {
         Path a = path("a");
         showing(a);
-        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(a, Set.of(a.resolve("new.mp4"))));
+        tell(Messages.FRESHNESS_TOPIC, new Messages.Freshness(Side.FROM, a, Set.of(a.resolve("new.mp4"))));
         sent.clear();
         tell(Messages.NAVIGATE_TOPIC, new Navigate(path("b")));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("b"), List.of(), null, TODAY, ZoneOffset.UTC));
-        assertEquals(List.of(new Messages.Fresh(Set.of())), took(Messages.Fresh.class));
+        assertEquals(List.of(new Messages.Fresh(Side.FROM, Set.of())), took(Messages.Fresh.class));
+    }
+
+    // ------------------------------------------------------------------ Two Folders
+
+    private static final ZoneOffset UTC = ZoneOffset.UTC;
+
+    /** Two Folders on, both lists showing {@code dir}'s rows, FROM used, and nothing sent remembered. */
+    private void twoFolders(Row... rows) {
+        showing(dir, rows);
+        tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), dir, List.of(rows), null, TODAY, UTC));
+        sent.clear();
+    }
+
+    @Test
+    void twoFoldersOpensToOnTheFolderFromShows() {
+        showing(dir, file("a.txt", 1));
+        tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir)), seen(Messages.Pair.class).getLast());
+        Listing to = asked();
+        assertEquals(dir, to.folder());
+        tell(Messages.LISTED_TOPIC, new Listed(to.ticket(), dir, List.of(file("a.txt", 1)), null, TODAY, UTC));
+        assertEquals(List.of(new Shown(Side.TO, dir, List.of(file("a.txt", 1)), Set.of())), seen(Shown.class));
+        assertEquals(List.of(new Messages.Watch(Side.TO, dir)), seen(Messages.Watch.class));
+        assertTrue(seen(Suggested.class).isEmpty(), "the rail is FROM's, which is used");
+        assertEquals(new Summary(1, Optional.of(1), 0, 0L), took(Summary.class).getLast());
+    }
+
+    @Test
+    void theListClickedIsTheOneTheTreeDrives() {
+        twoFolders(file("a.txt", 1), folder("sub"));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.TO, Set.of(path("a.txt"))));
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(dir)), took(Messages.Pair.class).getLast());
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("sub")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(), null, TODAY, UTC));
+        assertEquals(List.of(new Shown(Side.TO, path("sub"), List.of(), Set.of())), seen(Shown.class));
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(path("sub"))), took(Messages.Pair.class).getLast());
+        tell(Messages.USE_TOPIC, new Messages.Use(Side.FROM));
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir)), took(Messages.Pair.class).getLast(),
+                "FROM still shows the folder it did");
+    }
+
+    @Test
+    void aListingLandsInTheListThatAskedForIt() {
+        twoFolders();
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("x")));
+        Listing forFrom = asked();
+        tell(Messages.USE_TOPIC, new Messages.Use(Side.TO));
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("y")));
+        Listing forTo = asked();
+        tell(Messages.LISTED_TOPIC, new Listed(forTo.ticket(), path("y"), List.of(), null, TODAY, UTC));
+        tell(Messages.LISTED_TOPIC, new Listed(forFrom.ticket(), path("x"), List.of(), null, TODAY, UTC));
+        assertEquals(List.of(new Shown(Side.TO, path("y"), List.of(), Set.of()),
+                new Shown(Side.FROM, path("x"), List.of(), Set.of())), seen(Shown.class), "in any order");
+    }
+
+    @Test
+    void aStirInToListsToAgain() {
+        twoFolders(file("a.txt", 1));
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.TO, dir));
+        Listing again = asked();
+        tell(Messages.LISTED_TOPIC, new Listed(again.ticket(), dir, List.of(file("a.txt", 1), file("b.txt", 2)), null,
+                TODAY, UTC));
+        assertEquals(Side.TO, seen(Shown.class).getLast().side());
+        assertEquals(new Summary(1, Optional.of(2), 0, 0L), took(Summary.class).getLast());
+    }
+
+    @Test
+    void swapTradesTheListsAndKeepsTheFolderUsed() {
+        twoFolders(file("a.txt", 1));
+        tell(Messages.USE_TOPIC, new Messages.Use(Side.TO));
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(path("sub")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(), null, TODAY, UTC));
+        sent.clear();
+        tell(Messages.SWAP_TOPIC, new Messages.Swap());
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(path("sub"))), seen(Messages.Pair.class).getLast(),
+                "sub is still used, now on the left");
+        List<Shown> shown = seen(Shown.class);
+        assertTrue(shown.contains(new Shown(Side.FROM, path("sub"), List.of(), Set.of())));
+        assertTrue(shown.contains(new Shown(Side.TO, dir, List.of(file("a.txt", 1)), Set.of())));
+        assertEquals(Set.of(new Messages.Watch(Side.FROM, path("sub")), new Messages.Watch(Side.TO, dir)),
+                Set.copyOf(seen(Messages.Watch.class)), "each list's watch follows its folder");
+    }
+
+    @Test
+    void backToOneFolderLetsToGoAndUsesFrom() {
+        twoFolders(file("a.txt", 1));
+        tell(Messages.USE_TOPIC, new Messages.Use(Side.TO));
+        sent.clear();
+        tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        assertEquals(List.of(new Messages.Unwatch(Side.TO)), seen(Messages.Unwatch.class));
+        assertEquals(new Messages.Pair(false, Side.FROM, Optional.of(dir)), took(Messages.Pair.class).getLast());
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.TO, dir));
+        assertTrue(seen(Listing.class).isEmpty(), "there is no TO to list");
     }
 }

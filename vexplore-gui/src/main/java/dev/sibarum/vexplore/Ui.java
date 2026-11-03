@@ -5,11 +5,13 @@ import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Level;
 import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Menu;
+import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Place;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
+import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Suggestions.Act;
@@ -51,7 +53,7 @@ import java.util.stream.Collectors;
  * {@link #counts}, {@link #status}). Nothing is remembered here to be shown later, which is the rule worth keeping as
  * this grows: a label that remembers a value can disagree with the session. The widgets keep their own (the list's
  * selection, which levels of the tree are open), and say what changed as messages. {@link Tags} is one of those: the
- * list's second marked set, which the list cannot hold itself (framework-notes FN-12).
+ * list's second marked set, which the list cannot hold itself (framework-notes FN-12), one in each {@link FolderList}.
  *
  * <h2>The path field takes the breadcrumb's place</h2>
  *
@@ -89,8 +91,11 @@ final class Ui {
     private final Breadcrumb<Path> crumbs;
     private final TextField path;
     private final TreeView<Spot> tree;
-    private final Table<Row> list;
-    private final Tags tags = new Tags();
+    private final FolderList from;
+    private final FolderList to;
+    private final Button two;
+    private final Button swap;
+    private final Button one;
     private final RailPanel rail;
     private final DockPanel dock;
     private final StatusBar status;
@@ -107,30 +112,38 @@ final class Ui {
         path = new TextField(gui, "").name(Landmarks.PATH);
         path.node().width(Length.FILL).font(Type.MONO).textSize(Type.SMALL).visible(false);
         gui.landmark(Landmarks.PATH, path.node());
+        // Two folders, and in Two Folders its Swap sides and Back to one folder, at the bar's right end: each shown or
+        // hidden, never added, so the breadcrumb never moves for them.
+        two = new Button(gui, "Two folders").name(Landmarks.TWO_FOLDERS);
+        gui.landmark(Landmarks.TWO_FOLDERS, two.node());
+        swap = new Button(gui, "Swap sides").name(Landmarks.SWAP);
+        swap.node().visible(false);
+        gui.landmark(Landmarks.SWAP, swap.node());
+        one = new Button(gui, "Back to one folder").name(Landmarks.ONE_FOLDER);
+        one.node().visible(false);
+        gui.landmark(Landmarks.ONE_FOLDER, one.node());
+        Node where = gui.row().width(Length.grow(1f)).height(Length.FILL).alignItems(AlignItems.CENTER)
+                .scroll(false, false).clip(true).children(crumbs.node(), path.node());
         Node top = gui.row()
                 .width(Length.FILL).height(Type.TOP_BAR)
                 .padding(Type.TIGHT, Type.SIDE)
+                .gap(Type.TIGHT)
                 .alignItems(AlignItems.CENTER)
                 .background(Look.CHROME)
                 .scroll(false, false)
                 .clip(true)
-                .children(crumbs.node(), path.node());
+                .children(where, two.node(), swap.node(), one.node());
 
         // It asks for its top as it is built; the view answers when ListPlaces does.
         tree = new TreeView<Spot>(gui, Landmarks.TREE).motion(motion.arrival);
         tree.node().width(Length.FILL).height(Length.FILL);
         gui.landmark(Landmarks.TREE, tree.node());
-        list = new Table<>(gui, Columns.ROW_REM, Columns.of(tags)).name(Landmarks.LIST)
-                .headers(Type.MONO, Type.SMALL, Role.DIM);
-        list.node().width(Length.FILL).height(Length.FILL);
-        gui.landmark(Landmarks.LIST, list.node());
-
-        list.rows().looks(Role.SELECTION, Look.TARGETED);
-        // The row menu: Open, then the rail's actions, which a choice picks on the rail rather than carries out.
-        list.rows().action(MenuAction.of(Menu.OPEN, "Open"));
-        for (Act a : Act.values()) {
-            list.rows().action(MenuAction.of(a.name(), a.chip()));
-        }
+        // FROM always, and TO beside it in Two Folders, sharing the list's room equally; TO hidden takes none.
+        from = new FolderList(gui, Landmarks.LIST, Landmarks.HEADER_FROM, "FROM");
+        to = new FolderList(gui, Landmarks.LIST_TO, Landmarks.HEADER_TO, "TO");
+        to.node().visible(false);
+        Node lists = gui.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
+                .children(from.node(), to.node());
 
         // The rail is there whenever the list is, empty or not: one that appeared with its first suggestion would move
         // every row. It is a share of the room beside the tree rather than the handoff's 25 rem, which a split's
@@ -139,7 +152,7 @@ final class Ui {
         // The dock under the list, the sized pane of their split so a taller window gives the list the room: the
         // handoff's screen 03. The rail stays beside both.
         dock = new DockPanel(gui);
-        SplitPane listing = new SplitPane(gui, SplitPane.Orientation.STACKED, region(Look.LIST, list.node()),
+        SplitPane listing = new SplitPane(gui, SplitPane.Orientation.STACKED, region(Look.LIST, lists),
                 dock.node()).sized(SplitPane.Pane.SECOND).size(Type.DOCK).minFirst(Type.LIST_MIN_HEIGHT);
         SplitPane work = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, listing.node(), rail.node())
                 .sized(SplitPane.Pane.SECOND).size(Type.RAIL)
@@ -185,17 +198,35 @@ final class Ui {
         return tree.address();
     }
 
-    /** The table's: what its selection is said with. */
-    String listAddress() {
-        return list.address();
+    /** The list on {@code side}. */
+    private FolderList list(Side side) {
+        return side == Side.TO ? to : from;
     }
 
-    /** The table's rows': what a row activated is said with, since the rows are a list of the table's own. */
-    String rowsAddress() {
-        return list.rows().address();
+    /** Which list's table {@code address} is, or null: what a selection is said with. */
+    Side listSide(String address) {
+        return from.address().equals(address) ? Side.FROM : to.address().equals(address) ? Side.TO : null;
     }
 
-    // ------------------------------------------------------------------ the folder shown
+    /** Which list's rows {@code address} is, or null: what a row activated, clicked or chosen is said with. */
+    Side rowsSide(String address) {
+        return from.rowsAddress().equals(address) ? Side.FROM : to.rowsAddress().equals(address) ? Side.TO : null;
+    }
+
+    /** Whether {@code address} is the top bar's Two folders, Swap sides, or Back to one folder. */
+    boolean twoFolders(String address) {
+        return two.address().equals(address);
+    }
+
+    boolean swap(String address) {
+        return swap.address().equals(address);
+    }
+
+    boolean oneFolder(String address) {
+        return one.address().equals(address);
+    }
+
+    // ------------------------------------------------------------------ the folders shown
 
     /** The folder the breadcrumb shows, or null for none yet: its last segment. */
     Path shown() {
@@ -203,44 +234,43 @@ final class Ui {
         return chain.isEmpty() ? null : chain.getLast();
     }
 
-    /** How many rows the list holds, for a test. */
+    /** How many rows the FROM list holds, for a test. */
     int rows() {
-        return list.rows().count();
+        return from.count();
     }
 
-    /**
-     * Show what the explorer listed: the breadcrumb from the folder's root down to it, the field holding it for Ctrl+L,
-     * and its rows, with the rows it names selected and the first scrolled to. Selecting them is said like any
-     * selection, so the explorer counts them.
-     */
+    /** What the explorer listed, in the list it is for. */
     void show(Shown s) {
-        List<Path> chain = new ArrayList<>();
-        for (Path p = s.folder(); p != null; p = p.getParent()) {
-            chain.addFirst(p);
-        }
-        crumbs.path(chain);
-        path.text(s.folder().toString());
-        // A row is a value, so a file that grew since the last listing is a new one, and the list would let it go. The
-        // folder listed again keeps what was selected, by path, where it stands.
-        Set<Path> held = list.selection().selection().stream().map(Row::path).collect(Collectors.toSet());
-        list.items(s.rows());
-        List<Row> kept = s.rows().stream().filter(r -> held.contains(r.path())).toList();
-        if (!kept.isEmpty() && s.select().isEmpty()) {
-            list.selection().set(kept);
-        }
-        List<Row> select = s.rows().stream().filter(r -> s.select().contains(r.path())).toList();
-        if (!select.isEmpty()) {
-            list.selection().set(select);
-            list.rows().reveal(select.getFirst());
+        list(s.side()).show(s);
+    }
+
+    /**
+     * Whether there are two lists and which is used: TO shown or hidden, each header in the accent while its list is
+     * used, the top bar's buttons for the mode, and the breadcrumb and the field holding the used list's folder.
+     */
+    void pair(Pair p) {
+        to.node().visible(p.two());
+        from.header(p.two(), p.used() == Side.FROM);
+        to.header(p.two(), p.used() == Side.TO);
+        two.node().visible(!p.two());
+        swap.node().visible(p.two());
+        one.node().visible(p.two());
+        if (p.at().isPresent()) {
+            List<Path> chain = new ArrayList<>();
+            for (Path f = p.at().get(); f != null; f = f.getParent()) {
+                chain.addFirst(f);
+            }
+            crumbs.path(chain);
+            path.text(p.at().get().toString());
         }
     }
 
     /**
-     * The rows to tag new: what landed lately, tagged rather than marked, since the rail's reach is the list's one marked
-     * set (framework-notes FN-12).
+     * The rows to tag new in the list on {@code side}: what landed lately, tagged rather than marked, since the rail's
+     * reach is the list's one marked set (framework-notes FN-12).
      */
-    void fresh(Set<Path> paths) {
-        tags.mark(paths, list.rows().realizedItems().stream().map(Row::path).collect(Collectors.toSet()));
+    void fresh(Side side, Set<Path> paths) {
+        list(side).fresh(paths);
     }
 
     /** The rows a {@code Table.Selected} names, as the paths they are. */
@@ -254,9 +284,19 @@ final class Ui {
         return out;
     }
 
-    /** The status line's counts, in words: {@code 12 items · 2 selected · 4.2 MB}. */
-    void counts(Summary s) {
-        StringBuilder b = new StringBuilder().append(s.items()).append(s.items() == 1 ? " item" : " items");
+    /**
+     * The status line's counts, in words: {@code 12 items · 2 selected · 4.2 MB}, and in Two Folders each side's,
+     * {@code left 9 · right 6 · 2 selected}, the selection the used list's.
+     */
+    void counts(Summary s, Side used) {
+        StringBuilder b = new StringBuilder();
+        if (s.beside().isPresent()) {
+            int left = used == Side.FROM ? s.items() : s.beside().get();
+            int right = used == Side.FROM ? s.beside().get() : s.items();
+            b.append("left ").append(left).append(" · right ").append(right);
+        } else {
+            b.append(s.items()).append(s.items() == 1 ? " item" : " items");
+        }
         if (s.selected() > 0) {
             b.append(" · ").append(s.selected()).append(" selected");
             if (s.bytes() > 0) {
@@ -279,9 +319,10 @@ final class Ui {
      * What the rail suggests: its chips and card, and the rows its effect would reach marked in the list. Marked, never
      * selected, so ignoring the rail costs nothing. A row is a value, so the explorer's rows are the list's own.
      */
-    void suggested(Suggested s) {
+    void suggested(Suggested s, Side used) {
         rail.show(s);
-        list.rows().marks(s.reach());
+        list(used).marks(s.reach());
+        list(used.other()).marks(List.of());
     }
 
     /** Whether {@code address} is the card's button. */
@@ -375,10 +416,10 @@ final class Ui {
      * field named is about to be. A hidden field keeps the keyboard otherwise, and typing would land in it unseen
      * (framework-notes FN-3).
      */
-    void closePath() {
+    void closePath(Side used) {
         path.node().visible(false);
         crumbs.node().visible(true);
-        gui.focus(list.rows().node());
+        gui.focus(list(used).rowsNode());
     }
 
     /** The path field's node, for the Esc that is claimed only while it has the keyboard. */
@@ -386,9 +427,9 @@ final class Ui {
         return path.node();
     }
 
-    /** The node of the list that takes the keyboard, for the Backspace that is claimed only while it has it. */
-    Node rowsNode() {
-        return list.rows().node();
+    /** The node of a list that takes the keyboard, for the Backspace that is claimed only while it has it. */
+    Node rowsNode(Side side) {
+        return list(side).rowsNode();
     }
 
     /** Say something on the status line, and when {@code alert}, draw the eye to it: something was refused or failed. */

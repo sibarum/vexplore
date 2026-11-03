@@ -2,6 +2,7 @@ package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Freshness;
 import dev.sibarum.vexplore.core.Messages.Stirred;
+import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Unwatched;
 import dev.sibarum.vexplore.core.Messages.Watch;
 import dev.sibarum.vexplore.core.WatchFolder.Arrivals;
@@ -63,7 +64,7 @@ class WatchFolderTest {
         tick.inbox("fresh").subscribe(Messages.FRESHNESS_TOPIC, fresh::add, 64);
         WatchFolder watch = watch(bus);
         AtomicReference<Unwatched> ended = new AtomicReference<>();
-        Thread run = new Thread(() -> ended.set(watch.run(new Watch(dir))), "test-watch");
+        Thread run = new Thread(() -> ended.set(watch.run(new Watch(Side.FROM, dir))), "test-watch");
         run.start();
 
         long deadline = System.nanoTime() + 10_000_000_000L;
@@ -87,7 +88,7 @@ class WatchFolderTest {
 
     @Test
     void aFolderThatIsNotThereSaysSo() {
-        Unwatched u = watch(Atchung.create()).run(new Watch(dir.resolve("gone")));
+        Unwatched u = watch(Atchung.create()).run(new Watch(Side.FROM, dir.resolve("gone")));
         assertTrue(u.problem() != null && !u.problem().isEmpty(), "said why");
     }
 

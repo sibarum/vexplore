@@ -27,6 +27,7 @@ import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenIn;
+import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
 import dev.sibarum.vexplore.core.Messages.Planning;
@@ -44,16 +45,20 @@ import dev.sibarum.vexplore.core.Messages.Remember;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Run;
 import dev.sibarum.vexplore.core.Messages.Shown;
+import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Stirred;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.Suggested;
+import dev.sibarum.vexplore.core.Messages.Swap;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Messages.TwoFolders;
 import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.sibarum.vexplore.core.Messages.Unwatch;
 import dev.sibarum.vexplore.core.Messages.Unwatched;
+import dev.sibarum.vexplore.core.Messages.Use;
 import dev.sibarum.vexplore.core.Messages.Watch;
 import dev.sibarum.vexplore.core.Messages.Why;
 import dev.sibarum.vexplore.core.Suggestions.Act;
@@ -126,11 +131,11 @@ import java.util.Set;
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class,
-        Menu.class, Stirred.class, Unwatched.class, Freshness.class})
+        Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
-        Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class,
+        Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class, Pair.class,
         Fresh.class})
 public final class Explorer {
 
@@ -142,114 +147,160 @@ public final class Explorer {
     /**
      * Everything the explorer knows, in one value.
      *
-     * @param folder   the folder shown, or being listed to be shown; none yet
-     * @param asked    the ticket of the listing last asked for: a reply with another has been overtaken
-     * @param select   the row to select when that listing lands: a file named on the command line or typed
-     * @param rows     the folder's rows, as last listed. The order the list shows is the table's.
-     * @param today    the day the rows were listed on, which the rail's "today" means
-     * @param zone     the zone a row's day is read in
-     * @param selected the rows selected, as the list last said
-     * @param pick     the rail's Select, Condition and Action so far
-     * @param rail     what the rail last offered: a chip pressed is resolved against it
-     * @param started  the folder the application started in, shown when there is no other
-     * @param armed    whether the restore is done: before then a write would overwrite what is being restored
-     * @param last     the session last sent to be remembered, so an unchanged one is not written again
-     * @param work     what has been carried out and can be taken back, and the run in flight
+     * <p>Each list's folder is a {@link Pane}: {@code from} always, and {@code to} in Two Folders. The tree, the
+     * breadcrumb, the rail and the dock work from the one {@code used}, so {@link #folder}, {@link #rows},
+     * {@link #selected} and the rest read that one, and a step that knows nothing of two folders reads them as before.
+     *
+     * @param from    the left list's folder, the one there always is
+     * @param to      the right list's, in Two Folders; none in one
+     * @param used    the list clicked last, which the tree and the rail work from
+     * @param tickets the count of listings asked for, both lists': a reply's ticket says which list asked
+     * @param pick    the rail's Select, Condition and Action so far
+     * @param rail    what the rail last offered: a chip pressed is resolved against it
+     * @param started the folder the application started in, shown when there is no other
+     * @param armed   whether the restore is done: before then a write would overwrite what is being restored
+     * @param last    the session last sent to be remembered, so an unchanged one is not written again
+     * @param work    what has been carried out and can be taken back, and the run in flight
      */
-    record State(Optional<Path> folder, long asked, Set<Path> select, List<Row> rows, LocalDate today,
-                 ZoneId zone, Set<Path> selected, Pick pick, Rail rail, Optional<Path> started, boolean armed,
-                 Optional<Remember> last, Work work) {
-
-        State {
-            rows = List.copyOf(rows);
-            selected = Set.copyOf(selected);
-        }
+    record State(Pane from, Optional<Pane> to, Side used, long tickets, Pick pick, Rail rail,
+                 Optional<Path> started, boolean armed, Optional<Remember> last, Work work) {
 
         static State initial() {
-            return new State(Optional.empty(), 0L, Set.of(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
-                    Set.of(), Pick.NONE, Rail.EMPTY, Optional.empty(), false, Optional.empty(), Work.NONE);
+            return new State(Pane.NONE, Optional.empty(), Side.FROM, 0L, Pick.NONE, Rail.EMPTY, Optional.empty(),
+                    false, Optional.empty(), Work.NONE);
         }
 
-        /** Asking for {@code value}'s listing: what was listed before is no longer what is shown. */
-        State asking(Path value, Set<Path> then) {
-            return new State(Optional.of(value), asked + 1, then, List.of(), today, zone, Set.of(), Pick.NONE,
-                    Rail.EMPTY, started, armed, last, work);
+        /** The list on {@code side}: FROM's when there is no TO. */
+        Pane pane(Side side) {
+            return side == Side.TO && to.isPresent() ? to.get() : from;
         }
 
-        /**
-         * The folder shown, asked for again after a run: what is selected is kept, so the rows still there stay
-         * selected in the explorer as they do in the list.
-         */
-        State relisting() {
-            return new State(folder, asked + 1, Set.of(), rows, today, zone, selected, Pick.NONE, Rail.EMPTY,
-                    started, armed, last, work);
+        /** The list used. */
+        Pane pane() {
+            return pane(used);
         }
 
-        /**
-         * The folder shown, asked for again because it changed on the disk: the selection and the rail's pick are
-         * kept, since the person did nothing. A download writing beside a pick half made never undoes it.
-         */
-        State stirring() {
-            return new State(folder, asked + 1, Set.of(), rows, today, zone, selected, pick, rail, started, armed,
-                    last, work);
-        }
-
-        /**
-         * A folder's rows landed: of what was selected, only what is still there. The pick is whatever asking left:
-         * none for a new folder or after a run, and the one being made when the folder only changed.
-         */
-        State withRows(Listed l) {
-            Set<Path> still = new HashSet<>();
-            for (Row r : l.rows()) {
-                if (selected.contains(r.path())) {
-                    still.add(r.path());
-                }
+        /** Which list asked for listing {@code ticket}, or none: one overtaken by a later ask. */
+        Optional<Side> asker(long ticket) {
+            if (from.asked() == ticket) {
+                return Optional.of(Side.FROM);
             }
-            return new State(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still, pick, rail, started,
-                    armed, last, work);
+            return to.isPresent() && to.get().asked() == ticket ? Optional.of(Side.TO) : Optional.empty();
+        }
+
+        Optional<Path> folder() {
+            return pane().folder();
+        }
+
+        long asked() {
+            return pane().asked();
+        }
+
+        Set<Path> select() {
+            return pane().select();
+        }
+
+        List<Row> rows() {
+            return pane().rows();
+        }
+
+        LocalDate today() {
+            return pane().today();
+        }
+
+        ZoneId zone() {
+            return pane().zone();
+        }
+
+        Set<Path> selected() {
+            return pane().selected();
+        }
+
+        /** The list on {@code side} is now {@code value}. */
+        State withPane(Side side, Pane value) {
+            Pane f = side == Side.TO && to.isPresent() ? from : value;
+            Optional<Pane> t = side == Side.TO && to.isPresent() ? Optional.of(value) : to;
+            return new State(f, t, used, tickets, pick, rail, started, armed, last, work);
+        }
+
+        /** Asking for {@code value}'s listing in the list used: nothing is picked in a folder not yet shown. */
+        State asking(Path value, Set<Path> then) {
+            return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
+                    .withPane(used, pane().asking(value, then, tickets + 1));
+        }
+
+        /** The list on {@code side} used from now: the rail is put down, since it was about the other list's rows. */
+        State using(Side side) {
+            return new State(from, to, side, tickets, Pick.NONE, Rail.EMPTY, started, armed, last, work);
+        }
+
+        /** Two Folders with TO asking for {@code folder}'s listing, or back to one, FROM used. */
+        State withTo(Optional<Path> folder) {
+            if (folder.isEmpty()) {
+                return new State(from, Optional.empty(), Side.FROM, tickets, Pick.NONE, Rail.EMPTY, started, armed,
+                        last, work);
+            }
+            Pane opened = Pane.NONE.asking(folder.get(), Set.of(), tickets + 1);
+            return new State(from, Optional.of(opened), used, tickets + 1, pick, rail, started, armed, last, work);
+        }
+
+        /** FROM and TO trade places, and their watches with them; the list used is the same folder as before. */
+        State swapped() {
+            Work w = work.withWatched(Side.FROM, work.watched(Side.TO)).withWatched(Side.TO, work.watched(Side.FROM));
+            return new State(to.orElseThrow(), Optional.of(from), used.other(), tickets, pick, rail, started, armed,
+                    last, w);
+        }
+
+        /**
+         * The list on {@code side} asked for again after a run: what is selected is kept, so the rows still there
+         * stay selected in the explorer as they do in the list. The pick is put down: what it picked has been done.
+         */
+        State relisting(Side side) {
+            return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
+                    .withPane(side, pane(side).relisting(tickets + 1));
+        }
+
+        /**
+         * The list on {@code side} asked for again because its folder changed on the disk: the selection and the
+         * rail's pick are kept, since the person did nothing. A download writing beside a pick half made never
+         * undoes it.
+         */
+        State stirring(Side side) {
+            return new State(from, to, used, tickets + 1, pick, rail, started, armed, last, work)
+                    .withPane(side, pane(side).relisting(tickets + 1));
         }
 
         State withSelected(Set<Path> value) {
-            return new State(folder, asked, select, rows, today, zone, value, pick, rail, started, armed, last, work);
+            return withPane(used, pane().withSelected(value));
         }
 
         State withPick(Pick value) {
-            return new State(folder, asked, select, rows, today, zone, selected, value, rail, started, armed, last,
-                    work);
+            return new State(from, to, used, tickets, value, rail, started, armed, last, work);
         }
 
         State withRail(Rail value) {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, value, started, armed, last,
-                    work);
+            return new State(from, to, used, tickets, pick, value, started, armed, last, work);
         }
 
         State withStarted(Path value) {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, Optional.of(value), armed,
-                    last, work);
+            return new State(from, to, used, tickets, pick, rail, Optional.of(value), armed, last, work);
         }
 
         State withArmed() {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, true, last, work);
+            return new State(from, to, used, tickets, pick, rail, started, true, last, work);
         }
 
         State withLast(Remember value) {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, armed,
-                    Optional.of(value), work);
+            return new State(from, to, used, tickets, pick, rail, started, armed, Optional.of(value), work);
         }
 
         State withWork(Work value) {
-            return new State(folder, asked, select, rows, today, zone, selected, pick, rail, started, armed, last,
-                    value);
+            return new State(from, to, used, tickets, pick, rail, started, armed, last, value);
         }
 
-        /** The row at {@code path}, or none: one the list showed before this listing, or never. */
+        /** The row at {@code path} in the list used, or none: one the list showed before this listing, or never. */
         Optional<Row> row(Path path) {
-            for (Row r : rows) {
-                if (r.path().equals(path)) {
-                    return Optional.of(r);
-                }
-            }
-            return Optional.empty();
+            return pane().row(path);
         }
     }
 
@@ -288,6 +339,9 @@ public final class Explorer {
         Step<State, Stirred> stirred = b.step("stirred", Explorer::stirred);
         Step<State, Unwatched> unwatched = b.step("unwatched", Explorer::unwatched);
         Step<State, Freshness> freshness = b.step("freshness", Explorer::freshness);
+        Step<State, Use> use = b.step("use", Explorer::used);
+        Step<State, TwoFolders> twoFolders = b.step("twoFolders", Explorer::twoFolders);
+        Step<State, Swap> swap = b.step("swap", Explorer::swap);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -316,7 +370,10 @@ public final class Explorer {
                 .on(Messages.MENU_TOPIC, menu)
                 .on(Messages.STIRRED_TOPIC, stirred)
                 .on(Messages.UNWATCHED_TOPIC, unwatched)
-                .on(Messages.FRESHNESS_TOPIC, freshness);
+                .on(Messages.FRESHNESS_TOPIC, freshness)
+                .on(Messages.USE_TOPIC, use)
+                .on(Messages.TWO_FOLDERS_TOPIC, twoFolders)
+                .on(Messages.SWAP_TOPIC, swap);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -367,7 +424,7 @@ public final class Explorer {
         if (!s.armed()) {
             return s;
         }
-        Remember now = new Remember(s.folder(), s.work().marks());
+        Remember now = new Remember(s.from().folder(), s.work().marks());
         if (s.last().equals(Optional.of(now))) {
             return s;
         }
@@ -436,119 +493,212 @@ public final class Explorer {
     }
 
     /**
-     * A folder's rows: shown, unless a later ask has overtaken them. A folder that could not be read is shown empty, the
-     * breadcrumb where the person asked to be, and the status line says why. By the folder's name: the breadcrumb says
-     * where it is, and a status line that holds a whole path runs over the counts (framework-notes FN-6).
+     * A folder's rows, for the list that asked: shown, unless a later ask has overtaken them. A folder that could not be
+     * read is shown empty, the breadcrumb where the person asked to be, and the status line says why. By the folder's
+     * name: the breadcrumb says where it is, and a status line that holds a whole path runs over the counts
+     * (framework-notes FN-6). The rail and the dock follow only the list used.
      */
     private static State listed(State s, Listed l, Out out) {
-        if (l.ticket() != s.asked()) {
+        Optional<Side> asker = s.asker(l.ticket());
+        if (asker.isEmpty()) {
             return s;
         }
+        Side side = asker.get();
         if (l.problem() != null) {
             refuse(out, "Can't open " + ListFolder.name(l.folder()) + ": " + l.problem());
         }
-        out.send(Messages.SHOWN_TOPIC, new Shown(l.folder(), l.rows(), s.select()));
-        State next = s.withRows(l);
-        long bytes = 0L;
-        for (Row r : l.rows()) {
-            bytes += next.selected().contains(r.path()) ? r.size() : 0L;
+        out.send(Messages.SHOWN_TOPIC, new Shown(side, l.folder(), l.rows(), s.pane(side).select()));
+        State next = watch(s.withPane(side, s.pane(side).withRows(l)), side, l, out);
+        summary(next, out);
+        if (side != next.used()) {
+            return next;
         }
-        out.send(Messages.SUMMARY_TOPIC, new Summary(l.rows().size(), next.selected().size(), bytes));
-        return dock(suggest(watch(next, l, out), true, out), out);
+        pair(next, out);
+        return dock(suggest(next, true, out), out);
+    }
+
+    /** The status line's counts: the list used, and in Two Folders the other one's rows. */
+    private static void summary(State s, Out out) {
+        long bytes = 0L;
+        for (Row r : s.rows()) {
+            bytes += s.selected().contains(r.path()) ? r.size() : 0L;
+        }
+        Optional<Integer> beside = s.to().map(t -> s.pane(s.used().other()).rows().size());
+        out.send(Messages.SUMMARY_TOPIC, new Summary(s.rows().size(), beside, s.selected().size(), bytes));
+    }
+
+    /** Whether there are two lists, which is used, and its folder, for the breadcrumb and the top bar. */
+    private static void pair(State s, Out out) {
+        out.send(Messages.PAIR_TOPIC, new Pair(s.to().isPresent(), s.used(), s.folder()));
     }
 
     /**
-     * Watch the folder whose rows just landed, unless it already is. Asked when they land rather than when they are
-     * asked for, so a folder that cannot be read is not watched; and then the one before it, no longer shown, is not.
+     * Watch the folder whose rows just landed in the list on {@code side}, unless it already is. Asked when they land
+     * rather than when they are asked for, so a folder that cannot be read is not watched; and then the one before it,
+     * no longer shown, is not.
      */
-    private static State watch(State s, Listed l, Out out) {
-        Optional<Path> was = s.work().watched().folder();
+    private static State watch(State s, Side side, Listed l, Out out) {
+        Optional<Path> was = s.work().watched(side).folder();
         if (l.problem() != null) {
             if (was.isEmpty()) {
                 return s;
             }
-            out.send(Messages.UNWATCH_TOPIC, new Unwatch());
-            return watched(s, Watched.NONE, out);
+            out.send(Messages.UNWATCH_TOPIC, new Unwatch(side));
+            return watched(s, side, Watched.NONE, out);
         }
         if (was.equals(Optional.of(l.folder()))) {
             return s;
         }
-        out.send(Messages.WATCH_TOPIC, new Watch(l.folder()));
-        return watched(s, new Watched(Optional.of(l.folder()), Set.of()), out);
+        out.send(Messages.WATCH_TOPIC, new Watch(side, l.folder()));
+        return watched(s, side, new Watched(Optional.of(l.folder()), Set.of()), out);
     }
 
     /**
-     * The folder shown changed on the disk: list it again, keeping the selection and the pick. Said of a folder no
-     * longer shown, or while another is being asked for, it is dropped, as a stale listing is.
+     * A list's folder changed on the disk: list it again, keeping the selection and the pick. Said of a folder the list
+     * no longer shows, or while another is being asked for, it is dropped, as a stale listing is.
      */
     private static State stirred(State s, Stirred m, Out out) {
-        if (!s.folder().equals(Optional.of(m.folder())) || !s.work().watched().folder().equals(s.folder())) {
+        Optional<Path> shown = s.pane(m.side()).folder();
+        if (!shown.equals(Optional.of(m.folder())) || !s.work().watched(m.side()).folder().equals(shown)
+                || (m.side() == Side.TO && s.to().isEmpty())) {
             return s;
         }
-        State next = s.stirring();
-        out.send(Messages.LISTING_TOPIC, new Listing(next.asked(), m.folder()));
+        State next = s.stirring(m.side());
+        out.send(Messages.LISTING_TOPIC, new Listing(next.pane(m.side()).asked(), m.folder()));
         return next;
     }
 
     /**
-     * The watch ended. On the folder still watched (it was moved or removed), it is no longer: the listing its last
+     * A watch ended. On the folder still watched (it was moved or removed), it is no longer: the listing its last
      * {@link Stirred} asked for says so, and a folder shown again is watched again.
      */
     private static State unwatched(State s, Unwatched u, Out out) {
-        if (!s.work().watched().folder().equals(Optional.of(u.folder()))) {
+        if (!s.work().watched(u.side()).folder().equals(Optional.of(u.folder()))) {
             return s;
         }
-        return watched(s, Watched.NONE, out);
+        return watched(s, u.side(), Watched.NONE, out);
     }
 
     /**
-     * What landed in the folder shown lately, as {@link WatchFolder} keeps it: the rows to tag new. Its clock, not
-     * this one, says when a file stops being fresh. Said of a folder no longer watched, it is dropped.
+     * What landed in a list's folder lately, as {@link WatchFolder} keeps it: the rows to tag new. Its clock, not this
+     * one, says when a file stops being fresh. Said of a folder no longer watched, it is dropped.
      */
     private static State freshness(State s, Freshness f, Out out) {
-        Watched w = s.work().watched();
+        Watched w = s.work().watched(f.side());
         if (!w.folder().equals(Optional.of(f.folder()))) {
             return s;
         }
-        return watched(s, new Watched(w.folder(), f.fresh()), out);
+        return watched(s, f.side(), new Watched(w.folder(), f.fresh()), out);
     }
 
-    /** Watching {@code value}: the view is told the rows to tag when that is not what it was told last. */
-    private static State watched(State s, Watched value, Out out) {
-        if (!value.fresh().equals(s.work().watched().fresh())) {
-            out.send(Messages.FRESH_TOPIC, new Fresh(value.fresh()));
+    /** Watching {@code value} for a list: the view is told its rows to tag when that is not what it was told last. */
+    private static State watched(State s, Side side, Watched value, Out out) {
+        if (!value.fresh().equals(s.work().watched(side).fresh())) {
+            out.send(Messages.FRESH_TOPIC, new Fresh(side, value.fresh()));
         }
-        return s.withWork(s.work().withWatched(value));
+        return s.withWork(s.work().withWatched(side, value));
     }
 
     /**
-     * What the list says is selected: counted for the status line, with the selected files' bytes. A path that is not
-     * one of this folder's rows (the list had not caught up with a new listing) is not counted.
+     * What a list says is selected: counted for the status line, with the selected files' bytes. A path that is not
+     * one of its folder's rows (the list had not caught up with a new listing) is not counted. Selecting in a list is
+     * using it.
      */
     private static State chosen(State s, Chosen c, Out out) {
+        State used = use(s, c.side(), out);
         Set<Path> selected = new HashSet<>();
-        long bytes = 0L;
-        for (Row r : s.rows()) {
+        for (Row r : used.rows()) {
             if (c.paths().contains(r.path())) {
                 selected.add(r.path());
-                bytes += r.size();
             }
         }
-        out.send(Messages.SUMMARY_TOPIC, new Summary(s.rows().size(), selected.size(), bytes));
-        return dock(suggest(s.withSelected(selected), out), out);
+        State next = used.withSelected(selected);
+        summary(next, out);
+        return dock(suggest(next, out), out);
     }
 
     /** Enter or a double click on a row: a folder is gone into, and a file opened as the desktop would open it. */
     private static State activated(State s, Activated a, Out out) {
-        Optional<Row> row = s.row(a.path());
+        State used = use(s, a.side(), out);
+        Optional<Row> row = used.row(a.path());
         if (row.isEmpty()) {
-            return s;
+            return used;
         }
         if (row.get().folder()) {
-            return remember(show(s, a.path(), Set.of(), out), out);
+            return remember(show(used, a.path(), Set.of(), out), out);
         }
         out.send(Messages.START_TOPIC, new Start(a.path()));
-        return s;
+        return used;
+    }
+
+    // ------------------------------------------------------------------ Two Folders
+
+    /** A click in a list: from now the tree, the breadcrumb, the rail and the dock work from it. */
+    private static State used(State s, Use u, Out out) {
+        return use(s, u.side(), out);
+    }
+
+    /**
+     * Use the list on {@code side}, if it is not already used and is there: the breadcrumb shows its folder, and the
+     * rail and the dock are worked out again from its rows and selection.
+     */
+    private static State use(State s, Side side, Out out) {
+        if (side == s.used() || (side == Side.TO && s.to().isEmpty())) {
+            return s;
+        }
+        State next = s.using(side);
+        pair(next, out);
+        summary(next, out);
+        return dock(suggest(next, true, out), out);
+    }
+
+    /**
+     * The top bar's Two folders: TO opens on the folder FROM shows, as 0.1 did, and FROM stays used. Back to one
+     * folder: TO goes, its watch with it, and FROM is used.
+     */
+    private static State twoFolders(State s, TwoFolders t, Out out) {
+        if (t.on() == s.to().isPresent()) {
+            return s;
+        }
+        if (t.on()) {
+            if (s.from().folder().isEmpty()) {
+                return s;
+            }
+            State next = s.withTo(s.from().folder());
+            out.send(Messages.LISTING_TOPIC, new Listing(next.tickets(), s.from().folder().get()));
+            pair(next, out);
+            return next;
+        }
+        boolean wasTo = s.used() == Side.TO;
+        State next = s.withTo(Optional.empty());
+        if (s.work().watched(Side.TO).folder().isPresent()) {
+            out.send(Messages.UNWATCH_TOPIC, new Unwatch(Side.TO));
+            next = watched(next, Side.TO, Watched.NONE, out);
+        }
+        pair(next, out);
+        summary(next, out);
+        return wasTo ? dock(suggest(next, true, out), out) : next;
+    }
+
+    /**
+     * The top bar's Swap sides: each list shows what the other did, with its selection, its watch and its tags, and
+     * the list used is the same folder as before, now on the other side.
+     */
+    private static State swap(State s, Swap w, Out out) {
+        if (s.to().isEmpty()) {
+            return s;
+        }
+        State next = s.swapped();
+        for (Side side : Side.values()) {
+            Pane p = next.pane(side);
+            p.folder().ifPresent(f -> out.send(Messages.SHOWN_TOPIC, new Shown(side, f, p.rows(), p.selected())));
+            Watched watched = next.work().watched(side);
+            watched.folder().ifPresent(f -> out.send(Messages.WATCH_TOPIC, new Watch(side, f)));
+            out.send(Messages.FRESH_TOPIC, new Fresh(side, watched.fresh()));
+        }
+        pair(next, out);
+        summary(next, out);
+        return next;
     }
 
     /** What opening a file came to: said either way, since what opens it is another program and may take a moment. */
@@ -570,13 +720,14 @@ public final class Explorer {
      * carries it out, as every other way in does. Chosen when it is already picked, it stays picked, where a chip
      * pressed again would let it go. One the rail does not offer for this selection (Rename, with several) is said.
      */
-    private static State menu(State s, Menu m, Out out) {
+    private static State menu(State was, Menu m, Out out) {
+        State s = use(was, m.side(), out);
         if (Menu.OPEN.equals(m.action())) {
             if (s.selected().size() != 1) {
                 refuse(out, "Open is for one item at a time");
                 return s;
             }
-            return activated(s, new Activated(s.selected().iterator().next()), out);
+            return activated(s, new Activated(s.used(), s.selected().iterator().next()), out);
         }
         for (Act a : Act.values()) {
             if (!a.name().equals(m.action())) {
@@ -863,11 +1014,15 @@ public final class Explorer {
         out.send(Messages.STATUS_TOPIC, new Status(words.toString(), !d.failed().isEmpty()));
         State next = s.withWork(work);
         out.send(Messages.SUGGESTED_TOPIC, said(next));
-        if (next.folder().isEmpty()) {
-            return next;
+        // Both lists, in Two Folders: what a run did may have reached either.
+        State again = next;
+        for (Side side : Side.values()) {
+            Optional<Path> folder = again.pane(side).folder();
+            if (folder.isPresent() && (side == Side.FROM || again.to().isPresent())) {
+                again = again.relisting(side);
+                out.send(Messages.LISTING_TOPIC, new Listing(again.pane(side).asked(), folder.get()));
+            }
         }
-        State again = next.relisting();
-        out.send(Messages.LISTING_TOPIC, new Listing(again.asked(), again.folder().get()));
         return again;
     }
 

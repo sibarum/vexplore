@@ -16,6 +16,7 @@ import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenIn;
+import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
 import dev.sibarum.vexplore.core.Messages.PlacesWanted;
@@ -25,11 +26,15 @@ import dev.sibarum.vexplore.core.Messages.Redo;
 import dev.sibarum.vexplore.core.Messages.Rename;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
+import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.Stop;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Messages.Swap;
+import dev.sibarum.vexplore.core.Messages.TwoFolders;
 import dev.sibarum.vexplore.core.Messages.Undo;
+import dev.sibarum.vexplore.core.Messages.Use;
 import dev.sibarum.vexplore.core.Preview;
 import dev.vexelray.framework.api.Subscribe;
 import dev.vexelray.framework.core.PickFile;
@@ -49,6 +54,7 @@ import sibarum.tactroller.api.Key;
 import sibarum.tactroller.api.Modifier;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * The view: what the explorer decided, shown, and what the person did, told. A {@code @View}, so it runs on the GUI
@@ -108,6 +114,9 @@ final class View {
     private final Sender<ForgetMark> forgetMark;
     private final Sender<OpenIn> openIn;
     private final Sender<Menu> menu;
+    private final Sender<Use> use;
+    private final Sender<TwoFolders> twoFolders;
+    private final Sender<Swap> swap;
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<LevelWanted> levelWanted;
     private final Sender<TreeView.Children> children;
@@ -117,10 +126,17 @@ final class View {
     private Feed shown;
     private Feed fading;
 
+    /**
+     * Whether there are two lists and which is used, as the explorer last said: which list the rail's reach is marked
+     * in, and which side the counts are.
+     */
+    private Pair pair = new Pair(false, Side.FROM, Optional.empty());
+
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenIn> openIn, Sender<Menu> menu,
+         Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
          Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children,
          Sender<Intent> intents) {
         this.gui = gui;
@@ -141,6 +157,9 @@ final class View {
         this.forgetMark = forgetMark;
         this.openIn = openIn;
         this.menu = menu;
+        this.use = use;
+        this.twoFolders = twoFolders;
+        this.swap = swap;
         this.placesWanted = placesWanted;
         this.levelWanted = levelWanted;
         this.children = children;
@@ -159,7 +178,10 @@ final class View {
         chord(Shortcut.of(Key.L, Modifier.CONTROL), Command.EDIT_PATH);
         gui.claim(ui.pathNode(), Shortcut.of(Key.ESCAPE), ClaimScope.FOCUSED, intents, new Intent(Command.CLOSE_PATH));
         chord(Shortcut.of(Key.UP, Modifier.ALT), Command.UP);
-        gui.claim(ui.rowsNode(), Shortcut.of(Key.BACKSPACE), ClaimScope.FOCUSED, intents, new Intent(Command.UP));
+        for (Side side : Side.values()) {
+            gui.claim(ui.rowsNode(side), Shortcut.of(Key.BACKSPACE), ClaimScope.FOCUSED, intents,
+                    new Intent(Command.UP));
+        }
         chord(Shortcut.of(Key.EQUAL, Modifier.CONTROL), Command.ZOOM_IN);
         chord(Shortcut.of(Key.MINUS, Modifier.CONTROL), Command.ZOOM_OUT);
         chord(Shortcut.of(Key.DIGIT_0, Modifier.CONTROL), Command.ZOOM_RESET);
@@ -184,9 +206,16 @@ final class View {
         ui.show(m);
     }
 
+    /** Whether there are two lists, which is used, and its folder for the breadcrumb. */
+    @Subscribe
+    public void pair(Pair m) {
+        pair = m;
+        ui.pair(m);
+    }
+
     @Subscribe
     public void summary(Summary m) {
-        ui.counts(m);
+        ui.counts(m, pair.used());
     }
 
     @Subscribe
@@ -197,7 +226,7 @@ final class View {
     /** The rail: its chips and card, and the rows it would reach marked in the list. */
     @Subscribe
     public void suggested(Suggested m) {
-        ui.suggested(m);
+        ui.suggested(m, pair.used());
     }
 
     // ------------------------------------------------------------------ what the jobs answer
@@ -219,7 +248,7 @@ final class View {
     public void fieldSubmitted(TextField.Submitted m) {
         if (m.field().equals(ui.pathAddress())) {
             go.send(new Go(m.text().strip()));
-            ui.closePath();
+            ui.closePath(pair.used());
         } else if (m.field().equals(ui.nameAddress())) {
             rename.send(new Rename(m.text()));
         }
@@ -255,27 +284,42 @@ final class View {
         }
     }
 
-    /** The list's selection, as paths: the explorer counts it. */
+    /** A list's selection, as paths, and which list: the explorer counts it. */
     @Subscribe
     public void listSelected(Table.Selected m) {
-        if (m.table().equals(ui.listAddress())) {
-            chosen.send(new Chosen(Ui.paths(m.chosen())));
+        Side side = ui.listSide(m.table());
+        if (side != null) {
+            chosen.send(new Chosen(side, Ui.paths(m.chosen())));
         }
     }
 
     /** Enter or a double click on a row: the explorer goes into a folder or opens a file. */
     @Subscribe
     public void rowActivated(ListView.Activated m) {
-        if (m.list().equals(ui.rowsAddress()) && m.item() instanceof Row r) {
-            activated.send(new Activated(r.path()));
+        Side side = ui.rowsSide(m.list());
+        if (side != null && m.item() instanceof Row r) {
+            activated.send(new Activated(side, r.path()));
         }
     }
 
-    /** A row menu's choice: about the selection, which the right click has already made and the explorer knows. */
+    /** A click in a list: the explorer works from that one now, even when the click changed no selection. */
+    @Subscribe
+    public void rowClicked(ListView.Clicked m) {
+        Side side = ui.rowsSide(m.list());
+        if (side != null) {
+            use.send(new Use(side));
+        }
+    }
+
+    /**
+     * A row menu's choice: about the selection, which the right click has already made and the explorer knows. It says
+     * which list, since a right click on a row already selected changes no selection and so says nothing else.
+     */
     @Subscribe
     public void rowMenu(ListView.Chosen m) {
-        if (m.at().equals(ui.rowsAddress())) {
-            menu.send(new Menu(m.action()));
+        Side side = ui.rowsSide(m.at());
+        if (side != null) {
+            menu.send(new Menu(side, m.action()));
         }
     }
 
@@ -297,6 +341,12 @@ final class View {
             stop.send(new Stop());
         } else if (ui.openIn(m.button())) {
             openIn.send(new OpenIn());
+        } else if (ui.twoFolders(m.button())) {
+            twoFolders.send(new TwoFolders(true));
+        } else if (ui.oneFolder(m.button())) {
+            twoFolders.send(new TwoFolders(false));
+        } else if (ui.swap(m.button())) {
+            swap.send(new Swap());
         } else if (ui.choose(m.button())) {
             Path shown = ui.shown();
             pickFile.send(PickFile.folder(PICK_FOLDER, shown == null ? "" : shown.toString()));
@@ -325,7 +375,7 @@ final class View {
     /** What landed in the folder shown lately: tagged new in the list, never selected. */
     @Subscribe
     public void fresh(Fresh m) {
-        ui.fresh(m.paths());
+        ui.fresh(m.side(), m.paths());
     }
 
     /** The marks kept: the rail lists them. */
@@ -367,7 +417,7 @@ final class View {
     }
 
     void closePath() {
-        ui.closePath();
+        ui.closePath(pair.used());
     }
 
     /** Backspace in the list, or Alt+Up: the folder this one is in. A drive's root has none, and nothing happens. */

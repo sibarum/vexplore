@@ -28,6 +28,8 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
       already the names a script would use. One scripted run through the main path is worth more than several
       unit tests of the view.
 - [ ] Held Shift and Control as intent (0.1's `Intents`): waits for a modifiers topic (framework-notes FN-9).
+- [ ] **Two Folders: NAME shrinks to its icon in both lists** at 1440 px, the tree, both lists and the rail sharing
+      the width (FN-8). Hide the tree there, as screen 05 does, or wait on FN-8.
 - [ ] In a window under about 1000 px wide at zoom 1, the list's NAME column shrinks to its icon while TYPE, SIZE and
       MODIFIED stay whole (framework-notes FN-8).
 - [ ] `Picked` is a chip's place, resolved against the rail the explorer last sent. A listing that lands in the frame

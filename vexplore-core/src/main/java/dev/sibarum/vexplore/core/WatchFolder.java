@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
  * Watches the folder shown, on a thread of its own, and says when something in it changed, so the list follows the
  * disk: a file another program saves, removes or is still writing shows without navigating away and back.
  *
- * <p>A {@code @Source} because it waits on the disk for as long as the folder is shown. Its topic is unkeyed, so a
- * {@link Watch} for the next folder stops the run on the last; {@link Unwatch} stops it with no other.
+ * <p>A {@code @Source} because it waits on the disk for as long as the folder is shown. Its topic is keyed by the list,
+ * so each list has a run, a {@link Watch} for its next folder stops its last, and {@link Unwatch} stops it.
  *
  * <p>A burst is said once ({@link Burst}): a copy of a hundred files, or a download writing for a minute, is a
  * {@link Stirred} when it has been quiet for {@link #QUIET_MS}, and at most one each {@link #MOST_MS} while it goes on,
@@ -79,23 +79,24 @@ public final class WatchFolder {
                     }
                     burst = burst.stirred(at);
                     if (!key.reset()) {
-                        stirred.send(new Stirred(folder));
-                        return new Unwatched(folder, "it was moved or removed");
+                        stirred.send(new Stirred(w.side(), folder));
+                        return new Unwatched(w.side(), folder, "it was moved or removed");
                     }
                 }
                 if (burst.due(now())) {
-                    stirred.send(new Stirred(folder));
+                    stirred.send(new Stirred(w.side(), folder));
                     burst = Burst.NONE;
                 }
                 arrivals = arrivals.expired(now());
                 if (!arrivals.landed().keySet().equals(was.landed().keySet())) {
-                    freshness.send(new Freshness(folder, arrivals.landed().keySet()));
+                    freshness.send(new Freshness(w.side(), folder, arrivals.landed().keySet()));
                 }
             }
         } catch (InterruptedException | ClosedWatchServiceException stopped) {
-            return new Unwatched(folder, null);
+            return new Unwatched(w.side(), folder, null);
         } catch (IOException | RuntimeException e) {
-            return new Unwatched(folder, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+            String why = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            return new Unwatched(w.side(), folder, why);
         }
     }
 

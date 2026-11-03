@@ -1,0 +1,73 @@
+package dev.sibarum.vexplore.core;
+
+import dev.sibarum.vexplore.core.Messages.Listed;
+import dev.sibarum.vexplore.core.Messages.Row;
+
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+/**
+ * One list's folder, as the explorer knows it: a field of its {@code State}, once for FROM and, in Two Folders, once
+ * for TO (docs/shape.md, M6). Changed only by the explorer's steps.
+ *
+ * @param folder   the folder shown, or being listed to be shown; none yet
+ * @param asked    the ticket of the listing last asked for: a reply with another has been overtaken
+ * @param select   the row to select when that listing lands: a file named on the command line or typed
+ * @param rows     the folder's rows, as last listed. The order the list shows is the table's.
+ * @param today    the day the rows were listed on, which the rail's "today" means
+ * @param zone     the zone a row's day is read in
+ * @param selected the rows selected, as the list last said
+ */
+record Pane(Optional<Path> folder, long asked, Set<Path> select, List<Row> rows, LocalDate today, ZoneId zone,
+            Set<Path> selected) {
+
+    static final Pane NONE = new Pane(Optional.empty(), 0L, Set.of(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
+            Set.of());
+
+    Pane {
+        select = Set.copyOf(select);
+        rows = List.copyOf(rows);
+        selected = Set.copyOf(selected);
+    }
+
+    /** Asking for {@code value}'s listing as {@code ticket}: what was listed before is no longer what is shown. */
+    Pane asking(Path value, Set<Path> then, long ticket) {
+        return new Pane(Optional.of(value), ticket, then, List.of(), today, zone, Set.of());
+    }
+
+    /** The folder shown, asked for again as {@code ticket}: what is selected is kept, as the list keeps it. */
+    Pane relisting(long ticket) {
+        return new Pane(folder, ticket, Set.of(), rows, today, zone, selected);
+    }
+
+    /** The folder's rows landed: of what was selected, only what is still there. */
+    Pane withRows(Listed l) {
+        Set<Path> still = new HashSet<>();
+        for (Row r : l.rows()) {
+            if (selected.contains(r.path())) {
+                still.add(r.path());
+            }
+        }
+        return new Pane(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still);
+    }
+
+    Pane withSelected(Set<Path> value) {
+        return new Pane(folder, asked, select, rows, today, zone, value);
+    }
+
+    /** The row at {@code path}, or none: one the list showed before this listing, or never. */
+    Optional<Row> row(Path path) {
+        for (Row r : rows) {
+            if (r.path().equals(path)) {
+                return Optional.of(r);
+            }
+        }
+        return Optional.empty();
+    }
+}

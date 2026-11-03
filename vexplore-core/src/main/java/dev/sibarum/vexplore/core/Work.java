@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Mark;
+import dev.sibarum.vexplore.core.Messages.Side;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -25,17 +26,18 @@ import java.util.Set;
  * @param aim     where a move or a copy would go
  * @param marks   the marks kept, newest first
  * @param dock    the preview asked for the dock
- * @param watched the folder watched, and what landed in it lately
+ * @param watched the folder each list's watch was asked for, and what landed in it lately
  */
 record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
-            Aim aim, List<Mark> marks, Dock dock, Watched watched) {
+            Aim aim, List<Mark> marks, Dock dock, Map<Side, Watched> watched) {
 
     static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of(),
-            Dock.NONE, Watched.NONE);
+            Dock.NONE, Map.of());
 
     Work {
         journal = Map.copyOf(journal);
         marks = List.copyOf(marks);
+        watched = Map.copyOf(watched);
     }
 
     /**
@@ -170,8 +172,15 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
         static final Dock NONE = new Dock(0L, Optional.empty());
     }
 
-    Work withWatched(Watched value) {
-        return new Work(trash, runs, running, entries, journal, aim, marks, dock, value);
+    /** The watch asked for the list on {@code side}, or none. */
+    Watched watched(Side side) {
+        return watched.getOrDefault(side, Watched.NONE);
+    }
+
+    Work withWatched(Side side, Watched value) {
+        Map<Side, Watched> next = new HashMap<>(watched);
+        next.put(side, value);
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, next);
     }
 
     /**

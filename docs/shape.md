@@ -531,3 +531,114 @@ Slice 2, the tag, built 2026-11-02:
 - **The tag is `Tags`, `ListView.marks` again outside the list** (FN-12): the set told whole, each name cell built with
   its tag shown or hidden and handed over by path, pruned by `realizedItems()`. Not the predicate the sketch half
   suggested: ListView's javadoc says why a predicate read in the frame is the wrong shape (threading.md, T7.2).
+
+## The messages M6 adds
+
+Proposed 2026-11-02, before any of it is written. M6 is Two Folders and the drag, as rebuild.md has it: two lists,
+a drop between them, copied or moved, undoable; then what 0.1 never built, a status per row and suggestions from the
+comparison, with the rail beside both lists. Screen 05 of the handoff is the picture. It is the largest milestone
+so far and changes the explorer's state the most, so four slices, each a commit with its test and its ottermate run:
+
+1. **Two lists.** *Two folders* in the top bar puts a second list beside the first, FROM on the left and TO on the
+   right, each with its own folder, listing, selection and watch. The tree, the breadcrumb and the path field drive
+   the side used last, which its header's tag shows; *Swap sides* and *Back to one folder* in the top bar. The rail
+   and the dock stay where they are and work from the side used. The status line counts both (`left 9 · right 6`).
+2. **The drag.** Rows dragged from one list and dropped on the other land in the folder it shows: planned by
+   `PlanAction`, so what would collide is left alone and said, then run by `RunAction`, said on the status line and
+   undone by Ctrl+Z, as an action from the card is. A move on one drive, a copy across two.
+3. **The comparison.** A STATUS column in both lists: *only here*, *only there*, *identical*, *probably identical*,
+   *newer here*, *older here*, from the two listings alone (the ruling's first tier: size and modified time). Worked
+   out in the explorer by a pure `Compare` in `-core`, tested without a window, at fifty thousand rows as M2's rail
+   was.
+4. **Suggestions from the comparison.** The rail's chips become the comparison's counts (`5 only here`,
+   `1 conflict`, `3 identical`), and its cards the handoff's: move what is only here to the other side, skip or remove
+   the identical copies, keep the newer of a conflict. Each states direction and counts before anything runs; the
+   card's button carries it out. Per the ruling, the rows a card would skip or remove as identical are hashed first,
+   by a `HashFiles` source with a count and a Stop, and only those.
+
+### The state
+
+The explorer's `State` is one folder's today (`folder`, `asked`, `select`, `rows`, `selected`, `today`, `zone`).
+Those become a **`Pane`** record, and `State` holds `from`, an `Optional<Pane> to` (none in one folder) and
+`used`, the `Side` the tree drives. Every step that reads `s.rows()` today reads the used pane's, so slice 1 is
+mostly that move, with ExplorerTest's 43 tests kept green across it before anything new is added. One ticket count
+serves both panes, so a `Listed`'s ticket says which side asked for it and `Listing`/`Listed` do not change.
+`Work.Watched` becomes one per side.
+
+### The messages
+
+`Side { FROM, TO }` is new, and three records gain it, since the view knows which list spoke and the explorer cannot
+tell from a path (both lists may show one folder):
+
+| Record | Change | Why |
+| --- | --- | --- |
+| `Chosen(Side side, Set<Path> paths)` | gains `side` | which list's selection |
+| `Activated(Side side, Path path)` | gains `side` | Enter in which list |
+| `Shown(Side side, Path folder, List<Row> rows, Set<Path> select)` | gains `side`; the state topic is keyed by it | each list keeps its latest |
+| `Summary(...)` | gains the other side's count, or none | `left 9 · right 6` |
+
+New, the view tells the explorer:
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `TwoFolders(boolean on)` | edge | the top bar's *Two folders* / *Back to one folder*. On, TO opens on the folder FROM shows, as 0.1 did |
+| `Swap()` | edge | *Swap sides* |
+| `Use(Side side)` | edge | a click in a list: the tree, breadcrumb, rail and dock now work from that side |
+| `Dropped(Side onto, List<Path> held)` | edge | rows from the other list let go on this one (slice 2) |
+
+New, the explorer tells the view:
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Pair(boolean two, Side used, DropEffect drop)` | state | whether there are two lists, which is used, and what a drop between them would do: `MOVE` on one drive, `COPY` across two, as the lists declare it |
+| `Compared(Map<Path, Relation> from, Map<Path, Relation> to)` | state | each row's status (slice 3); `Relation` an enum with its words |
+
+`Watch` and `Unwatch` gain `side`, and their topic is keyed by it, so the source runs once per side, as `@Source`
+says a keyed topic does. `Stirred`, `Freshness` and `Unwatched` already name their folder, which finds the side.
+`DropEffect` is the widget library's, so `-core` gains no GUI type: `Pair` carries `Plan.Op`, and the view maps it.
+
+### The drag, against the list
+
+Each list is `draggable` with its own payload type (`FROM_ROWS`, `TO_ROWS`) and `droppable` for the other's only,
+so a list never offers to take its own rows, and the label the pointer carries is honest. The effect is declared per
+list and replaces the last when declared again (`InputDispatcher.onDrop` is a put), so the view declares it again
+whenever `Pair` says the drives changed. **What the framework cannot do yet:** held Ctrl and Shift (0.1's copy and
+force-move) wait on FN-9, as the rail's intent keys do; and a drop on a folder row lands in the folder the list shows,
+not in that row's folder, since one list declares one effect for every row (an FN when slice 2 meets it, if it does).
+
+### The STATUS column, against the list
+
+A cell is built once from its row, and a row's status changes when the *other* folder changes, so the column has
+FN-12's problem again. `Tags` grows into the general shape FN-12 proposes, named sets of words for the rows realized
+(`new`, and one per `Relation`), and the STATUS cell takes its word from it. The rail's reach keeps the list's one
+marked set, which is what the handoff draws ("5 highlighted for the suggested move").
+
+### Not in M6
+
+- **The Carrying card and destinations while a drag goes** (screen 02). A drag's state is the list's (`watchDrag`),
+  and a view that tells the explorer every pointer move is not the shape. Proposed for after M6, with an FN if it
+  needs a drag topic.
+- **A filter per pane** (*videos only*, screen 05). The comparison respects the rows shown; a filter is its own slice.
+- **Drops from other programs**, deferred by the framework (transfer.md §10).
+- **Moving within one list onto a folder row.**
+- **Conflicts kept as `name (2).ext`**: slice 4's *keep the newer* needs `Plan` to rename the older copy aside, which
+  it does not do; if it is more than a step, it is left for a fifth slice and said then.
+
+## What M6 built differently
+
+Slice 1, two lists, built 2026-11-02:
+
+- **`State` holds two `Pane`s, and reads the used one** (`folder()`, `rows()`, `selected()` and the rest are methods
+  now), so the steps that know nothing of two folders read as before, and the 43 tests passed across the move before
+  any were added. `asker(ticket)` says which list a listing is for.
+- **`Menu` gained a side too**, beside `Chosen` and `Activated`: a right click on a row already selected changes no
+  selection, so the menu's choice is the only word of which list it was in.
+- **Selecting, opening or choosing from a list's menu uses it**, as a click does (`Use`), so the order of a click's
+  messages cannot leave the rail on the other list.
+- **The breadcrumb follows `Pair`**, which carries the used list's folder, rather than `Shown`, which is per list now.
+- **The view keeps the last `Pair`**, as it keeps the dock's feeds: which list the rail's reach is marked in, and
+  which side the counts are. `FolderList` is one list with its header and its `Tags`, built twice.
+- **A run lists both folders again**, since in Two Folders what it did may have reached either.
+- **Seen live, not solved: the names do not fit.** At 1440 px each list is about 395 px, and TYPE, SIZE and MODIFIED
+  keep their 21 rem, so NAME shrinks to its icon in both (framework-notes FN-8, which one folder meets only under
+  about 1000 px). Hiding the tree in Two Folders, as screen 05 does, gives NAME about 140 px; the choice is open.

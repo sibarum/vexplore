@@ -24,8 +24,20 @@ final class Landmarks {
     /** The tree of places, at the left. */
     static final String TREE = "tree";
 
-    /** The file list: a table of the folder's rows. */
+    /** The file list: a table of the folder's rows. In Two Folders, the FROM list, on the left. */
     static final String LIST = "list";
+
+    /** Two Folders' TO list, on the right; hidden in one folder. */
+    static final String LIST_TO = "list.to";
+
+    /** Each list's header in Two Folders: its side and its folder's name, in the accent on the list used. */
+    static final String HEADER_FROM = "list.from.header";
+    static final String HEADER_TO = "list.to.header";
+
+    /** The top bar's Two folders, and in Two Folders its Swap sides and Back to one folder. */
+    static final String TWO_FOLDERS = "top.two";
+    static final String SWAP = "top.swap";
+    static final String ONE_FOLDER = "top.one";
 
     /** The Suggestion Rail, at the right. */
     static final String RAIL = "rail";

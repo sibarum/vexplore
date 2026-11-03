@@ -171,11 +171,35 @@ class ViewTest {
         }
         go(sub);
         eventually("the rows", () -> wiring.ui().rows() == 3);
-        shell.bus().publish(Messages.CHOSEN_TOPIC, new Messages.Chosen(java.util.Set.of(sub.resolve("a.mp4"))));
+        shell.bus().publish(Messages.CHOSEN_TOPIC, new Messages.Chosen(Messages.Side.FROM, java.util.Set.of(sub.resolve("a.mp4"))));
         eventually("the rail", () -> !suggested.isEmpty() && !suggested.getLast().empty());
         assertEquals(1, suggested.getLast().reach().size());
         shell.bus().publish(Messages.PICKED_TOPIC, new Messages.Picked(Messages.Slot.SELECT, 1));
         eventually("all three", () -> suggested.getLast().reach().size() == 3);
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
+
+    @Test
+    void twoFoldersOpensASecondListAndSwapsIt() throws Exception {
+        List<Messages.Pair> pairs = new CopyOnWriteArrayList<>();
+        List<Messages.Shown> shown = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.PAIR_TOPIC, pairs::add);
+        shell.bus().subscribe(Messages.SHOWN_TOPIC, shown::add);
+        Path sub = Files.createDirectory(dir.resolve("left")).toAbsolutePath().normalize();
+        Files.writeString(sub.resolve("a.txt"), "a");
+        go(sub);
+        eventually("the rows", () -> wiring.ui().rows() == 1);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        eventually("TO listed", () -> shown.stream().anyMatch(s -> s.side() == Messages.Side.TO));
+        eventually("two", () -> !pairs.isEmpty() && pairs.getLast().two());
+        shell.bus().publish(Messages.USE_TOPIC, new Messages.Use(Messages.Side.TO));
+        eventually("TO used", () -> pairs.getLast().used() == Messages.Side.TO);
+        shell.bus().publish(Messages.SWAP_TOPIC, new Messages.Swap());
+        eventually("swapped", () -> pairs.getLast().used() == Messages.Side.FROM);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        eventually("one", () -> !pairs.getLast().two());
         for (int i = 0; i < 30; i++) {
             VexelApplication.frame(shell);
         }
