@@ -109,7 +109,7 @@ every message is in one file. Read these in this order.
 | `Messages.java` | **every message the parts send each other**, grouped by who sends it to whom, each record beside its topic. A record crosses as itself, so it holds only immutable values; a list it holds is copied in its constructor. |
 | `Explorer.java` | **the controller**: every decision (which folder to show, what a typed path names, what comes back next time) as a declared step on one immutable state, held by a ledger. Each message it hears runs one step. It needs no lock, because only its steps change its state and they run one at a time. |
 | `Pane.java` | one list's folder as the explorer knows it: its folder, listing ticket, rows and selection. `State` holds FROM's, and TO's in Two Folders. |
-| `ListFolder.java`, `ListPlaces.java`, `ListLevel.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
+| `ListFolder.java`, `ListPlaces.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
 | `Plan.java`, `Done.java`, `Operations.java` | what an action would do, what it did, and carrying it out: nothing overwritten, a delete into Vexplore's own trash, and an undo that is the reverse plan. |
 | `RunAction.java` | **the source** that carries out a plan, forward or back, on a thread of its own, with a count and a Stop. |
 | `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk; and keeps what landed in the last twenty seconds, for the *new* tag. |
@@ -125,10 +125,11 @@ every message is in one file. Read these in this order.
 | File | What belongs in it |
 | --- | --- |
 | `Recipes.java` | **what this module builds.** One `@Provides` method per part; `VexploreAppWiring`, which builds them and the components and jobs in order, is generated while it compiles. A part's phase is the latest phase of anything it takes, so there is none to declare. |
-| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenIn`, `Use`, `TwoFolders`, `Swap`). It answers the tree itself, through `ListPlaces` and `ListLevel`. It decides nothing else. |
+| `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenIn`, `Use`, `TwoFolders`, `Swap`, `Back`). It asks `ListPlaces` for the places itself, once the window opens. It decides nothing else. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
 | `Columns.java` | the list's columns, drawn from a row alone, and the *new* tag after a name. |
+| `Sidebar.java` | Orbit's sidebar: the places, flat, the one the folder shown is in filled, and the marks under them. |
 | `FolderList.java` | one file list with its header in Two Folders (FROM or TO, and the folder's name, in the accent while used) and its tags; `Ui` builds two. |
 | `Tags.java` | the rows tagged *new*: the list's second marked set, told whole, which a list cannot hold (FN-12). |
 | `DockPanel.java` | the Preview Dock under the list: one file's preview, or a note; every node built once. A picture or a video has Open in Rasterware under it. |
@@ -191,7 +192,7 @@ happened at least once. If the build cannot resolve them, that is why.
 | --- | --- |
 | `vexelray-framework-api`, `vexelray-gui-core` | all `-core` builds against: the framework's annotations, and the values (a span, a colour, the settings store) and the bus that are safe from any thread |
 | `vexelray-framework-shell`, `-automation`, `-processor` | the application edge, the driving socket, and the processor that checks both modules and writes the wiring |
-| `vexelray-gui-widget` | the widgets: `Breadcrumb`, `TreeView`, `Table`, `TextField`, `SplitPane`, `StatusBar`, `Button` (the rail's chips), `Cues` |
+| `vexelray-gui-widget` | the widgets: `Breadcrumb`, `ListView` (the places), `IconButton` (Back, Up, the view switch), `Table`, `TextField`, `SplitPane`, `StatusBar`, `Button` (the rail's chips), `Cues` |
 | `vexelray-gui-krono` | the clock: every transition and cue |
 | `vexelray-gui-automation` | driving the running app the way a person does — a debugging instrument |
 | `tactroller-atchung` | keyboard and pointer input onto an atchung bus (brings `atchung-core`) |

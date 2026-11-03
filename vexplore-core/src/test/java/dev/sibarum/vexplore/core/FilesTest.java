@@ -1,8 +1,6 @@
 package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Find;
-import dev.sibarum.vexplore.core.Messages.Level;
-import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Row;
@@ -57,15 +55,6 @@ class FilesTest {
         Listed l = new ListFolder().run(new Listing(1, dir.resolve("gone")));
         assertEquals(List.of(), l.rows());
         assertEquals("it is not there any more", l.problem());
-    }
-
-    @Test
-    void aLevelIsTheSubfoldersOnly() throws Exception {
-        Files.createDirectory(dir.resolve("b"));
-        Files.createDirectory(dir.resolve("A"));
-        Files.writeString(dir.resolve("c.txt"), "c");
-        Level level = new ListLevel().run(new LevelWanted(dir, dir));
-        assertEquals(List.of(dir.resolve("A"), dir.resolve("b")), level.folders());
     }
 
     private Row row(Path p) throws java.io.IOException {

@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore.core;
 
 import dev.sibarum.vexplore.core.Messages.Activated;
+import dev.sibarum.vexplore.core.Messages.Back;
 import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Card;
 import dev.sibarum.vexplore.core.Messages.Chip;
@@ -131,7 +132,8 @@ import java.util.Set;
         Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenIn.class, HandedOff.class,
-        Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class})
+        Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
+        Back.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
@@ -227,6 +229,12 @@ public final class Explorer {
         State asking(Path value, Set<Path> then) {
             return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
                     .withPane(used, pane().asking(value, then, tickets + 1));
+        }
+
+        /** Back, in the list used: its folder before this one asked for, nothing picked in it yet. */
+        State returning() {
+            return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
+                    .withPane(used, pane().returning(tickets + 1));
         }
 
         /** The list on {@code side} used from now: the rail is put down, since it was about the other list's rows. */
@@ -342,6 +350,7 @@ public final class Explorer {
         Step<State, Use> use = b.step("use", Explorer::used);
         Step<State, TwoFolders> twoFolders = b.step("twoFolders", Explorer::twoFolders);
         Step<State, Swap> swap = b.step("swap", Explorer::swap);
+        Step<State, Back> back = b.step("back", Explorer::back);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -373,7 +382,8 @@ public final class Explorer {
                 .on(Messages.FRESHNESS_TOPIC, freshness)
                 .on(Messages.USE_TOPIC, use)
                 .on(Messages.TWO_FOLDERS_TOPIC, twoFolders)
-                .on(Messages.SWAP_TOPIC, swap);
+                .on(Messages.SWAP_TOPIC, swap)
+                .on(Messages.BACK_TOPIC, back);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -482,6 +492,16 @@ public final class Explorer {
         return remember(show(s, n.folder(), Set.of(), out), out);
     }
 
+    /** The top bar's Back: the folder the list used showed before this one, and nothing when it showed none. */
+    private static State back(State s, Back b, Out out) {
+        if (s.pane().back().isEmpty()) {
+            return s;
+        }
+        State next = s.returning();
+        out.send(Messages.LISTING_TOPIC, new Listing(next.asked(), next.folder().get()));
+        return remember(next, out);
+    }
+
     /**
      * Ask for {@code folder}'s rows, to select {@code select} among them when they land. Nothing is shown until they do,
      * so the breadcrumb and the list never disagree about which folder this is.
@@ -529,7 +549,7 @@ public final class Explorer {
 
     /** Whether there are two lists, which is used, and its folder, for the breadcrumb and the top bar. */
     private static void pair(State s, Out out) {
-        out.send(Messages.PAIR_TOPIC, new Pair(s.to().isPresent(), s.used(), s.folder()));
+        out.send(Messages.PAIR_TOPIC, new Pair(s.to().isPresent(), s.used(), s.folder(), !s.pane().back().isEmpty()));
     }
 
     /**

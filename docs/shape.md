@@ -745,3 +745,25 @@ Slice 1, the look, built 2026-11-02:
 - **The tree sits on the ground**, as Orbit's places will in slice 2; the list, the dock and the rail are the panels.
 - **The family colours wait for the slice that draws them** (the list's rows in slice 5, the cards in 6), rather than
   sitting unused in `Look`.
+
+Slice 2, the frame, built 2026-11-02:
+
+- **The title bar stays a strip of its own.** Orbit draws the window's buttons in the top bar; the framework rules
+  that an application puts no control of its own in the caption (`WindowInstrument`), so the top bar is Back, Up, the
+  path's pill and the view switch, under it. A ruling, not a gap: no FN.
+- **Back is the explorer's** (`Back`, Alt+Left): each `Pane` keeps the folders it showed, newest first, twenty at most,
+  and `Pair` says whether there is one, which greys the button. A re-listing adds none. Up is `Navigate` to the parent,
+  as Alt+Up was.
+- **The view switch is two of Vexplore's icons**, `LIST` and `COLUMNS`, as toggles lit from `Pair`; *Gallery* joins it
+  with slice 6, not before, so no button does nothing. *Swap sides* is in TO's header, which both headers now share a
+  height with.
+- **The places are a `ListView` on the ground** (`Sidebar`), asked of `ListPlaces` when the main window opens: a send
+  from the view's constructor reached nothing. A place clicked or entered is a `Navigate`; the place filled is the
+  deepest one above the folder shown, so the scratch Downloads under `AppData` fills `C:`, not Downloads. Its icons are
+  the suite's, a family's, or `VexploreIcon.DRIVE`.
+- **The tree's levels are gone**: `ListLevel`, `LevelWanted` and `Level`, with the tree.
+- **The pill path is the breadcrumb in a pill.** Orbit fills the current segment violet; `Breadcrumb` draws the
+  current segment as text with a role and no hook for its fill, so it stays as the breadcrumb draws it. Not an FN
+  yet: worth one only if the fill is wanted.
+- **Not fixed: the names in Two Folders.** Without the tree each list gained 25 px, and NAME is still its icon (FN-8,
+  TODO).

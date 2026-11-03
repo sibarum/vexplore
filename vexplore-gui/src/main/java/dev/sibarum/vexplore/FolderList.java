@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
  */
 final class FolderList {
 
+    private final Gui gui;
     private final Table<Row> table;
     private final Tags tags = new Tags();
     private final Node header;
@@ -33,6 +34,7 @@ final class FolderList {
     private final Node column;
 
     FolderList(Gui gui, String landmark, String headerLandmark, String sideWord) {
+        this.gui = gui;
         table = new Table<>(gui, Columns.ROW_REM, Columns.of(tags)).name(landmark)
                 .headers(Type.MONO, Type.SMALL, Role.DIM);
         table.node().width(Length.FILL).height(Length.FILL);
@@ -46,7 +48,8 @@ final class FolderList {
 
         side = gui.text(sideWord).font(Type.MONO).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(false);
         name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
-        header = gui.row().width(Length.FILL).padding(Type.TIGHT, Type.SIDE).gap(Length.rem(0.75f))
+        header = gui.row().width(Length.FILL).height(Length.rem(2.25f)).padding(Length.ZERO, Type.SIDE)
+                .gap(Length.rem(0.75f))
                 .alignItems(AlignItems.CENTER).scroll(false, false).clip(true).children(side, name);
         header.visible(false);
         gui.landmark(headerLandmark, header);
@@ -99,6 +102,12 @@ final class FolderList {
         }
         Path n = s.folder().getFileName();
         name.text(n == null ? s.folder().toString() : n.toString());
+    }
+
+    /** Put {@code control} at the header's far end: TO's Swap sides. Shown with the header. */
+    void append(Node control) {
+        header.append(gui.row().width(Length.grow(1f)));
+        header.append(control);
     }
 
     /** The header shown or not, and in the accent while this is the list used. */

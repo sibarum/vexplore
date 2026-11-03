@@ -128,6 +128,10 @@ left NAME 1.5 rem and every other column whole. At 1024 px and above it does not
 width given to the other three survives a narrow enough window, and the rail's share (FN-2) already gives the list two
 thirds of what the tree leaves.
 
+Two Folders (M6) meets it at every width: two lists share what one had, and at 1440 px with the places and the rail
+beside them each is about 390 px, so NAME is its icon in both. Taking the tree away for Orbit's places (M8) gave back
+50 px, not enough.
+
 **For the framework:** a minimum per column (`Column.of(..., Length.grow(1)).min(Length.rem(12))`), with the fixed
 columns giving way past it, last column first. Every table whose one growing column is its identity meets it.
 

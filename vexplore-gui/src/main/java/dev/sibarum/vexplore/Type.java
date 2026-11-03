@@ -43,12 +43,12 @@ final class Type {
     static final Length HEADING = Length.rem(1.0625f);
 
     // ------------------------------------------------------------------ regions, from the handoff at 1440 x 900
-
+    /** The top bar: Back and Up, the path's pill, and the view switch. Orbit's 64 px. */
     /** The top bar: the breadcrumb, or the path field in its place. 48 px. */
     static final Length TOP_BAR = Length.rem(3f);
 
-    /** The tree's width on a first run. 250 px. */
-    static final Length TREE = Length.rem(15.625f);
+    /** The places' width on a first run: Orbit's sidebar, 200 px. */
+    static final Length SIDEBAR = Length.rem(12.5f);
 
     /**
      * The Suggestion Rail's width on a first run: a third of the room beside the tree, which is the handoff's 400 of

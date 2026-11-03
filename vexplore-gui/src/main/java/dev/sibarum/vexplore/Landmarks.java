@@ -21,8 +21,15 @@ final class Landmarks {
     /** The path field, in the breadcrumb's place while Ctrl+L has it: type a folder, or a file to show its folder. */
     static final String PATH = "path";
 
-    /** The tree of places, at the left. */
-    static final String TREE = "tree";
+    /** The places, flat, beside the list (Orbit's sidebar, M8). */
+    static final String PLACES = "places";
+
+    /**
+     * The marks under the places, each row numbered from 0: {@code mark.0} recalls the newest, {@code mark.forget.0}
+     * forgets it.
+     */
+    static final String MARK = "mark";
+    static final String FORGET = "mark.forget";
 
     /** The file list: a table of the folder's rows. In Two Folders, the FROM list, on the left. */
     static final String LIST = "list";
@@ -34,10 +41,15 @@ final class Landmarks {
     static final String HEADER_FROM = "list.from.header";
     static final String HEADER_TO = "list.to.header";
 
-    /** The top bar's Two folders, and in Two Folders its Swap sides and Back to one folder. */
+    /**
+     * The top bar's Back and Up, and its view switch: List, one folder, and Two folders. Swap sides is in the TO list's
+     * header.
+     */
+    static final String BACK = "top.back";
+    static final String UP = "top.up";
+    static final String ONE_FOLDER = "top.list";
     static final String TWO_FOLDERS = "top.two";
-    static final String SWAP = "top.swap";
-    static final String ONE_FOLDER = "top.one";
+    static final String SWAP = "list.to.swap";
 
     /** The Suggestion Rail, at the right. */
     static final String RAIL = "rail";
@@ -57,9 +69,6 @@ final class Landmarks {
     /** The Destination row's {@code Choose folder…}: the system's folder picker. */
     static final String RAIL_CHOOSE = "rail.choose";
 
-    /** The marks, each row numbered from 0: {@code rail.mark.0} recalls the newest, {@code rail.forget.0} forgets it. */
-    static final String RAIL_MARK = "rail.mark";
-    static final String RAIL_FORGET = "rail.forget";
 
     /** The card's headline: the effect, first ({@code Move 9 files · 6.5 GB}). */
     static final String RAIL_CARD = "rail.card";

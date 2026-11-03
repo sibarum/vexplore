@@ -18,7 +18,6 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 
 - [ ] Going up (Backspace, Alt+Up, a breadcrumb segment) selects nothing; an explorer selects the folder you came
       from. `Navigate` would carry the row to select, as `Shown` already does.
-- [ ] The tree does not follow the folder shown: navigating from the list leaves its selection where it was.
 - [ ] Places on Linux are the Windows names under home; 0.1 read the XDG user directories (`ListPlaces`).
 - [ ] A list row's accessible name leaves out the file name (`row "FOLDER Today 22:16"`), so a script cannot
       find a row by name. The name cell is an icon and text in a row box; find out what the table names a row from.
@@ -28,8 +27,9 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
       already the names a script would use. One scripted run through the main path is worth more than several
       unit tests of the view.
 - [ ] Held Shift and Control as intent (0.1's `Intents`): waits for a modifiers topic (framework-notes FN-9).
-- [ ] **Two Folders: NAME shrinks to its icon in both lists** at 1440 px, the tree, both lists and the rail sharing
-      the width (FN-8). Hide the tree there, as screen 05 does, or wait on FN-8.
+- [ ] **Two Folders: NAME shrinks to its icon in both lists** at 1440 px, the places, both lists and the rail
+      sharing the width (FN-8). The tree is gone (M8), and it still does not fit: wait on FN-8, or give Two Folders
+      fewer or narrower columns.
 - [ ] In a window under about 1000 px wide at zoom 1, the list's NAME column shrinks to its icon while TYPE, SIZE and
       MODIFIED stay whole (framework-notes FN-8).
 - [ ] `Picked` is a chip's place, resolved against the rail the explorer last sent. A listing that lands in the frame

@@ -810,7 +810,7 @@ class ExplorerTest {
     void twoFoldersOpensToOnTheFolderFromShows() {
         showing(dir, file("a.txt", 1));
         tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
-        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir)), seen(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir), false), seen(Messages.Pair.class).getLast());
         Listing to = asked();
         assertEquals(dir, to.folder());
         tell(Messages.LISTED_TOPIC, new Listed(to.ticket(), dir, List.of(file("a.txt", 1)), null, TODAY, UTC));
@@ -824,13 +824,14 @@ class ExplorerTest {
     void theListClickedIsTheOneTheTreeDrives() {
         twoFolders(file("a.txt", 1), folder("sub"));
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.TO, Set.of(path("a.txt"))));
-        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(dir)), took(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(dir), false), took(Messages.Pair.class).getLast());
         tell(Messages.NAVIGATE_TOPIC, new Navigate(path("sub")));
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(), null, TODAY, UTC));
         assertEquals(List.of(new Shown(Side.TO, path("sub"), List.of(), Set.of())), seen(Shown.class));
-        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(path("sub"))), took(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(path("sub")), true),
+                took(Messages.Pair.class).getLast());
         tell(Messages.USE_TOPIC, new Messages.Use(Side.FROM));
-        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir)), took(Messages.Pair.class).getLast(),
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(dir), false), took(Messages.Pair.class).getLast(),
                 "FROM still shows the folder it did");
     }
 
@@ -867,8 +868,8 @@ class ExplorerTest {
         tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(), null, TODAY, UTC));
         sent.clear();
         tell(Messages.SWAP_TOPIC, new Messages.Swap());
-        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(path("sub"))), seen(Messages.Pair.class).getLast(),
-                "sub is still used, now on the left");
+        assertEquals(new Messages.Pair(true, Side.FROM, Optional.of(path("sub")), true),
+                seen(Messages.Pair.class).getLast(), "sub is still used, now on the left");
         List<Shown> shown = seen(Shown.class);
         assertTrue(shown.contains(new Shown(Side.FROM, path("sub"), List.of(), Set.of())));
         assertTrue(shown.contains(new Shown(Side.TO, dir, List.of(file("a.txt", 1)), Set.of())));
@@ -883,8 +884,51 @@ class ExplorerTest {
         sent.clear();
         tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
         assertEquals(List.of(new Messages.Unwatch(Side.TO)), seen(Messages.Unwatch.class));
-        assertEquals(new Messages.Pair(false, Side.FROM, Optional.of(dir)), took(Messages.Pair.class).getLast());
+        assertEquals(new Messages.Pair(false, Side.FROM, Optional.of(dir), false), took(Messages.Pair.class).getLast());
         tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.TO, dir));
         assertTrue(seen(Listing.class).isEmpty(), "there is no TO to list");
+    }
+
+    // ------------------------------------------------------------------ Back
+
+    private void listed(Path folder) {
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), folder, List.of(), null, TODAY, UTC));
+    }
+
+    @Test
+    void backGoesToTheFoldersShownBeforeNewestFirst() {
+        tell(Messages.BACK_TOPIC, new Messages.Back());
+        assertTrue(seen(Listing.class).isEmpty(), "nothing shown before");
+        for (String name : List.of("a", "b", "c")) {
+            tell(Messages.NAVIGATE_TOPIC, new Navigate(path(name)));
+            listed(path(name));
+        }
+        assertTrue(took(Messages.Pair.class).getLast().back(), "Back has somewhere to go");
+        tell(Messages.BACK_TOPIC, new Messages.Back());
+        assertEquals(path("b"), seen(Listing.class).getLast().folder());
+        listed(path("b"));
+        tell(Messages.BACK_TOPIC, new Messages.Back());
+        assertEquals(path("a"), seen(Listing.class).getLast().folder());
+        listed(path("a"));
+        assertFalse(took(Messages.Pair.class).getLast().back(), "a was the first");
+    }
+
+    @Test
+    void backKeepsTwentyAndForgetsNoneForARelisting() {
+        for (int i = 0; i < 25; i++) {
+            tell(Messages.NAVIGATE_TOPIC, new Navigate(path("f" + i)));
+            listed(path("f" + i));
+        }
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.FROM, path("f24")));
+        listed(path("f24"));
+        sent.clear();
+        for (int i = 23; i >= 4; i--) {
+            tell(Messages.BACK_TOPIC, new Messages.Back());
+            Listing back = asked();
+            assertEquals(path("f" + i), back.folder());
+            tell(Messages.LISTED_TOPIC, new Listed(back.ticket(), back.folder(), List.of(), null, TODAY, UTC));
+        }
+        tell(Messages.BACK_TOPIC, new Messages.Back());
+        assertTrue(seen(Listing.class).isEmpty(), "twenty kept, and a stir's listing added none");
     }
 }

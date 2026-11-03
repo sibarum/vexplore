@@ -80,6 +80,12 @@ public final class Messages {
     public record Activated(Side side, Path path) {
     }
 
+    /** The top bar's Back, or Alt+Left: the folder the list used showed before this one. */
+    public static final Topic<Back> BACK_TOPIC = Topic.edge(Back.class);
+
+    public record Back() {
+    }
+
     /** The top bar's Two folders ({@code on}) or Back to one folder. */
     public static final Topic<TwoFolders> TWO_FOLDERS_TOPIC = Topic.edge(TwoFolders.class);
 
@@ -246,12 +252,12 @@ public final class Messages {
     }
 
     /**
-     * Whether there are two lists, which is used, and the used list's folder, which the breadcrumb and the path field
-     * show, or none before the first listing. The latest is all that matters.
+     * Whether there are two lists, which is used, the used list's folder, which the breadcrumb and the path field show
+     * (none before the first listing), and whether that list has a folder to go Back to. The latest is all that matters.
      */
     public static final Topic<Pair> PAIR_TOPIC = Topic.state(Pair.class);
 
-    public record Pair(boolean two, Side used, Optional<Path> at) {
+    public record Pair(boolean two, Side used, Optional<Path> at, boolean back) {
     }
 
     /** Say something on the status line. {@code alert}: something was refused or failed, so draw the eye to it. */
@@ -603,20 +609,20 @@ public final class Messages {
         }
     }
 
-    // ------------------------------------------------------------------ the view and its jobs: the tree
+    // ------------------------------------------------------------------ the view and its jobs: the places
 
     /*
-     * The tree of places is the view's and its jobs', never the explorer's: the tree asks for a level, the view asks a
-     * job, and the answer goes back to the tree. A row clicked there is a Navigate like any other.
+     * The places beside the list (Orbit's sidebar, M8) are the view's and its job's, never the explorer's: the view asks
+     * once, and a place clicked is a Navigate like any other.
      */
 
-    /** The tree's top ({@link ListPlaces}). */
+    /** The places ({@link ListPlaces}). */
     public static final Topic<PlacesWanted> PLACES_WANTED_TOPIC = Topic.edge(PlacesWanted.class);
 
     public record PlacesWanted() {
     }
 
-    /** A place at the tree's top: where it is, and what its row says ({@code Documents}, {@code C:}). */
+    /** A place: where it is, and what its row says ({@code Documents}, {@code C:}). */
     public record Place(Path path, String label) {
     }
 
@@ -626,24 +632,6 @@ public final class Messages {
     public record Places(List<Place> places) {
         public Places {
             places = List.copyOf(places);
-        }
-    }
-
-    /**
-     * The subfolders of {@code folder}, reached in the tree from the place at {@code place} ({@link ListLevel}). The
-     * place is carried through so the same folder under two places is two rows, not one row in two places.
-     */
-    public static final Topic<LevelWanted> LEVEL_WANTED_TOPIC = Topic.edge(LevelWanted.class);
-
-    public record LevelWanted(Path place, Path folder) {
-    }
-
-    /** {@code folders}, by name; empty for a folder that has none or cannot be read. */
-    public static final Topic<Level> LEVEL_TOPIC = Topic.edge(Level.class);
-
-    public record Level(Path place, Path folder, List<Path> folders) {
-        public Level {
-            folders = List.copyOf(folders);
         }
     }
 }

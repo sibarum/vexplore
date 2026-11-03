@@ -2,6 +2,7 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.Intent.Command;
 import dev.sibarum.vexplore.core.Messages.Activated;
+import dev.sibarum.vexplore.core.Messages.Back;
 import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Destine;
@@ -9,8 +10,6 @@ import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Fresh;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Go;
-import dev.sibarum.vexplore.core.Messages.Level;
-import dev.sibarum.vexplore.core.Messages.LevelWanted;
 import dev.sibarum.vexplore.core.Messages.Marks;
 import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
@@ -19,6 +18,7 @@ import dev.sibarum.vexplore.core.Messages.OpenIn;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
+import dev.sibarum.vexplore.core.Messages.Place;
 import dev.sibarum.vexplore.core.Messages.PlacesWanted;
 import dev.sibarum.vexplore.core.Messages.RecallMark;
 import dev.sibarum.vexplore.core.Messages.Recorded;
@@ -38,6 +38,7 @@ import dev.sibarum.vexplore.core.Messages.Use;
 import dev.sibarum.vexplore.core.Preview;
 import dev.vexelray.framework.api.Subscribe;
 import dev.vexelray.framework.core.PickFile;
+import dev.vexelray.framework.core.WindowOpened;
 import dev.vexelray.gui.core.Feed;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.edit.History;
@@ -48,7 +49,6 @@ import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.ListView;
 import dev.vexelray.gui.widget.Table;
 import dev.vexelray.gui.widget.TextField;
-import dev.vexelray.gui.widget.TreeView;
 import sibarum.atchung.Sender;
 import sibarum.tactroller.api.Key;
 import sibarum.tactroller.api.Modifier;
@@ -65,9 +65,9 @@ import java.util.Optional;
  * <p>Every decision is the {@code Explorer}'s, in {@code -core}: what a typed path names, which folder to show, what a
  * row activated does. This turns the explorer's messages into widgets ({@code Shown} is the breadcrumb and the list,
  * {@code Summary} the status line's counts, {@code Suggested} the rail) and the person's gestures into messages
- * ({@code Go}, {@code Navigate}, {@code Chosen}, {@code Activated}, {@code Picked}). The one thing it answers itself
- * is the tree of places, which is the view's and its jobs': the tree asks, the view asks {@code ListPlaces} or
- * {@code ListLevel}, and the answer goes back to the tree.
+ * ({@code Go}, {@code Navigate}, {@code Chosen}, {@code Activated}, {@code Picked}). The one thing it asks itself is
+ * the places beside the list, which are the view's and its job's: it asks {@code ListPlaces} once, and a place
+ * clicked is a {@code Navigate} like any other.
  *
  * <h2>Everything it hears is a message, in the frame</h2>
  *
@@ -118,8 +118,7 @@ final class View {
     private final Sender<TwoFolders> twoFolders;
     private final Sender<Swap> swap;
     private final Sender<PlacesWanted> placesWanted;
-    private final Sender<LevelWanted> levelWanted;
-    private final Sender<TreeView.Children> children;
+    private final Sender<Back> back;
     private final Sender<Intent> intents;
 
     /** The dock's picture, and the one it replaced, which may still be fading out: the view's to give back. */
@@ -130,14 +129,14 @@ final class View {
      * Whether there are two lists and which is used, as the explorer last said: which list the rail's reach is marked
      * in, and which side the counts are.
      */
-    private Pair pair = new Pair(false, Side.FROM, Optional.empty());
+    private Pair pair = new Pair(false, Side.FROM, Optional.empty(), false);
 
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenIn> openIn, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
-         Sender<PlacesWanted> placesWanted, Sender<LevelWanted> levelWanted, Sender<TreeView.Children> children,
+         Sender<PlacesWanted> placesWanted, Sender<Back> back,
          Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
@@ -161,8 +160,7 @@ final class View {
         this.twoFolders = twoFolders;
         this.swap = swap;
         this.placesWanted = placesWanted;
-        this.levelWanted = levelWanted;
-        this.children = children;
+        this.back = back;
         this.intents = intents;
         shortcuts();
     }
@@ -178,6 +176,7 @@ final class View {
         chord(Shortcut.of(Key.L, Modifier.CONTROL), Command.EDIT_PATH);
         gui.claim(ui.pathNode(), Shortcut.of(Key.ESCAPE), ClaimScope.FOCUSED, intents, new Intent(Command.CLOSE_PATH));
         chord(Shortcut.of(Key.UP, Modifier.ALT), Command.UP);
+        chord(Shortcut.of(Key.LEFT, Modifier.ALT), Command.BACK);
         for (Side side : Side.values()) {
             gui.claim(ui.rowsNode(side), Shortcut.of(Key.BACKSPACE), ClaimScope.FOCUSED, intents,
                     new Intent(Command.UP));
@@ -231,14 +230,22 @@ final class View {
 
     // ------------------------------------------------------------------ what the jobs answer
 
+    /**
+     * The main window is open: ask for the places, once, as the explorer asks for the session on the same message. Not
+     * as the view is built, when nothing would hear the ask yet; and a test that builds the tree headless, which never
+     * opens a window, asks for none.
+     */
     @Subscribe
-    public void places(Places m) {
-        children.send(ui.places(m));
+    public void opened(WindowOpened m) {
+        if (m.main()) {
+            placesWanted.send(new PlacesWanted());
+        }
     }
 
+    /** The places, for the sidebar. */
     @Subscribe
-    public void level(Level m) {
-        children.send(ui.level(m));
+    public void places(Places m) {
+        ui.places(m);
     }
 
     // ------------------------------------------------------------------ what the widgets say
@@ -262,28 +269,6 @@ final class View {
         }
     }
 
-    /** The tree wants a level: its top is the places, and below that a folder's subfolders. */
-    @Subscribe
-    public void treeWanted(TreeView.ChildrenWanted m) {
-        if (!m.tree().equals(ui.treeAddress())) {
-            return;
-        }
-        LevelWanted wanted = Ui.wanted(m.parent());
-        if (wanted == null) {
-            placesWanted.send(new PlacesWanted());
-        } else {
-            levelWanted.send(wanted);
-        }
-    }
-
-    /** A row of the tree, clicked or walked to: show that folder, and keep the keyboard in the tree for the walk. */
-    @Subscribe
-    public void treeSelected(TreeView.Selected m) {
-        if (m.tree().equals(ui.treeAddress()) && m.item() instanceof Ui.Spot s) {
-            navigate.send(new Navigate(s.folder()));
-        }
-    }
-
     /** A list's selection, as paths, and which list: the explorer counts it. */
     @Subscribe
     public void listSelected(Table.Selected m) {
@@ -293,21 +278,28 @@ final class View {
         }
     }
 
-    /** Enter or a double click on a row: the explorer goes into a folder or opens a file. */
+    /** Enter or a double click on a row: the explorer goes into a folder or opens a file. Enter on a place goes there. */
     @Subscribe
     public void rowActivated(ListView.Activated m) {
         Side side = ui.rowsSide(m.list());
         if (side != null && m.item() instanceof Row r) {
             activated.send(new Activated(side, r.path()));
+        } else if (m.list().equals(ui.placesAddress()) && m.item() instanceof Place p) {
+            navigate.send(new Navigate(p.path()));
         }
     }
 
-    /** A click in a list: the explorer works from that one now, even when the click changed no selection. */
+    /**
+     * A click in a list: the explorer works from that one now, even when the click changed no selection. A click on a
+     * place goes there, in the list used.
+     */
     @Subscribe
     public void rowClicked(ListView.Clicked m) {
         Side side = ui.rowsSide(m.list());
         if (side != null) {
             use.send(new Use(side));
+        } else if (m.list().equals(ui.placesAddress()) && m.item() instanceof Place p) {
+            navigate.send(new Navigate(p.path()));
         }
     }
 
@@ -341,6 +333,10 @@ final class View {
             stop.send(new Stop());
         } else if (ui.openIn(m.button())) {
             openIn.send(new OpenIn());
+        } else if (ui.back(m.button())) {
+            back();
+        } else if (ui.up(m.button())) {
+            up();
         } else if (ui.twoFolders(m.button())) {
             twoFolders.send(new TwoFolders(true));
         } else if (ui.oneFolder(m.button())) {
@@ -420,12 +416,20 @@ final class View {
         ui.closePath(pair.used());
     }
 
-    /** Backspace in the list, or Alt+Up: the folder this one is in. A drive's root has none, and nothing happens. */
+    /**
+     * Backspace in the list, Alt+Up, or the top bar's Up: the folder this one is in. A drive's root has none, and
+     * nothing happens.
+     */
     void up() {
         Path shown = ui.shown();
         if (shown != null && shown.getParent() != null) {
             navigate.send(new Navigate(shown.getParent()));
         }
+    }
+
+    /** Alt+Left, or the top bar's Back: the folder shown before this one, which is the explorer's to know. */
+    void back() {
+        back.send(new Back());
     }
 
     /** In ({@code 1}), out ({@code -1}), or back to where it started ({@code 0}). */

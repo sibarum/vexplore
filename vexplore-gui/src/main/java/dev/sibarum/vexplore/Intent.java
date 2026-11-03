@@ -33,6 +33,12 @@ record Intent(Command command) {
                 view.up();
             }
         },
+        BACK {
+            @Override
+            void on(View view) {
+                view.back();
+            }
+        },
         ZOOM_IN {
             @Override
             void on(View view) {
