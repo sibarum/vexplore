@@ -152,14 +152,21 @@ final class Ui {
         // The dock under the list, the sized pane of their split so a taller window gives the list the room: the
         // handoff's screen 03. The rail stays beside both.
         dock = new DockPanel(gui);
-        SplitPane listing = new SplitPane(gui, SplitPane.Orientation.STACKED, region(Look.LIST, lists),
-                dock.node()).sized(SplitPane.Pane.SECOND).size(Type.DOCK).minFirst(Type.LIST_MIN_HEIGHT);
+        // Orbit's panels: the list, the dock and the rail each a rounded panel on the ground, the gaps between them the
+        // splits' gutters, so the gap is what a pointer drags. The tree sits on the ground itself, as Orbit's places do.
+        Node listPanel = region(Look.LIST, lists).corner(Look.PANEL_CORNER).clip(true);
+        SplitPane listing = new SplitPane(gui, SplitPane.Orientation.STACKED, listPanel,
+                dock.node()).sized(SplitPane.Pane.SECOND).size(Type.DOCK).minFirst(Type.LIST_MIN_HEIGHT)
+                .gutter(Look.GAP).line(Look.SEAM);
         SplitPane work = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, listing.node(), rail.node())
                 .sized(SplitPane.Pane.SECOND).size(Type.RAIL)
-                .minFirst(Type.LIST_MIN).minSecond(Type.RAIL_MIN);
+                .minFirst(Type.LIST_MIN).minSecond(Type.RAIL_MIN)
+                .gutter(Look.GAP).line(Look.SEAM);
         SplitPane body = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.CHROME, tree.node()),
-                work.node()).size(Type.TREE);
+                work.node()).size(Type.TREE).gutter(Look.GAP).line(Look.SEAM);
         body.node().width(Length.FILL).height(Length.grow(1f));
+        Node ground = gui.column().width(Length.FILL).height(Length.grow(1f)).padding(Length.ZERO, Look.GAP)
+                .children(body.node());
 
         status = new StatusBar(gui)
                 .slot(Landmarks.STATUS_COUNTS, StatusBar.Side.LEFT, "")
@@ -170,7 +177,7 @@ final class Ui {
 
         gui.root().direction(Direction.COLUMN)
                 .background(gui.theme().color(Role.PAGE))
-                .children(titleBar.node(), top, body.node(), status.node());
+                .children(titleBar.node(), top, ground, status.node());
     }
 
     /** A region of the body: a column of its token's colour, holding its one widget. */

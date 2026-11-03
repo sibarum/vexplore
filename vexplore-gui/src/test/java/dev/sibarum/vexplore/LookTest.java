@@ -55,15 +55,14 @@ class LookTest {
     }
 
     /**
-     * The design system's tokens the ladder is meant to land on, each within 0.01 of Oklab lightness: rung 1 is
-     * {@code bg-1}, 2 is {@code card}, 3 is {@code raised}; the ink's first fade is {@code text-dim}. A token that
-     * drifts from its rung is a decision to make, not a rounding to absorb.
+     * Orbit's surfaces the ladder is meant to land on, each within 0.01 of Oklab lightness: rung 1 is the panel, 2 the
+     * card, 3 the raised control. A colour that drifts from its rung is a decision to make, not a rounding to absorb.
      */
     @Test
     void theLadderLandsOnTheTokens() {
-        assertNear(0x15121d, Look.PALETTE.surface(1), "bg-1");
-        assertNear(0x1c1827, Look.PALETTE.surface(2), "card");
-        assertNear(0x221d2f, Look.PALETTE.surface(3), "raised");
+        assertNear(0x15131c, Look.PALETTE.surface(1), "panel");
+        assertNear(0x1b1824, Look.PALETTE.surface(2), "card");
+        assertNear(0x221f2e, Look.PALETTE.surface(3), "raised");
     }
 
     private static void assertNear(int token, Color rung, String name) {

@@ -111,7 +111,8 @@ final class DockPanel {
         Node content = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(0.8f))
                 .scroll(true, true).clip(true).children(note, stage, measure, body);
         node = gui.column().width(Length.FILL).height(Length.FILL).padding(Length.rem(0.9f), Length.rem(1.25f))
-                .gap(Length.rem(0.8f)).background(Look.CHROME).clip(true).children(header, content);
+                .gap(Length.rem(0.8f)).background(Look.LIST).corner(Look.PANEL_CORNER).clip(true)
+                .children(header, content);
         gui.landmark(Landmarks.DOCK, node);
         show(new Docked(java.util.Optional.empty(), "Select one file to see it here"));
     }

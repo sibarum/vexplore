@@ -723,11 +723,25 @@ Six are Vexplore's: `GALLERY`, `LIST`, `COLUMNS` (two folders), `DRIVE`, `MOVE`,
 - **Search** is on the board and is not a feature Vexplore has. It is left out rather than drawn as a button that
   does nothing, and proposed for after M8.
 
-### For you to rule
+### Ruled 2026-11-02, as recommended
 
-1. **Orbit's palette becomes `Look`'s tokens**, replacing the design system's that M0 used, with the seven family
+1. **Orbit's palette is `Look`'s tokens**, replacing the design system's that M0 used, with the seven family
    colours beside them. Recommended: yes, since the palette is most of what Orbit is.
 2. **The selected card's ring.** Orbit draws it amber. Vexplore's rule since M0 is violet for what you chose and amber
    for what Vexplore suggests (the basis chip, a new file). Recommended: violet, as the place and the path already
    are on the board.
 3. **The gallery waits on the framework** (above). Recommended: yes, slices 1 to 5 first.
+
+## What M8 built differently
+
+Slice 1, the look, built 2026-11-02:
+
+- **Orbit's ground, ink, violet and rose are `Look`'s anchors**, and the ladder steps 0.032 rather than the design
+  system's 0.03, the step that lands Orbit's panel, card and raised colours each within 0.01 (`LookTest`). The ink
+  fades 0.30 a rung, to Orbit's dim text.
+- **The gaps are the splits' gutters**, 12 px of ground with a 1 px seam down the middle, so the gap between two panels
+  is what a pointer drags, and the seam is what lights under it. Orbit draws no line; a hairline is the least that
+  still answers the pointer.
+- **The tree sits on the ground**, as Orbit's places will in slice 2; the list, the dock and the rail are the panels.
+- **The family colours wait for the slice that draws them** (the list's rows in slice 5, the cards in 6), rather than
+  sitting unused in `Look`.

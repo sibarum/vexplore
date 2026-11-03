@@ -164,7 +164,7 @@ final class RailPanel {
                 .children(header, empty, selects, conditions, actions, places, marks);
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
-                .background(Look.RAIL).scroll(false, false).clip(true)
+                .background(Look.RAIL).corner(Look.PANEL_CORNER).scroll(false, false).clip(true)
                 .children(steps, card);
         gui.landmark(Landmarks.RAIL, node);
         show(Suggested.NONE);
