@@ -335,7 +335,7 @@ public final class Suggestions {
         long above = stepBelow(scoped);
         long limit = above > 0 ? above : STEPS[0];
         List<Option<Condition>> conditions = new ArrayList<>();
-        conditions.add(new Option<>(Condition.ALL, "All", scoped.size()));
+        conditions.add(new Option<>(Condition.ALL, "Always", scoped.size()));
         long modifiedToday = scoped.stream().filter(e -> Condition.MODIFIED_TODAY.admits(e, basis, limit)).count();
         if (modifiedToday > 0 && modifiedToday < scoped.size()) {
             conditions.add(new Option<>(Condition.MODIFIED_TODAY, "If modified today", (int) modifiedToday));

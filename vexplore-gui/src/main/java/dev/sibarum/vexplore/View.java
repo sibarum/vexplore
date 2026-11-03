@@ -324,10 +324,16 @@ final class View {
         }
     }
 
-    /** The card's button carries out what it states; its Stop ends the run between two steps. */
+    /**
+     * The card's button carries out what it states; its Stop ends the run between two steps. A tile of the rail's Then
+     * picks its action, as a chip did.
+     */
     @Subscribe
     public void pressed(Button.Pressed m) {
-        if (ui.go(m.button())) {
+        Picked tile = ui.tile(m.button());
+        if (tile != null) {
+            picked.send(tile);
+        } else if (ui.go(m.button())) {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {
             stop.send(new Stop());

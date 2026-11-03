@@ -4,56 +4,73 @@ import dev.sibarum.vexplore.core.Messages.Chip;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Suggested;
+import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.vexelray.gui.core.Gui;
+import dev.vexelray.gui.core.IconSource;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
+import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.fileicons.FileFamily;
+import dev.vexelray.gui.icons.Icon;
+import dev.vexelray.gui.icons.IconView;
 import dev.vexelray.gui.widget.Button;
+import dev.vexelray.gui.widget.IconButton;
 import dev.vexelray.gui.widget.TextField;
+import dev.vexelray.text.TextLayout.HAlign;
+import dev.vexelray.text.TextLayout.VAlign;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * The Suggestion Rail: Select, Condition and Action as chips, and the card that states the effect first. The handoff's
- * screen 01, drawn from {@link Suggested}, which says everything on it.
+ * The Suggestion Rail, in Orbit's words and shapes (M8): <i>Which files</i>, <i>Only if</i> and <i>Then</i>, a bar of
+ * three steps over them, and the card that states the effect first, with a round button that carries it out. Drawn
+ * from {@link Suggested}, which says everything on it.
  *
  * <h2>Every node is built once</h2>
  *
  * <p>The rail is a fixed column, and a suggestion that arrives, changes or leaves rewrites what its nodes say and
  * whether they show; it never builds or removes one. So nothing on screen changes in one frame (the framework fades a
- * changed word and a node shown or hidden), and nothing in the list moves when the rail changes. Each row of chips is
- * a pool as long as the most that row can offer, two to a line, since a row of the layout does not wrap; a chip with
- * nothing to say is hidden in its place.
+ * changed word and a node shown or hidden), and nothing in the list moves when the rail changes. <i>Which files</i>,
+ * <i>Only if</i> and the destinations are pools of pills, one to a line, as long as the most they can offer; a pill
+ * with nothing to say is hidden in its place. <i>Then</i> is the six actions as tiles, always all six, an action the
+ * rail does not offer for the selection greyed in its place.
  *
- * <h2>A chip is known by its place</h2>
+ * <h2>A pill is known by its place</h2>
  *
- * <p>Pressing a chip says its row and its place ({@link Picked}); the explorer knows what it offered there. This holds
- * no record of what any chip stood for, as {@link Ui} holds none.
+ * <p>Pressing a pill says its row and its place ({@link Picked}); the explorer knows what it offered there. A tile is
+ * an action, so it finds its place among the action chips the explorer last sent by their words ({@link Act#chip}),
+ * which are the explorer's own, and says that place.
  *
- * <h2>A chip flips itself</h2>
+ * <h2>A pill flips itself</h2>
  *
  * <p>The widget library's chip ({@link Button#toggle}) changes its own pressed state when clicked and then says so,
- * before the model has answered (framework-notes FN-7). Select and Condition always have exactly one chip picked, so a
- * picked chip clicked again is shown picked again at once ({@link #held}), in the frame it was clicked; any other
- * press waits for the explorer's {@link Suggested}, which shows every chip as it is.
+ * before the model has answered (framework-notes FN-7). Which files and Only if always have exactly one pill picked,
+ * so a picked pill clicked again is shown picked again at once ({@link #held}), in the frame it was clicked; any other
+ * press waits for the explorer's {@link Suggested}, which shows every pill as it is.
+ *
+ * <h2>A count after a dot</h2>
+ *
+ * <p>Orbit puts a pill's count in a badge at its end. A {@link Button} is one label and holds nothing beside it
+ * (framework-notes FN-14), so the count follows the words, {@code Just this file · 1}, as it did.
  */
 final class RailPanel {
 
-    /** How many chips each row can offer: the engine's scopes, conditions and actions. */
+    /** How many pills each row can offer: the engine's scopes and conditions. */
     private static final int SELECTS = 4;
     private static final int CONDITIONS = 3;
-    private static final int ACTIONS = 6;
     /** Places for a move or a copy: the destination picked, when it is not suggested, and three suggested. */
     private static final int PLACES = 4;
 
-    /**
-     * Chips to a line: one for Select and Condition, whose chips are phrases with counts, and two for Action's short
-     * verbs. A second phrase on a line was clipped out of reach in a narrow rail; a line of the layout does not wrap.
-     */
-    private static final int PHRASES = 1;
-    private static final int VERBS = 2;
+    /** A pill: Orbit's 44 px, round-ended. */
+    private static final Length PILL = Length.dp(44);
+    /** A tile of Then: three to a line in the rail. */
+    private static final Length TILE = Length.rem(5.25f);
+    /** The run button: round, as Orbit draws it. */
+    private static final Length RUN = Length.dp(44);
 
     /** The card's tag while nothing runs: the design's promise, kept until the button is pressed. */
     private static final String UNCHANGED = "nothing has changed yet";
@@ -63,12 +80,14 @@ final class RailPanel {
 
     private final Gui gui;
     private final Node node;
+    private final Node basisChip;
     private final Node basis;
     private final Node empty;
+    private final List<Node> steps = new ArrayList<>();
     private final List<Node> sections = new ArrayList<>();
     private final List<Button> select = new ArrayList<>();
     private final List<Button> condition = new ArrayList<>();
-    private final List<Button> action = new ArrayList<>();
+    private final List<IconButton> tiles = new ArrayList<>();
     private final List<Button> place = new ArrayList<>();
     private final Node places;
     private final Button choose;
@@ -76,69 +95,89 @@ final class RailPanel {
     private final Node headline;
     private final Node detail;
     private final Node tag;
-    private final Button go;
+    private final IconButton go;
+    private final Node run;
     private final Button stop;
     private final TextField name;
+
+    /** Where each action's chip was in what the explorer last sent, by {@link Act}'s order; -1 for not offered. */
+    private final int[] offered = new int[Act.values().length];
 
     RailPanel(Gui gui) {
         this.gui = gui;
 
-        basis = gui.text("").font(Type.MONO).textSize(Type.SMALL).textColor(Look.ANCHOR).wordWrap(false);
+        // The basis as Orbit's chip: an amber dot with a clock in it, and the words, on a dark amber ground.
+        Node dot = dot(gui);
+        basis = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Look.ANCHOR_INK).wordWrap(false);
         gui.landmark(Landmarks.RAIL_BASIS, basis);
-        // Under the title rather than beside it, as the handoff has it: beside it, a narrow rail clipped it to "bas".
-        Node basisBox = gui.row().width(Length.FILL).scroll(false, false).clip(true).children(basis);
-        Node header = gui.column().width(Length.FILL).gap(Length.rem(0.25f)).children(
-                gui.text("Suggestions").font(Type.UI).textSize(Type.HEADING).textColor(Role.INK), basisBox);
+        basisChip = gui.row().gap(Length.dp(8)).alignItems(AlignItems.CENTER)
+                .padding(Length.dp(4), Length.dp(10)).corner(Length.dp(14)).background(Look.ANCHOR_WASH)
+                .scroll(false, false).clip(true).children(dot, basis);
+        Node header = gui.column().width(Length.FILL).gap(Length.rem(0.5f)).children(
+                gui.text("Suggestions").font(Type.UI).textSize(Type.HEADING).textColor(Role.INK), basisChip);
+
+        // Three steps, a bar each, lit as each is chosen.
+        Node bar = gui.row().width(Length.FILL).gap(Length.dp(6));
+        for (int i = 0; i < 3; i++) {
+            Node step = gui.box().width(Length.grow(1f)).height(Length.dp(6)).corner(Length.dp(3))
+                    .background(Role.TRACK);
+            steps.add(step);
+            bar.append(step);
+        }
 
         empty = note(EMPTY);
         gui.landmark(Landmarks.RAIL_EMPTY, empty);
 
-        Node selects = section(1, "Select", chips(select, SELECTS, PHRASES, Landmarks.RAIL_SELECT));
-        Node conditions = section(2, "Condition", chips(condition, CONDITIONS, PHRASES, Landmarks.RAIL_CONDITION));
-        Node actions = section(3, "Action", chips(action, ACTIONS, VERBS, Landmarks.RAIL_ACTION));
-        sections.addAll(List.of(selects, conditions, actions));
+        Node selects = section(1, "Which files", pills(select, SELECTS, Landmarks.RAIL_SELECT));
+        Node conditions = section(2, "Only if", pills(condition, CONDITIONS, Landmarks.RAIL_CONDITION));
+        Node actions = section(3, "Then", tiles());
+        sections.addAll(List.of(bar, selects, conditions, actions));
         // The fourth step, for a move or a copy only: where to. The places suggested, and the system's folder picker.
         choose = new Button(gui, "Choose folder…").kind(Button.Kind.GHOST).name(Landmarks.RAIL_CHOOSE);
         gui.landmark(Landmarks.RAIL_CHOOSE, choose.node());
-        Node where = chips(place, PLACES, PHRASES, Landmarks.RAIL_PLACE);
+        Node where = pills(place, PLACES, Landmarks.RAIL_PLACE);
         where.append(choose.node());
-        places = section(4, "Destination", where);
+        places = section(4, "Where to", where);
 
         headline = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
         gui.landmark(Landmarks.RAIL_CARD, headline);
         tag = gui.text(UNCHANGED).font(Type.MONO).textSize(Type.SMALL).textColor(Role.FAINT)
                 .wordWrap(false);
-        Node top = gui.column().width(Length.FILL).gap(Length.rem(0.2f)).scroll(false, false).clip(true)
-                .children(headline, tag);
+        gui.landmark(Landmarks.RAIL_TAG, tag);
         detail = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(true)
                 .width(Length.FILL);
-        gui.landmark(Landmarks.RAIL_TAG, tag);
-        // The one filled button on the screen: what happens if the person does nothing but agree. While a run goes,
-        // its Stop stands in the same place.
-        go = new Button(gui, "").kind(Button.Kind.PRIMARY).name(Landmarks.RAIL_GO);
+        Node words = gui.column().width(Length.grow(1f)).gap(Length.rem(0.2f)).scroll(false, false).clip(true)
+                .children(headline, tag);
+        // The one filled button on the screen, round as Orbit draws it: what happens if the person does nothing but
+        // agree, its words its name. While a run goes, its Stop stands beside the words instead.
+        go = new IconButton(gui, Icon.ARROW_RIGHT, "").name(Landmarks.RAIL_GO).size(RUN, Length.dp(18));
+        go.node().corner(Length.dp(22));
+        go.ink(Role.ON_ACTION);
+        // The button paints its own fill under the pointer only, so the violet disc is behind it, greyed with it.
+        run = gui.box().size(RUN, RUN).corner(Length.dp(22)).background(Role.ACTION).children(go.node());
         gui.landmark(Landmarks.RAIL_GO, go.node());
         stop = new Button(gui, "Stop").name(Landmarks.RAIL_STOP);
         gui.landmark(Landmarks.RAIL_STOP, stop.node());
+        Node top = gui.row().width(Length.FILL).gap(Length.rem(0.75f)).alignItems(AlignItems.CENTER)
+                .scroll(false, false).children(words, run, stop.node());
         // A rename's new name, typed here and carried out by Enter: the card is where what would happen is said.
         name = new TextField(gui, "").name(Landmarks.RAIL_NAME);
         name.node().width(Length.FILL).font(Type.UI).textSize(Type.RAIL_TEXT);
         gui.landmark(Landmarks.RAIL_NAME, name.node());
-        Node buttons = gui.row().width(Length.FILL).gap(Length.rem(0.5f)).scroll(false, false).clip(true)
-                .children(go.node(), stop.node());
-        card = gui.column().width(Length.FILL).padding(Length.rem(1f)).gap(Length.rem(0.5f))
-                .background(Role.PANEL).border(Length.dp(1), Role.LINE).corner(Length.rem(0.5f))
-                .children(top, detail, name.node(), buttons);
+        card = gui.column().width(Length.FILL).padding(Length.rem(0.9f), Length.rem(1f)).gap(Length.rem(0.5f))
+                .background(Role.RAISED).corner(Length.dp(20))
+                .children(top, detail, name.node());
 
         // The steps scroll when a short window cannot hold them: a column that does not is laid out by shrinking its
         // children, which flattened the chips to slivers under a card of five lines. The card does not scroll with
         // them: it is pinned under them, so the button that carries it out is always in sight.
-        Node steps = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(1.1f))
+        Node column = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(1.1f))
                 .scroll(false, true).clip(true)
-                .children(header, empty, selects, conditions, actions, places);
+                .children(header, empty, bar, selects, conditions, actions, places);
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
                 .background(Look.RAIL).corner(Look.PANEL_CORNER).scroll(false, false).clip(true)
-                .children(steps, card);
+                .children(column, card);
         gui.landmark(Landmarks.RAIL, node);
         show(Suggested.NONE);
     }
@@ -147,7 +186,7 @@ final class RailPanel {
         return node;
     }
 
-    /** Say what the explorer suggests: every chip, the basis and the card, or the empty rail's note. */
+    /** Say what the explorer suggests: every pill and tile, the steps, the basis and the card, or the empty note. */
     void show(Suggested s) {
         boolean none = s.empty();
         empty.visible(none);
@@ -156,19 +195,30 @@ final class RailPanel {
         }
         String running = s.card().running();
         card.visible(!none || !running.isEmpty());
+        basisChip.visible(!none);
         basis.text(none ? "" : "based on " + s.basis());
         fill(select, s.select());
         fill(condition, s.condition());
-        fill(action, s.action());
+        boolean acting = tiles(s.action());
         fill(place, s.places());
         places.visible(!none && s.placing());
+        lit(0, s.select().stream().anyMatch(Chip::on));
+        lit(1, s.condition().stream().anyMatch(Chip::on));
+        lit(2, acting);
         headline.text(s.card().headline());
         detail.text(s.card().detail());
         tag.text(running.isEmpty() ? UNCHANGED : running);
         go.label(s.card().go());
-        go.node().visible(running.isEmpty() && !s.card().go().isEmpty());
+        boolean ready = running.isEmpty() && !s.card().go().isEmpty();
+        go.enabled(ready);
+        run.background(ready ? Role.ACTION : Role.TRACK);
+        run.visible(running.isEmpty());
         stop.node().visible(!running.isEmpty());
         name.node().visible(running.isEmpty() && s.card().naming());
+    }
+
+    private void lit(int step, boolean on) {
+        steps.get(step).background(on ? Role.ACCENT : Role.TRACK);
     }
 
     /** Whether {@code address} is the card's button, which carries out what the card states. */
@@ -203,9 +253,9 @@ final class RailPanel {
     }
 
     /**
-     * The pick a chip's {@link Button.Toggled} stands for, or null when it is none of the rail's. A picked Select,
-     * Condition or Destination chip clicked again is shown picked at once and says nothing: one of its row stays
-     * picked, so the click changed nothing.
+     * The pick a pill's {@link Button.Toggled} stands for, or null when it is none of the rail's. A picked Which files,
+     * Only if or Where to pill clicked again is shown picked at once and says nothing: one of its row stays picked, so
+     * the click changed nothing.
      */
     Picked picked(Button.Toggled t) {
         Picked p = find(select, Slot.SELECT, t.button());
@@ -213,16 +263,23 @@ final class RailPanel {
             p = find(condition, Slot.CONDITION, t.button());
         }
         if (p == null) {
-            p = find(action, Slot.ACTION, t.button());
-        }
-        if (p == null) {
             p = find(place, Slot.DESTINATION, t.button());
         }
-        if (p != null && p.slot() != Slot.ACTION && !t.pressed()) {
+        if (p != null && !t.pressed()) {
             held(p);
             return null;
         }
         return p;
+    }
+
+    /** The pick a tile's press stands for: its action's place among the chips last sent, or null. */
+    Picked picked(String address) {
+        for (int i = 0; i < tiles.size(); i++) {
+            if (tiles.get(i).address().equals(address) && offered[i] >= 0) {
+                return new Picked(Slot.ACTION, offered[i]);
+            }
+        }
+        return null;
     }
 
     private void held(Picked p) {
@@ -254,34 +311,98 @@ final class RailPanel {
         }
     }
 
-    /** A pool of {@code count} chips, {@code perLine} to a line, named {@code name.0}, {@code name.1}, ... */
-    private Node chips(List<Button> into, int count, int perLine, String name) {
-        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.5f));
-        Node line = null;
-        for (int i = 0; i < count; i++) {
-            if (i % perLine == 0) {
-                line = gui.row().width(Length.FILL).gap(Length.rem(0.5f)).scroll(false, false).clip(true);
-                column.append(line);
+    /**
+     * Each action's tile: lit when its chip is on, greyed when the explorer did not offer it. Whether one is picked.
+     */
+    private boolean tiles(List<Chip> chips) {
+        boolean any = false;
+        Act[] acts = Act.values();
+        for (int i = 0; i < acts.length; i++) {
+            offered[i] = -1;
+            boolean on = false;
+            for (int j = 0; j < chips.size(); j++) {
+                if (chips.get(j).label().equals(acts[i].chip())) {
+                    offered[i] = j;
+                    on = chips.get(j).on();
+                }
             }
+            tiles.get(i).enabled(offered[i] >= 0).on(on);
+            any |= on;
+        }
+        return any;
+    }
+
+    /** A pool of {@code count} pills, one to a line, named {@code name.0}, {@code name.1}, ... */
+    private Node pills(List<Button> into, int count, String name) {
+        Node column = gui.column().width(Length.FILL).gap(Length.dp(6));
+        for (int i = 0; i < count; i++) {
             Button b = new Button(gui, "").toggle(true).undoable(false).name(name + "." + i);
-            b.node().font(Type.UI).textSize(Type.RAIL_TEXT);
+            b.node().font(Type.UI).textSize(Type.RAIL_TEXT).width(Length.FILL).height(PILL).corner(Length.dp(22))
+                    .padding(Length.ZERO, Length.dp(16)).align(HAlign.LEFT, VAlign.MIDDLE);
             gui.landmark(name + "." + i, b.node());
             into.add(b);
-            line.append(b.node());
+            column.append(b.node());
         }
         return column;
     }
 
+    /** Then: the six actions as tiles, three to a line, each named {@code rail.action.<act>} for scripts. */
+    private Node tiles() {
+        Node column = gui.column().width(Length.FILL).gap(Length.dp(8));
+        Node line = null;
+        Act[] acts = Act.values();
+        for (int i = 0; i < acts.length; i++) {
+            if (i % 3 == 0) {
+                line = gui.row().width(Length.FILL).gap(Length.dp(8)).scroll(false, false);
+                column.append(line);
+            }
+            String landmark = Landmarks.RAIL_ACTION + "." + acts[i].name().toLowerCase(Locale.ROOT);
+            IconButton t = new IconButton(gui, icon(acts[i]), word(acts[i])).name(landmark).toggle(true)
+                    .tile(TILE, Length.dp(26));
+            if (acts[i] == Act.DELETE) {
+                t.ink(Role.DANGER);
+            }
+            gui.landmark(landmark, t.node());
+            tiles.add(t);
+            line.append(t.node());
+        }
+        return column;
+    }
+
+    /** An action's icon, from the VexelRay sets: the suite's, a family's, or Vexplore's own Move. */
+    static IconSource icon(Act a) {
+        return a == Act.MOVE ? VexploreIcon.MOVE
+                : a == Act.COPY ? Icon.COPY
+                : a == Act.ARCHIVE ? FileFamily.ARCHIVES
+                : a == Act.RENAME ? Icon.EDIT
+                : a == Act.MARK ? Icon.BOOKMARK
+                : Icon.TRASH;
+    }
+
+    /** A tile's word: the chip's, without its ellipsis or its "(recoverable)", which the card says. */
+    private static String word(Act a) {
+        String chip = a.chip();
+        int cut = chip.indexOf(' ');
+        String first = cut < 0 ? chip : chip.substring(0, cut);
+        return first.endsWith("…") ? first.substring(0, first.length() - 1) : first;
+    }
+
     private Node section(int number, String title, Node content) {
         Node label = gui.row().gap(Length.rem(0.6f)).alignItems(AlignItems.CENTER).children(
-                gui.text(number == 0 ? "•" : String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL)
-                        .textColor(Role.FAINT),
+                gui.text(String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL).textColor(Role.ACCENT),
                 gui.text(title).font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK));
-        return gui.column().width(Length.FILL).gap(Length.rem(0.55f)).children(label, content);
+        return gui.column().width(Length.FILL).gap(Length.rem(0.6f)).children(label, content);
     }
 
     private Node note(String text) {
         return gui.text(text).font(Type.UI).textSize(Type.SMALL).textColor(Role.FAINT).wordWrap(true)
                 .width(Length.FILL);
+    }
+
+    /** The basis chip's dot: the clock, in the chip's ground, on an amber disc. */
+    private static Node dot(Gui gui) {
+        Node clock = IconView.of(gui, VexploreIcon.CLOCK).size(Length.dp(11)).tint(Look.ANCHOR_WASH).node();
+        return gui.row().size(Length.dp(18), Length.dp(18)).corner(Length.dp(9)).background(Look.ANCHOR)
+                .alignItems(AlignItems.CENTER).justify(Justify.CENTER).children(clock);
     }
 }

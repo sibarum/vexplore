@@ -185,3 +185,13 @@ written outside the list.
 the whole set each time, worn by a row realized later, as `marks` is. Two-folder comparison (M6) will want a third
 (*newer here*, *only here*), so the shape is a map from a mark's name to its set and its look, rather than a second
 field.
+
+## FN-14 · A button is one label, with nothing beside it 🔬
+
+Orbit's rail (M8, slice 3) draws each *Which files* and *Only if* pill as its words with the count in a badge at its
+far end, the badge violet while the pill is picked. `Button` is a text node with the button's role: its label is all
+it holds, so a badge cannot sit inside it, and a badge laid beside it would not be part of what is pressed, lit or
+focused. Vexplore keeps the count after the words, `Just this file · 1`, as it did before Orbit.
+
+**For the framework:** a button with a trailing slot (`Button.trailing(Node)` or a `badge(String)`), inside its press,
+its focus and its pressed look. A chip with a count, a tab with a number, a menu item with a shortcut all meet it.

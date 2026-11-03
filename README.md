@@ -135,7 +135,7 @@ every message is in one file. Read these in this order.
 | `DockPanel.java` | the Preview Dock under the list: one file's preview, or a note; every node built once. A picture or a video has Open in Rasterware under it. |
 | `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, and says which. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |
-| `RailPanel.java` | the Suggestion Rail: its chips and card, every node built once and relabelled. A chip pressed is said as its row and place. |
+| `RailPanel.java` | the Suggestion Rail in Orbit's words (Which files, Only if, Then): pills, six action tiles and the card with its round run button, every node built once and relabelled. A pill or a tile pressed is said as its row and place. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |
 
 `Vexplore.java` is the entry point and the constants, and nothing else. The application edge — input, the

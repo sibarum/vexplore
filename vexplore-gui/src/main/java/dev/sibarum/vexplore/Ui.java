@@ -402,6 +402,11 @@ final class Ui {
         return rail.picked(t);
     }
 
+    /** The pick a Then tile's press stands for, or null when it is none of the rail's tiles or not offered. */
+    Picked tile(String address) {
+        return rail.picked(address);
+    }
+
     // ------------------------------------------------------------------ the places
 
     /** The places' rows', which a place clicked or entered is said with. */

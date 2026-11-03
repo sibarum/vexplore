@@ -767,3 +767,22 @@ Slice 2, the frame, built 2026-11-02:
   yet: worth one only if the fill is wanted.
 - **Not fixed: the names in Two Folders.** Without the tree each list gained 25 px, and NAME is still its icon (FN-8,
   TODO).
+
+Slice 3, the rail, built 2026-11-03:
+
+- **Orbit's words: *Which files*, *Only if*, *Then*, and *Where to*** for the destination. The first condition is worded
+  *Always*, Orbit's word, in `Suggestions`; nothing else the explorer says changed.
+- **A bar of three steps** over them, each lit violet once its step has a choice.
+- **The basis as Orbit's chip**: `VexploreIcon.CLOCK` on an amber disc, the words in light amber on a dark amber
+  ground (`Look.ANCHOR_WASH`, `ANCHOR_INK`). A notice, so amber stays off the fill of every control.
+- **Pills, full width and round-ended, one to a line.** Orbit's count badge cannot go inside a `Button`, which is one
+  label (FN-14), so the count stays after a dot.
+- **Then is six tiles, always all six** (`IconButton.tile`), each its action's icon from the VexelRay sets and a short
+  word. A tile finds its place among the action chips by the explorer's own words (`Act.chip`), so an action not
+  offered, Rename with several selected, is greyed where the chip used to vanish. Scripts reach a tile as
+  `rail.action.<act>`, `rail.action.delete`.
+- **The run button is round**, `Icon.ARROW_RIGHT` on a violet disc, the card's words its name. `IconButton` paints its
+  own fill and only under the pointer, so the disc is a box behind it, greyed with it. *Stop* stands in its place
+  while a run goes.
+- **The tiles do not stretch to the rail's width.** A tile is a fixed square; Orbit's grid fills its column. Left as it
+  is.

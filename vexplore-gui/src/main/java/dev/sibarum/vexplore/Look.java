@@ -69,6 +69,13 @@ final class Look {
     /** {@code anchor}: amber, as text. "based on", and later a fresh file or a conflict. Never a fill. */
     static final Role ANCHOR = token(0xe8a85c);
 
+    /**
+     * {@code anchor-wash} and {@code anchor-ink}: the rail's basis chip, a dark amber ground with light amber words and
+     * an amber dot, as Orbit draws it. A notice, not a control, so amber stays off every fill of a control.
+     */
+    static final Role ANCHOR_WASH = token(0x2a1f14);
+    static final Role ANCHOR_INK = token(0xf3d9a8);
+
     // ---------------------------------------------------------------- shape
 
     /** A panel's corners: Orbit's 24 px. */
