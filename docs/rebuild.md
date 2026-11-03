@@ -111,8 +111,8 @@ on, and nothing is skipped on a guess.
 
 **M8. The redesign.** Three directions, drawn 2026-11-02 against the rebuilt window (the scratch Downloads folder,
 `a-notes.md` in the dock), on the canvas *Vexplore Redesign*
-(<https://claude.ai/artifact/JzjQM7RGs16CLxrZpV4QQW>). None is chosen yet, and choosing one is the milestone's first
-step. Then its sketch in [shape.md](shape.md), for whatever it adds to `Messages` or `State`, before any code.
+(<https://claude.ai/artifact/JzjQM7RGs16CLxrZpV4QQW>). **(ruled 2026-11-02)** C, Orbit, is chosen, and M8 comes next,
+before the rest of M6 (its slice 1, two lists, is built). Its sketch is in [shape.md](shape.md), before any code.
 
 - **A · Lumen**: floating panels with luminous edges. The layout stays (tree, list over dock, rail). Each family of
   file (folder, text, video, table, PDF, data, program) gets its own colour and tile, each row a size bar, and the
@@ -157,4 +157,4 @@ taken to the framework rather than worked around for long.
 Of 2026-11-01: the order stands; remote folders after providers; pictures as thumbnails, viewed in Rasterware;
 "identical" in two tiers, content hashed only for the rows an action is about to act on (M6); M0 in two steps, the
 deletion and then the new shape as a sketch before it is built (M0). 2026-11-02: the rail a third of the room beside
-the tree (M2).
+the tree (M2); Orbit chosen for the redesign, and M8 brought forward before the rest of M6 (M8).

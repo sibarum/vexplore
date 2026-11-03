@@ -642,3 +642,92 @@ Slice 1, two lists, built 2026-11-02:
 - **Seen live, not solved: the names do not fit.** At 1440 px each list is about 395 px, and TYPE, SIZE and MODIFIED
   keep their 21 rem, so NAME shrinks to its icon in both (framework-notes FN-8, which one folder meets only under
   about 1000 px). Hiding the tree in Two Folders, as screen 05 does, gives NAME about 140 px; the choice is open.
+
+## The messages M8 adds
+
+Proposed 2026-11-02, before any of it is written. **(ruled 2026-11-02)** Orbit (*C · Orbit* on the *Vexplore
+Redesign* canvas) is the redesign, and it comes before the rest of M6. What the board draws, read from its source:
+
+- **A top bar** with round Back and Up buttons, the path as pills with the folder shown filled in violet, a view
+  switch (*Gallery*, *List*, *Two folders*), Search, and the window's own buttons in the same row.
+- **A sidebar of places**, flat (Desktop, Documents, Downloads, Music, Pictures, Videos, C:), the one shown filled,
+  and **Marks** under them. No tree.
+- **The folder as a gallery**: its name large, `14 items · newest first`, cards grouped by day (*Today 8*,
+  *Oct 30 5*), five across. A card is a tile in its family's colour with its icon (a text file's first lines
+  instead), the extension in a badge, the name, and `12:43 · 185 B`.
+- **A preview strip** under it, 168 px: the name and facts, the text, and *Pop out* and *Open with*.
+- **The rail** worded *Which files*, *Only if*, *Then*: a three-step bar, the Select chips as tall stacked pills with
+  their counts in a badge, *Always* and *+ Condition*, the actions as a 3×2 grid of icon tiles, and the card with a
+  round run button.
+- **Panels** with 24 px corners on a darker ground, 12 px apart; Manrope and Geist Mono.
+
+### In slices
+
+1. **The look.** Orbit's palette as `Look`'s tokens, the panels rounded on the ground. The faces stay the atlas's:
+   Manrope and Geist Mono cannot be added (FN-1), as Instrument Sans could not.
+2. **The frame: top bar and sidebar.** Back and Up, the pill path, the view switch, which takes in M6's *Two
+   folders*; *Swap sides* moves to Two Folders' own headers. The tree gives way to the flat places, and the marks move
+   from the rail to under them. That settles M6's open question: with no tree, two lists get its width.
+3. **The rail**, in Orbit's words and shapes. Nothing it decides changes.
+4. **The preview strip**: the dock in Orbit's shape, *Pop out* through the library's `Popout`, and *Open with*
+   (Rasterware, or the desktop's own program) in place of *Open in Rasterware*.
+5. **The folder's heading, and the list view** in Orbit's colours: the List of the view switch is today's table.
+6. **The gallery**, last: it waits on the framework (below).
+
+### The messages
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Back()` | edge, view to explorer | the top bar's Back: the folder shown before this one, in the list used. Each `Pane` keeps the folders it showed, newest first, as many as twenty |
+| `Lay(Layout layout)` | edge, view to explorer | the view switch: `GALLERY` or `LIST` (*Two folders* stays `TwoFolders`) |
+| `Pair(boolean two, Side used, Optional<Path> at, Layout layout)` | state | gains `layout`, which the session remembers (`Remember` and `Recalled` gain it) |
+| `OpenWith(String with)` | edge, view to explorer | replaces `OpenIn`: *Rasterware* or *desktop*; `HandOff` hands the file to the one asked |
+
+Up is `Navigate` to the parent, as Alt+Up already is. The gallery's own messages (the day groups, and a card's first
+lines read by a job for the cards on screen only) are sketched with slice 6, once its widget is known.
+
+### Icons, all from the VexelRay sets
+
+Every icon is the suite's (`Icon`), a file family's (`FileFamily`, as the list's rows already are), or, where the
+suite has none, Vexplore's own, drawn in the suite's form (16-unit masks, large and small) in
+`vexplore-gui/src/main/icons` and baked by the build into `VexploreIcon`'s atlas as distance fields, beside the suite's.
+Six are Vexplore's: `GALLERY`, `LIST`, `COLUMNS` (two folders), `DRIVE`, `MOVE`, `CLOCK`.
+
+| Where | Icon |
+| --- | --- |
+| Back, Up | `Icon.ARROW_LEFT`, `Icon.ARROW_UP` |
+| Gallery, List, Two folders | `VexploreIcon.GALLERY`, `.LIST`, `.COLUMNS` |
+| Search (not built, see below) | `Icon.SEARCH` |
+| Window buttons | the title bar's own (`TB_MINIMIZE`, `TB_MAXIMIZE`, `TB_EXIT`) |
+| Desktop, Documents, Downloads, Music, Pictures, Videos | `Icon.DISPLAY`, `FileFamily` documents, `Icon.ARROW_DOWN`, `Icon.AUDIO`, `FileFamily` images, `FileFamily` video |
+| a drive (C:) | `VexploreIcon.DRIVE` |
+| a card's tile | its `FileFamily`, as the list's rows |
+| Move, Copy, Archive, Rename, Mark, Delete | `VexploreIcon.MOVE`, `Icon.COPY`, `FileFamily` archives, `Icon.EDIT`, `Icon.BOOKMARK`, `Icon.TRASH` |
+| *+ Condition*, the run button | `Icon.PLUS`, `Icon.ARROW_RIGHT` |
+| the basis chip (*newest here*) | `VexploreIcon.CLOCK` |
+| *Pop out*, *Open with* | `Icon.POP_OUT`, `Icon.OPEN` |
+
+### Against the framework
+
+- **No gallery widget (FN-13, written when slice 6 meets it).** Orbit's main surface is a grid of cards that wraps
+  to the width, in sections, over a folder of any size: virtualised as `ListView` is, with its selection, keyboard,
+  row menu, marks and drag. The library has none (`FlexLayout` does not wrap, and `Board` is columns of decks), and a
+  gallery made of a list of rows of cards would rebuild by hand the selection and keyboard the list already has.
+  **Proposed: ask the framework for a `Gallery`, and build slices 1 to 5 meanwhile**, so Orbit's frame, rail and
+  strip are in place and the gallery slots into the centre when it lands. Until then the List view is the one shown.
+- **The window's buttons in the top bar.** `TitleBar` is a strip of its own with a title, instruments and the
+  controls. Whether it can hold Vexplore's top bar (path, switch) is checked first in slice 2; if not, the two stay
+  two strips, and an FN says so.
+- **The pill path.** `Breadcrumb` draws segments; whether its roles give each a pill and the last a violet fill is
+  checked in slice 2, an FN if not.
+- **Search** is on the board and is not a feature Vexplore has. It is left out rather than drawn as a button that
+  does nothing, and proposed for after M8.
+
+### For you to rule
+
+1. **Orbit's palette becomes `Look`'s tokens**, replacing the design system's that M0 used, with the seven family
+   colours beside them. Recommended: yes, since the palette is most of what Orbit is.
+2. **The selected card's ring.** Orbit draws it amber. Vexplore's rule since M0 is violet for what you chose and amber
+   for what Vexplore suggests (the basis chip, a new file). Recommended: violet, as the place and the path already
+   are on the board.
+3. **The gallery waits on the framework** (above). Recommended: yes, slices 1 to 5 first.
