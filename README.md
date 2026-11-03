@@ -140,8 +140,8 @@ every message is in one file. Read these in this order.
 `Vexplore.java` is the entry point and the constants, and nothing else. The application edge — input, the
 clipboard, window memory, the clock, the frame loop with its wakes and its pacing, the dialogs, the command line and
 the shutdown order — is `vexelray-framework`'s. `Look.java`, `Type.java` and `Landmarks.java` are the three
-vocabularies: colour and shape (Orbit's palette, panels and gaps; rebuild.md, M8), size (the handoff's regions in rem), and the names an automation
-script is allowed to depend on.
+vocabularies: colour and shape (Orbit's palette, panels and gaps; rebuild.md, M8), size (the handoff's regions in
+rem), and the names an automation script is allowed to depend on.
 
 ### Phases
 
