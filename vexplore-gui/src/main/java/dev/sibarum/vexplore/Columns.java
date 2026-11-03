@@ -42,8 +42,7 @@ final class Columns {
         Comparator<Row> byName = Comparator.comparing(r -> r.name().toLowerCase(Locale.ROOT));
         return List.of(
                 Table.Column.of("NAME", Length.grow(1), (g, r) -> name(g, r, tags), byName),
-                Table.Column.of("TYPE", Length.rem(5f), (g, r) -> cell(g, r.typeLabel(), Type.MONO, Type.SMALL,
-                        Role.DIM, HAlign.LEFT), Comparator.comparing(Row::typeLabel)),
+                Table.Column.of("TYPE", Length.rem(5f), Columns::type, Comparator.comparing(Row::typeLabel)),
                 Table.Column.of("SIZE", Length.rem(6.5f), (g, r) -> cell(g, r.folder() ? "" : Bytes.format(r.size()),
                         Type.UI, Type.BODY, Role.INK, HAlign.RIGHT), Comparator.comparingLong(Row::size)),
                 Table.Column.of("MODIFIED", Length.rem(9.5f), (g, r) -> cell(g, modified(r), Type.UI, Type.BODY,
@@ -81,6 +80,18 @@ final class Columns {
     /** A row that could not be read has no time, and says none rather than 1970. */
     private static String modified(Row r) {
         return r.modified().equals(Instant.EPOCH) ? "" : Dates.column(r.modified(), Instant.now(), ZoneId.systemDefault());
+    }
+
+    /**
+     * The type as Orbit's badge: the extension, or {@code FOLDER}, in its family's colour on the ground, rounded. The
+     * one place the family colours show in the list (Look's families).
+     */
+    private static Node type(Nodes g, Row r) {
+        Node badge = g.text(r.typeLabel()).font(Type.MONO).textSize(Type.SMALL)
+                .textColor(g.theme().color(Look.family(family(r)))).wordWrap(false)
+                .padding(Length.dp(2), Length.dp(6)).corner(Length.dp(6)).background(Look.CHROME);
+        return g.row().width(Length.FILL).height(Length.FILL).scroll(false, false).clip(true)
+                .alignItems(AlignItems.CENTER).padding(Length.ZERO, PAD).children(badge);
     }
 
     private static Node cell(Nodes g, String text, int face, Length size, Role ink, HAlign align) {

@@ -42,6 +42,9 @@ final class Type {
     /** The rail's title. 17 px. */
     static final Length HEADING = Length.rem(1.0625f);
 
+    /** A folder's name over its list: Orbit's heading, 28 px. */
+    static final Length TITLE = Length.rem(1.75f);
+
     // ------------------------------------------------------------------ regions, from the handoff at 1440 x 900
     /** The top bar: Back and Up, the path's pill, and the view switch. Orbit's 64 px. */
     /** The top bar: the breadcrumb, or the path field in its place. 48 px. */

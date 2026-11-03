@@ -19,9 +19,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * One file list, with what it needs beside it: its header in Two Folders (its side and its folder's name, in the
- * accent while it is the list used) and its {@link Tags}. {@link Ui} has two, FROM and TO, built alike, so the two
- * lists cannot drift apart. Holds no state of its own beyond what its widgets keep.
+ * One file list, with what it needs beside it: its heading, Orbit's (the folder's name large and its count, and in Two
+ * Folders its side before them, in the accent while it is the list used), and its {@link Tags}. {@link Ui} has two,
+ * FROM and TO, built alike, so the two cannot drift apart. Holds no state of its own beyond what its widgets keep.
  */
 final class FolderList {
 
@@ -31,6 +31,7 @@ final class FolderList {
     private final Node header;
     private final Node side;
     private final Node name;
+    private final Node count;
     private final Node column;
 
     FolderList(Gui gui, String landmark, String headerLandmark, String sideWord) {
@@ -47,12 +48,16 @@ final class FolderList {
         }
 
         side = gui.text(sideWord).font(Type.MONO).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(false);
-        name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
-        header = gui.row().width(Length.FILL).height(Length.rem(2.25f)).padding(Length.ZERO, Type.SIDE)
+        side.visible(false);
+        name = gui.text("").font(Type.UI).textSize(Type.TITLE).textColor(Role.INK).wordWrap(false);
+        count = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(false);
+        // Orbit's heading: the folder's name large, its count beside it; FROM or TO before it in Two Folders.
+        header = gui.row().width(Length.FILL).height(Length.rem(3.5f)).padding(Length.ZERO, Length.rem(1.25f))
                 .gap(Length.rem(0.75f))
-                .alignItems(AlignItems.CENTER).scroll(false, false).clip(true).children(side, name);
-        header.visible(false);
+                .alignItems(AlignItems.CENTER).scroll(false, false).clip(true).children(side, name, count);
         gui.landmark(headerLandmark, header);
+        // The rows on the panel, where the list would draw them in the theme's well.
+        table.rows().node().background(Look.LIST);
         column = gui.column().width(Length.grow(1f)).height(Length.FILL).background(Look.LIST)
                 .children(header, table.node());
     }
@@ -102,6 +107,7 @@ final class FolderList {
         }
         Path n = s.folder().getFileName();
         name.text(n == null ? s.folder().toString() : n.toString());
+        count.text(s.rows().size() == 1 ? "1 item" : s.rows().size() + " items");
     }
 
     /** Put {@code control} at the header's far end: TO's Swap sides. Shown with the header. */
@@ -110,9 +116,9 @@ final class FolderList {
         header.append(control);
     }
 
-    /** The header shown or not, and in the accent while this is the list used. */
-    void header(boolean shown, boolean used) {
-        header.visible(shown);
+    /** In Two Folders, FROM or TO before the name, in the accent while this is the list used; neither in one. */
+    void side(boolean two, boolean used) {
+        side.visible(two);
         side.textColor(used ? Role.ACCENT : Role.DIM);
     }
 

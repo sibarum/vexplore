@@ -276,8 +276,8 @@ final class Ui {
      */
     void pair(Pair p) {
         to.node().visible(p.two());
-        from.header(p.two(), p.used() == Side.FROM);
-        to.header(p.two(), p.used() == Side.TO);
+        from.side(p.two(), p.used() == Side.FROM);
+        to.side(p.two(), p.used() == Side.TO);
         one.on(!p.two());
         two.on(p.two());
         back.enabled(p.back());

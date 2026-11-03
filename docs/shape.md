@@ -802,3 +802,14 @@ Slice 4, the preview strip, built 2026-11-03:
   row and a pill. An off-label use of the tile, and the least that keeps the press, focus and look the button's own.
 - **Pop out is not built.** `Popout` wants the application's `GuiApp` and a window declared in a recipe, a change to
   `Recipes.java`, which is proposed rather than made: its own slice, if wanted.
+
+Slice 5, the heading and the list, built 2026-11-03:
+
+- **Orbit's heading over each list**: the folder's name at 28 px (`Type.TITLE`) and its count, in one folder too; in Two
+  Folders FROM or TO before the name, in the accent on the list used, and TO's *Swap sides* at the end. Orbit's
+  *newest first* waits for the gallery, whose order it is; the list is sorted as its header says.
+- **The rows on the panel.** `ListView` draws its body in the theme's well, which Orbit's palette makes near-black; each
+  list sets its body to the panel's colour, as the places do the ground's.
+- **The seven family colours are `Look`'s** (`Look.family`), beside the tokens as ruled: folder, text, video, table,
+  PDF, data, program, with a picture and a sound as video and a mail as text. In the list they colour the TYPE column,
+  now Orbit's extension badge on the ground; the gallery's tiles will take them in slice 6.

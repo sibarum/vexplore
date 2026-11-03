@@ -8,6 +8,11 @@ import dev.vexelray.gui.core.style.Relief;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.core.style.Shading;
 import dev.vexelray.gui.core.style.Theme;
+import dev.vexelray.gui.fileicons.FileFamily;
+
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Colour and shape, decided once, from Orbit: the redesign chosen 2026-11-02 (rebuild.md, M8), drawn on the canvas
@@ -75,6 +80,50 @@ final class Look {
      */
     static final Role ANCHOR_WASH = token(0x2a1f14);
     static final Role ANCHOR_INK = token(0xf3d9a8);
+
+    // ---------------------------------------------------------------- families
+
+    /**
+     * Orbit's seven families of file, each a colour of its own, beside the tokens (ruled 2026-11-02): folder, text,
+     * video, table, PDF, data and program. The list's TYPE badge is in its family's colour, and the gallery's tiles
+     * will be. A picture and a sound are media, with video; a mail and a calendar are text.
+     */
+    private static final Role FOLDER = token(0xc9b6ff);
+    private static final Role TEXT = token(0xe8e4f2);
+    private static final Role VIDEO = token(0x9bbcff);
+    private static final Role TABLE = token(0x86e3b6);
+    private static final Role PDF = token(0xffa0ae);
+    private static final Role DATA = token(0xc8c2d8);
+    private static final Role PROGRAM = token(0x86d9ff);
+
+    private static final Map<FileFamily, Role> FAMILIES = families();
+
+    private static Map<FileFamily, Role> families() {
+        Map<FileFamily, Role> m = new EnumMap<>(FileFamily.class);
+        for (FileFamily f : FileFamily.values()) {
+            m.put(f, DATA);
+        }
+        m.put(FileFamily.FOLDERS, FOLDER);
+        for (FileFamily f : List.of(FileFamily.PLAIN_TEXT, FileFamily.DOCUMENTS, FileFamily.SOURCE_CODE,
+                FileFamily.SCRIPTS, FileFamily.SHADERS, FileFamily.EMAIL, FileFamily.CALENDARS_AND_CONTACTS)) {
+            m.put(f, TEXT);
+        }
+        for (FileFamily f : List.of(FileFamily.VIDEO, FileFamily.AUDIO, FileFamily.IMAGES,
+                FileFamily.VECTOR_GRAPHICS)) {
+            m.put(f, VIDEO);
+        }
+        m.put(FileFamily.SPREADSHEETS, TABLE);
+        m.put(FileFamily.PDF, PDF);
+        m.put(FileFamily.PRESENTATIONS, PDF);
+        m.put(FileFamily.PROGRAMS, PROGRAM);
+        m.put(FileFamily.INSTALLERS, PROGRAM);
+        return m;
+    }
+
+    /** A family's colour: Orbit's, the rest of the families as data. */
+    static Role family(FileFamily f) {
+        return FAMILIES.get(f);
+    }
 
     // ---------------------------------------------------------------- shape
 
