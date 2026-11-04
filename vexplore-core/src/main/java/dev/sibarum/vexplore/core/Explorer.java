@@ -12,6 +12,7 @@ import dev.sibarum.vexplore.core.Messages.Destining;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Dropped;
 import dev.sibarum.vexplore.core.Messages.Chosen;
+import dev.sibarum.vexplore.core.Messages.Compared;
 import dev.sibarum.vexplore.core.Messages.Find;
 import dev.sibarum.vexplore.core.Messages.ForgetMark;
 import dev.sibarum.vexplore.core.Messages.Found;
@@ -89,6 +90,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -140,7 +142,7 @@ import java.util.Set;
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
         Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class, Pair.class,
-        Fresh.class})
+        Fresh.class, Compared.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -491,19 +493,38 @@ public final class Explorer {
 
     // ------------------------------------------------------------------ the folder shown
 
-    /** The breadcrumb, the tree, Enter on a folder's row, Backspace or Alt+Up: show that folder. */
-    private static State navigate(State s, Navigate n, Out out) {
+    /**
+     * The breadcrumb, a place, Enter on a folder's row, Backspace or Alt+Up: show that folder in the list used. A
+     * pane's own Up or Choose folder: in that pane, which is used from then, as a click in it would make it.
+     */
+    private static State navigate(State was, Navigate n, Out out) {
+        if (!there(was, n.side())) {
+            return was;
+        }
+        State s = n.side().map(side -> use(was, side, out)).orElse(was);
         return remember(show(s, n.folder(), Set.of(), out), out);
     }
 
-    /** The top bar's Back: the folder the list used showed before this one, and nothing when it showed none. */
-    private static State back(State s, Back b, Out out) {
+    /**
+     * The top bar's Back, or a pane's own: the folder that list showed before this one, and nothing when it showed
+     * none. A pane's is used from then.
+     */
+    private static State back(State was, Back b, Out out) {
+        if (!there(was, b.side())) {
+            return was;
+        }
+        State s = b.side().map(side -> use(was, side, out)).orElse(was);
         if (s.pane().back().isEmpty()) {
             return s;
         }
         State next = s.returning();
         out.send(Messages.LISTING_TOPIC, new Listing(next.asked(), next.folder().get()));
         return remember(next, out);
+    }
+
+    /** Whether a pane's button names a list there is: TO's is gone once there is one folder again. */
+    private static boolean there(State s, Optional<Side> side) {
+        return side.isEmpty() || side.get() == Side.FROM || s.to().isPresent();
     }
 
     /**
@@ -534,11 +555,27 @@ public final class Explorer {
         out.send(Messages.SHOWN_TOPIC, new Shown(side, l.folder(), l.rows(), s.pane(side).select()));
         State next = watch(s.withPane(side, s.pane(side).withRows(l)), side, l, out);
         summary(next, out);
+        compare(next, out);
         if (side != next.used()) {
             return next;
         }
         pair(next, out);
         return dock(suggest(next, true, out), out);
+    }
+
+    /**
+     * In Two Folders, each list's rows against the other's, sent whole whenever either changes: the other folder's
+     * listing is what a row's relation depends on, so both are worked out again. In one folder, nothing; the step
+     * back to one says so once.
+     */
+    private static void compare(State s, Out out) {
+        if (s.to().isEmpty()) {
+            return;
+        }
+        List<Row> from = s.pane(Side.FROM).rows();
+        List<Row> to = s.pane(Side.TO).rows();
+        out.send(Messages.COMPARED_TOPIC, new Compared(Side.FROM, Compare.of(from, to)));
+        out.send(Messages.COMPARED_TOPIC, new Compared(Side.TO, Compare.of(to, from)));
     }
 
     /** The status line's counts: the list used, and in Two Folders the other one's rows. */
@@ -750,6 +787,9 @@ public final class Explorer {
             out.send(Messages.UNWATCH_TOPIC, new Unwatch(Side.TO));
             next = watched(next, Side.TO, Watched.NONE, out);
         }
+        for (Side side : Side.values()) {
+            out.send(Messages.COMPARED_TOPIC, new Compared(side, Map.of()));
+        }
         pair(next, out);
         summary(next, out);
         return wasTo ? dock(suggest(next, true, out), out) : next;
@@ -771,6 +811,7 @@ public final class Explorer {
             watched.folder().ifPresent(f -> out.send(Messages.WATCH_TOPIC, new Watch(side, f)));
             out.send(Messages.FRESH_TOPIC, new Fresh(side, watched.fresh()));
         }
+        compare(next, out);
         pair(next, out);
         summary(next, out);
         return next;

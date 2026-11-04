@@ -41,6 +41,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -83,7 +84,7 @@ class ExplorerTest {
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
                 Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC,
-                Messages.FRESH_TOPIC, Messages.PAIR_TOPIC)) {
+                Messages.FRESH_TOPIC, Messages.PAIR_TOPIC, Messages.COMPARED_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -1008,5 +1009,59 @@ class ExplorerTest {
         assertEquals(COPY, Explorer.drop(across));
         Explorer.State one = Explorer.State.initial().withPane(Side.FROM, onC).withTo(Optional.of(Path.of("C:\\b")));
         assertEquals(MOVE, Explorer.drop(one));
+    }
+
+    // ------------------------------------------------------------------ the comparison
+
+    private Row inSub(String name, long size) {
+        return new Row(path("sub").resolve(name), name, false, size, Instant.EPOCH, Kind.TEXT);
+    }
+
+    @Test
+    void bothListsAreComparedWhenEitherListingLands() {
+        twoFoldersToSub(inSub("a.txt", 10), inSub("c.txt", 1));
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.TO, path("sub")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(inSub("a.txt", 10),
+                inSub("c.txt", 1)), null, TODAY, UTC));
+        List<Messages.Compared> compared = seen(Messages.Compared.class);
+        assertEquals(new Messages.Compared(Side.FROM, Map.of(path("a.txt"), Relation.IDENTICAL,
+                path("b.txt"), Relation.ONLY_HERE)), compared.get(compared.size() - 2));
+        assertEquals(new Messages.Compared(Side.TO, Map.of(path("sub").resolve("a.txt"), Relation.IDENTICAL,
+                path("sub").resolve("c.txt"), Relation.ONLY_HERE)), compared.getLast());
+    }
+
+    @Test
+    void oneFolderIsComparedWithNothingAndBackToOneSaysSo() {
+        showing(dir, file("a.txt", 1));
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.FROM, dir));
+        listed(dir);
+        assertTrue(seen(Messages.Compared.class).isEmpty(), "one folder compares nothing");
+        twoFolders(file("a.txt", 1));
+        tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        assertEquals(List.of(new Messages.Compared(Side.FROM, Map.of()), new Messages.Compared(Side.TO, Map.of())),
+                seen(Messages.Compared.class));
+    }
+
+    @Test
+    void aPanesOwnButtonsGoInThatPaneAndUseIt() {
+        twoFolders(file("a.txt", 1));
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Side.TO), path("sub")));
+        listed(path("sub"));
+        assertEquals(List.of(new Shown(Side.TO, path("sub"), List.of(), Set.of())), seen(Shown.class));
+        assertEquals(new Messages.Pair(true, Side.TO, Optional.of(path("sub")), true, MOVE),
+                took(Messages.Pair.class).getLast());
+        tell(Messages.BACK_TOPIC, new Messages.Back(Optional.of(Side.FROM)));
+        assertTrue(seen(Listing.class).isEmpty(), "FROM has nowhere to go back to");
+        assertEquals(Side.FROM, took(Messages.Pair.class).getLast().used(), "but its button used it");
+        tell(Messages.BACK_TOPIC, new Messages.Back(Optional.of(Side.TO)));
+        assertEquals(dir, asked().folder(), "TO goes back to where it opened");
+    }
+
+    @Test
+    void aButtonOfAToThatIsGoneDoesNothing() {
+        showing(dir, file("a.txt", 1));
+        tell(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Side.TO), path("sub")));
+        tell(Messages.BACK_TOPIC, new Messages.Back(Optional.of(Side.TO)));
+        assertTrue(sent.isEmpty(), "said nothing, asked for nothing");
     }
 }

@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -59,10 +60,18 @@ public final class Messages {
     public record Go(String text) {
     }
 
-    /** Show this folder: a breadcrumb segment, a tree row, Enter on a folder's row, Backspace or Alt+Up. */
+    /**
+     * Show this folder: a breadcrumb segment, a place, Enter on a folder's row, Backspace or Alt+Up, in the list used;
+     * or a pane's own Up or Choose folder in Two Folders, in that pane ({@code side}), which it then uses.
+     */
     public static final Topic<Navigate> NAVIGATE_TOPIC = Topic.edge(Navigate.class);
 
-    public record Navigate(Path folder) {
+    public record Navigate(Optional<Side> side, Path folder) {
+
+        /** In the list used. */
+        public Navigate(Path folder) {
+            this(Optional.empty(), folder);
+        }
     }
 
     /** What is selected in a list, as it last said: its rows turned back into their paths by the view. */
@@ -80,10 +89,18 @@ public final class Messages {
     public record Activated(Side side, Path path) {
     }
 
-    /** The top bar's Back, or Alt+Left: the folder the list used showed before this one. */
+    /**
+     * The top bar's Back, or Alt+Left: the folder the list used showed before this one; or a pane's own Back in Two
+     * Folders, that pane's ({@code side}), which it then uses.
+     */
     public static final Topic<Back> BACK_TOPIC = Topic.edge(Back.class);
 
-    public record Back() {
+    public record Back(Optional<Side> side) {
+
+        /** In the list used. */
+        public Back() {
+            this(Optional.empty());
+        }
     }
 
     /** The top bar's Two folders ({@code on}) or Back to one folder. */
@@ -381,6 +398,18 @@ public final class Messages {
     public record Fresh(Side side, Set<Path> paths) {
         public Fresh {
             paths = Set.copyOf(paths);
+        }
+    }
+
+    /**
+     * In Two Folders, how each of a list's rows stands to the other list, by path ({@link Compare}): what group it is
+     * shown in. Keyed by the list, as {@link Shown} is; empty in one folder.
+     */
+    public static final Topic<Compared> COMPARED_TOPIC = Topic.state(Compared.class, Compared::side);
+
+    public record Compared(Side side, Map<Path, Relation> rows) {
+        public Compared {
+            rows = Map.copyOf(rows);
         }
     }
 
