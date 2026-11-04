@@ -771,6 +771,60 @@ needs a plan that both trashes the older copy and moves the newer one; the board
 already leaves alone what would go over a name (slice 2) and the move offer never includes an identical copy;
 *While dragging* and offers from TO to FROM (Swap, then the same offers).
 
+#### Slice 5, a conflict in the dock
+
+Sketched 2026-11-04, before any of it is written. The board's dock in Two Folders is one conflict: two halves, each
+the copy's tag (FROM, TO), its name and a *newer* or *older* pill over a tile with its icon and `1 MB · Oct 30`, and
+a column with *Same name, different file*, *Keep newer* (amber, the primary) and *Keep both*. It draws no preview
+of either copy, only its facts.
+
+- **Which conflict.** A conflict is a name in *Different in both* (`NEWER`, `OLDER` or `DIFFERENT`). In Two Folders
+  the dock shows one when the selection in the list used is one such row, the pair being its row and the other list's
+  row of that name; with nothing selected, the first conflict by name, which is the board's case. Otherwise the dock is
+  as now: a file's preview, or the note.
+- **The halves are always FROM's, then TO's**, whichever list is used, as the strip's arrow reads; each half's tile is
+  the row's type icon and its size and time, the same facts the list shows, so nothing is read from the disk.
+- **Keep newer** leaves one copy, the newer, in TO, and the older in Vexplore's trash:
+  - FROM's is newer: TO's goes to the trash and FROM's moves into its place.
+  - TO's is newer: FROM's goes to the trash, and TO is left alone.
+  - Neither (`DIFFERENT`: the same time, a different size): the button is disabled and the column says *Neither is
+    newer: the same time, a different size*.
+- **Keep both** moves FROM's copy into TO under the first free *name (2).ext*, *(3)*, …, so TO holds both.
+- **Both move, on one drive or two**, rather than copy across two as a drop does: the buttons resolve one file in a
+  *Compare & move*, and end with it in TO once. Copying across two drives would leave FROM's copy behind for the
+  next comparison to call identical, and Keep newer would need a copy and a move in one plan. **Your call**; the
+  alternative is that both follow the drop (a copy across two drives), Keep newer then waiting across two drives.
+- **One run, one entry, one Ctrl+Z**, said as a run is: *Kept the newer kiln-cam.mp4 in Videos; the older is in
+  Vexplore's trash*, *Kept both: Downloads' kiln-cam.mp4 is kiln-cam (2).mp4 in Videos*. Refused and said while a run
+  or a check goes. The run lists both folders again, so the pair leaves *Different in both* and the dock moves to the
+  next conflict, or to its note.
+
+**`Plan` needs no new `Op`.** A run already sends a step whose `to` is null into the trash, whatever the op
+(`Operations.execute`), and records where it went. So *Keep newer* is a `MOVE` of two steps, TO's older to the trash
+then FROM's newer into its place, and `Done.reverse` already takes it back in the right order: the newer back to
+FROM, then the older out of the trash to where it was. *Keep both* is a `MOVE` of one step to another name. Two new
+factories, `Plan.keepNewer(newer, older)` and `Plan.aside(row, destination, taken)`, and the null-`to` rule written
+into `Step`'s javadoc, where it says *for a delete* today. If the trash step fails, the move after it finds the name
+taken and fails too, so nothing is overwritten; both are said.
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Conflict(Optional<Twins> twins, Optional<Side> newer, String note)` | state, explorer → view | the conflict the dock shows (`here` FROM's row, `there` TO's), which copy is newer, and the column's words; `NONE` outside Two Folders or with none to show |
+| `Resolve(Twins twins, Keep keep)`, `Keep { NEWER, BOTH }` | edge, view → explorer | a press of *Keep newer* or *Keep both*, carrying the pair the dock showed |
+
+`Resolve` carries the pair rather than leaving the explorer to recall which it showed, so a press that crosses a new
+listing is checked against what the person saw: a pair whose rows have changed or gone since is refused and said.
+`Docked` is unchanged; the view shows the conflict while one is sent, and the preview or note otherwise. `Work.Dock`
+gains the conflict sent, so a step resends only on a change.
+
+The view: the conflict's halves and column are nodes of the dock, built once and shown in place of the preview,
+faded as any node shown and hidden. New landmarks: the conflict (`dock.conflict`), each half (`dock.conflict.from`,
+`dock.conflict.to`), *Keep newer* and *Keep both* (`dock.keep.newer`, `dock.keep.both`).
+
+**Not in slice 5**: the rail's *Replace kiln-cam.mp4 with newer* under *Also*. The dock holds the conflict, and one
+card per conflict does not scale past a few; a batch card (*Keep the newer of 3*) can follow if wanted. A preview of
+each copy, which the board does not draw.
+
 ## What M6 built differently
 
 Slice 1, two lists, built 2026-11-02:
