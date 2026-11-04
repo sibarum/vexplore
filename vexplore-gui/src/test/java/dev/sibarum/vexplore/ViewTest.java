@@ -239,4 +239,41 @@ class ViewTest {
             VexelApplication.frame(shell);
         }
     }
+
+    /**
+     * The dock's conflict through the window: a name in both folders with a newer copy is shown in the dock, Keep both
+     * pressed as the pointer would moves FROM's copy in under a free name, and none of it changes in one frame.
+     */
+    @Test
+    void aConflictIsShownInTheDockAndKeepBothMovesTheCopyIn() throws Exception {
+        List<Messages.Conflict> conflicts = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.CONFLICT_TOPIC, conflicts::add);
+        // A session read, as the window opening would ask for: nothing is carried out before one.
+        shell.bus().publish(Messages.RECALLED_TOPIC, new Messages.Recalled(Optional.empty(), List.of(), dir,
+                dir.resolve("trash"), List.of()));
+        Path left = Files.createDirectory(dir.resolve("left")).toAbsolutePath().normalize();
+        Path right = Files.createDirectory(dir.resolve("right")).toAbsolutePath().normalize();
+        Files.writeString(left.resolve("a.txt"), "mine");
+        Files.writeString(right.resolve("a.txt"), "theirs, older");
+        Files.setLastModifiedTime(right.resolve("a.txt"),
+                java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 86_400_000L));
+        go(left);
+        eventually("the rows", () -> wiring.ui().rows() == 1);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        eventually("TO in left", () -> left.equals(wiring.ui().folder(Messages.Side.TO)));
+        shell.bus().publish(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Messages.Side.TO), right));
+        eventually("the conflict", () -> !conflicts.isEmpty() && conflicts.getLast().twins().isPresent());
+        assertEquals(Optional.of(Messages.Side.FROM), conflicts.getLast().newer());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+        shell.bus().publish(dev.vexelray.gui.widget.Button.PRESSED,
+                new dev.vexelray.gui.widget.Button.Pressed(wiring.ui().keepAddress(Messages.Resolve.Keep.BOTH)));
+        eventually("kept both", () -> Files.exists(right.resolve("a (2).txt")));
+        assertEquals("mine", Files.readString(right.resolve("a (2).txt")));
+        eventually("no conflict left", () -> conflicts.getLast().twins().isEmpty());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
 }

@@ -138,6 +138,54 @@ class OperationsTest {
     }
 
     @Test
+    void keepNewerTrashesTheOlderMovesTheNewerIntoItsPlaceAndOneUndoTakesItBack() throws IOException {
+        Path here = Files.createDirectories(dir.resolve("here"));
+        Path there = Files.createDirectories(dir.resolve("there"));
+        Path newer = Files.writeString(here.resolve("kiln.mp4"), "new");
+        Path older = Files.writeString(there.resolve("kiln.mp4"), "old");
+        Done d = Operations.execute(Plan.keepNewer(row(newer), row(older), there), trash(), n -> { });
+        assertEquals(List.of(), d.failed());
+        assertEquals("new", Files.readString(older));
+        assertFalse(Files.exists(newer));
+        assertTrue(d.done().getFirst().to().startsWith(trash()), "the older is kept in the trash");
+
+        Done back = Operations.execute(d.reverse(), trash(), n -> { });
+        assertEquals(List.of(), back.failed());
+        assertEquals("new", Files.readString(newer));
+        assertEquals("old", Files.readString(older));
+    }
+
+    @Test
+    void keepNewerLeavesANewerCopyAlreadyThereAndTrashesOnlyTheOlder() throws IOException {
+        Path here = Files.createDirectories(dir.resolve("here"));
+        Path there = Files.createDirectories(dir.resolve("there"));
+        Path older = Files.writeString(here.resolve("kiln.mp4"), "old");
+        Path newer = Files.writeString(there.resolve("kiln.mp4"), "new");
+        Plan p = Plan.keepNewer(row(newer), row(older), there);
+        assertEquals(1, p.count());
+        Operations.execute(p, trash(), n -> { });
+        assertFalse(Files.exists(older));
+        assertEquals("new", Files.readString(newer));
+    }
+
+    @Test
+    void keepBothMovesTheCopyInUnderTheFirstFreeNumber() throws IOException {
+        Path here = Files.createDirectories(dir.resolve("here"));
+        Path there = Files.createDirectories(dir.resolve("there"));
+        Path mine = Files.writeString(here.resolve("kiln.mp4"), "mine");
+        Files.writeString(there.resolve("kiln.mp4"), "theirs");
+        Plan p = Plan.aside(row(mine), there, java.util.Set.of("kiln.mp4", "kiln (2).mp4"));
+        assertEquals(there.toAbsolutePath().resolve("kiln (3).mp4"), p.steps().getFirst().to());
+        Done d = Operations.execute(p, trash(), n -> { });
+        assertEquals("mine", Files.readString(there.resolve("kiln (3).mp4")));
+        Operations.execute(d.reverse(), trash(), n -> { });
+        assertEquals("mine", Files.readString(mine));
+
+        assertEquals("notes (2)", Plan.asideName("notes", false, java.util.Set.of("notes")));
+        assertEquals("a.b (2)", Plan.asideName("a.b", true, java.util.Set.of("a.b")));
+    }
+
+    @Test
     void aRenameIsUndoneByRenamingBackAndRefusesANameThatWillNotDo() throws IOException {
         Path a = file("a.txt", "a");
         Done d = Operations.execute(Plan.rename(row(a), "b.txt", java.util.Set.of("a.txt")), trash(), n -> { });

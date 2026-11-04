@@ -8,6 +8,7 @@ import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Compared;
 import dev.sibarum.vexplore.core.Messages.Destine;
+import dev.sibarum.vexplore.core.Messages.Conflict;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Dropped;
 import dev.sibarum.vexplore.core.Messages.Fresh;
@@ -20,6 +21,7 @@ import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenWith;
 import dev.sibarum.vexplore.core.Messages.OpenWith.With;
 import dev.sibarum.vexplore.core.Messages.Offers;
+import dev.sibarum.vexplore.core.Messages.Resolve;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
@@ -136,6 +138,7 @@ final class View {
     private final Sender<Back> back;
     private final Sender<Dropped> dropped;
     private final Sender<Accept> accept;
+    private final Sender<Resolve> resolve;
     private final Sender<Intent> intents;
 
     /** The dock's picture, and the one it replaced, which may still be fading out: the view's to give back. */
@@ -155,13 +158,16 @@ final class View {
     private Suggested suggested = Suggested.NONE;
     private Offers offers = Offers.NONE;
 
+    /** The conflict the dock shows, as the explorer last said: the pair a press of its buttons carries. */
+    private Conflict conflict = Conflict.NONE;
+
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
          Sender<PlacesWanted> placesWanted, Sender<Back> back, Sender<Dropped> dropped, Sender<Accept> accept,
-         Sender<Intent> intents) {
+         Sender<Resolve> resolve, Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
         this.go = go;
@@ -187,6 +193,7 @@ final class View {
         this.back = back;
         this.dropped = dropped;
         this.accept = accept;
+        this.resolve = resolve;
         this.intents = intents;
         shortcuts();
         // Open with's menu: a left click opens what suits the file, and the menu names the program instead (FN-15).
@@ -267,6 +274,13 @@ final class View {
         offers = m;
         ui.offers(m);
         ui.reach(pair.used(), suggested, offers);
+    }
+
+    /** Two Folders' conflict, shown in the dock in place of the preview. */
+    @Subscribe
+    public void conflict(Conflict m) {
+        conflict = m;
+        ui.conflict(m);
     }
 
     // ------------------------------------------------------------------ what the jobs answer
@@ -395,6 +409,10 @@ final class View {
             picked.send(tile);
         } else if (ui.accept(m.button()) != null) {
             accept.send(new Accept(ui.accept(m.button())));
+        } else if (ui.keep(m.button()) != null) {
+            if (conflict.twins().isPresent()) {
+                resolve.send(new Resolve(conflict.twins().get(), ui.keep(m.button())));
+            }
         } else if (ui.go(m.button())) {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {

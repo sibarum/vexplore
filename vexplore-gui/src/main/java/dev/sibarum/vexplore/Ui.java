@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.core.Bytes;
+import dev.sibarum.vexplore.core.Messages;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Offer;
@@ -425,6 +426,21 @@ final class Ui {
     /** What the dock shows: one file's preview, or a note. */
     void docked(Docked d) {
         dock.show(d);
+    }
+
+    /** Two Folders' conflict, in the dock in place of the preview; none puts the preview back. */
+    void conflict(Messages.Conflict c) {
+        dock.conflict(c);
+    }
+
+    /** Which of the conflict's buttons {@code address} is, or null. */
+    Messages.Resolve.Keep keep(String address) {
+        return dock.keep(address);
+    }
+
+    /** Where a conflict's button is on the bus: for a test, which presses it as the pointer would. */
+    String keepAddress(Messages.Resolve.Keep keep) {
+        return dock.keepAddress(keep);
     }
 
     // ------------------------------------------------------------------ the Suggestion Rail

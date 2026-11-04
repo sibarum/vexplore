@@ -207,6 +207,23 @@ public final class Messages {
     }
 
     /**
+     * The dock's <em>Keep newer</em> or <em>Keep both</em>, with the pair it showed, so a press that crosses a new
+     * listing is checked against what the person saw.
+     */
+    public static final Topic<Resolve> RESOLVE_TOPIC = Topic.edge(Resolve.class);
+
+    public record Resolve(Twins twins, Keep keep) {
+
+        /** How a conflict is settled. */
+        public enum Keep {
+            /** One copy, the newer, in TO; the older into the trash. */
+            NEWER,
+            /** FROM's copy into TO under the first free {@code name (2).ext}. */
+            BOTH
+        }
+    }
+
+    /**
      * The window's history applied an entry: take back what entry {@code entry} did ({@link Undo}), or do it again
      * ({@link Redo}). The history holds only the number; what the entry did is the explorer's.
      */
@@ -396,6 +413,18 @@ public final class Messages {
     public static final Topic<Docked> DOCKED_TOPIC = Topic.state(Docked.class);
 
     public record Docked(Optional<Preview> preview, String note) {
+    }
+
+    /**
+     * The conflict the dock shows in Two Folders, in place of its preview: the pair ({@code here} FROM's row,
+     * {@code there} TO's), which copy is newer, none when their times agree, and the column's words. {@link #NONE}
+     * outside Two Folders or with no conflict to show. The latest is all that matters.
+     */
+    public static final Topic<Conflict> CONFLICT_TOPIC = Topic.state(Conflict.class);
+
+    public record Conflict(Optional<Twins> twins, Optional<Side> newer, String note) {
+
+        public static final Conflict NONE = new Conflict(Optional.empty(), Optional.empty(), "");
     }
 
     /**

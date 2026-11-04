@@ -905,6 +905,28 @@ Slice 4, the rail from the comparison, built 2026-11-04:
   with the drop). The check of two small files is over before a frame shows its count.
 - **Framework**: a source's sender cannot be a lambda in a test (FN-16).
 
+Slice 5, a conflict in the dock, built 2026-11-04:
+
+- **As sketched**: `Conflict` and `Resolve`, *Keep newer* a `MOVE` of two steps (the older to the trash, then the
+  newer into its place) and *Keep both* a `MOVE` under the first free *name (2).ext*, both moving on one drive or two
+  (ruled with the sketch). No new `Op`; `Done.reverse` takes either back with one Ctrl+Z.
+- **`Work.Dock` did not grow.** The conflict is worked out from both listings and the selection whenever either
+  changes and sent whole, as `Compared` is; `Resolve` is checked against the listings, which is what the sketch kept
+  the conflict for. A pair whose rows differ from what was shown is refused and said.
+- **The words are an entry's**, so the status line's past tense is the run's: *Moved the newer kiln-cam.mp4 into
+  Videos, the older into Vexplore's trash*, *Moved kiln-cam.mp4 from Downloads into Videos as kiln-cam (2).mp4*, and
+  *Undone: …* for each. When TO's copy is the newer, *Moved the older kiln-cam.mp4 from Downloads into Vexplore's
+  trash*.
+- **Each half's tile is the type icon and the facts**, the icon an `IconView` whose source changes with the pair;
+  `Cuts` found nothing in one frame. When neither copy is newer the pills say *same time* and *Keep newer* is
+  disabled, the column saying why (a folder against a file, the same time read different, or a different size).
+- **Seen live**: Downloads against the Videos made for slice 3. With nothing selected the dock showed kiln-cam.mp4,
+  FROM's 1 MB of Oct 30 *newer* and TO's 9 B of Oct 28 *older*, as the board draws it. *Keep newer* left the 1 MB copy
+  in Videos and Downloads one file fewer, the dock back to its note; Ctrl+Z put both back. *Keep both* made
+  kiln-cam (2).mp4 in Videos; Ctrl+Z took it back. The disk is as it was.
+- **Not driven live**: a TO copy that is the newer, neither newer, and a press that crosses a new listing (all
+  tested), and a selection picking the conflict rather than the first by name (tested in `-core`).
+
 ## The messages M8 adds
 
 Proposed 2026-11-02, before any of it is written. **(ruled 2026-11-02)** Orbit (*C · Orbit* on the *Vexplore

@@ -1,7 +1,12 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.core.Bytes;
+import dev.sibarum.vexplore.core.Dates;
+import dev.sibarum.vexplore.core.Messages.Conflict;
 import dev.sibarum.vexplore.core.Messages.Docked;
+import dev.sibarum.vexplore.core.Messages.Resolve;
+import dev.sibarum.vexplore.core.Messages.Row;
+import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Preview;
 import dev.vexelray.gui.core.Feed;
 import dev.vexelray.gui.core.Gui;
@@ -11,9 +16,14 @@ import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
 import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Role;
+import dev.vexelray.gui.fileicons.FileFamily;
 import dev.vexelray.gui.icons.Icon;
+import dev.vexelray.gui.icons.IconView;
+import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.IconButton;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -63,6 +73,20 @@ final class DockPanel {
     private final Node strings;
     private final Node picture;
     private final IconButton openWith;
+    private final Node main;
+    private final Node side;
+
+    /** Two Folders' conflict, shown in place of the preview: FROM's half, TO's, and the column with its buttons. */
+    private final Node clash;
+    private final Half from;
+    private final Half to;
+    private final Node verdict;
+    private final Button keepNewer;
+    private final Button keepBoth;
+
+    /** One copy's half: its tag, its name, the newer or older pill, and the tile with its type and its facts. */
+    private record Half(Node node, Node name, Node pill, IconView glyph, Node facts) {
+    }
 
     DockPanel(Gui gui) {
         name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
@@ -107,7 +131,7 @@ final class DockPanel {
 
         Node content = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(0.8f))
                 .scroll(true, true).clip(true).children(note, stage, measure, body);
-        Node main = gui.column().width(Length.grow(1f)).height(Length.FILL).gap(Length.rem(0.6f)).clip(true)
+        main = gui.column().width(Length.grow(1f)).height(Length.FILL).gap(Length.rem(0.6f)).clip(true)
                 .children(header, content);
         // Open with, in a column at the strip's right as Orbit draws it, an icon and its words on a pill. A left click
         // opens the file with what suits it (Vexplore has no viewer of its own: a picture or a video is Rasterware's);
@@ -118,12 +142,95 @@ final class DockPanel {
                 .gap(Length.dp(8));
         openWith.node().visible(false);
         gui.landmark(Landmarks.DOCK_OPEN, openWith.node());
-        Node side = gui.column().width(Length.dp(150)).gap(Length.dp(8)).children(openWith.node());
+        side = gui.column().width(Length.dp(150)).gap(Length.dp(8)).children(openWith.node());
+
+        // The conflict, as Orbit's Two folders board draws it: two halves and a column 190 px wide, built once.
+        from = half(gui, Side.FROM, Landmarks.DOCK_CONFLICT_FROM);
+        to = half(gui, Side.TO, Landmarks.DOCK_CONFLICT_TO);
+        verdict = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(true)
+                .width(Length.FILL);
+        gui.landmark(Landmarks.DOCK_CONFLICT_NOTE, verdict);
+        keepNewer = new Button(gui, "Keep newer").kind(Button.Kind.PRIMARY).undoable(false)
+                .name(Landmarks.DOCK_KEEP_NEWER);
+        gui.landmark(Landmarks.DOCK_KEEP_NEWER, keepNewer.node());
+        keepBoth = new Button(gui, "Keep both").kind(Button.Kind.SECONDARY).undoable(false)
+                .name(Landmarks.DOCK_KEEP_BOTH);
+        gui.landmark(Landmarks.DOCK_KEEP_BOTH, keepBoth.node());
+        keepNewer.node().width(Length.FILL);
+        keepBoth.node().width(Length.FILL);
+        Node column = gui.column().width(Length.dp(190)).height(Length.FILL).gap(Length.dp(8))
+                .justify(Justify.CENTER).children(verdict, keepNewer.node(), keepBoth.node());
+        clash = gui.row().width(Length.FILL).height(Length.FILL).gap(Length.rem(1f))
+                .children(from.node(), to.node(), column);
+        clash.visible(false);
+        gui.landmark(Landmarks.DOCK_CONFLICT, clash);
+
         node = gui.row().width(Length.FILL).height(Length.FILL).padding(Length.rem(0.9f), Length.rem(1.25f))
                 .gap(Length.rem(1.1f)).background(Look.LIST).corner(Look.PANEL_CORNER).clip(true)
-                .children(main, side);
+                .children(main, side, clash);
         gui.landmark(Landmarks.DOCK, node);
         show(new Docked(java.util.Optional.empty(), "Select one file to see it here"));
+    }
+
+    private static Half half(Gui gui, Side which, String landmark) {
+        Node tag = gui.text(which.name()).font(Type.MONO).textSize(Type.SMALL).wordWrap(false)
+                .padding(Length.dp(2), Length.dp(7)).corner(Length.dp(9))
+                .background(which == Side.TO ? Look.TO_WASH : Look.FROM_WASH)
+                .textColor(which == Side.TO ? Look.TO_INK : Look.FROM_INK);
+        Node name = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(false);
+        gui.landmark(landmark, name);
+        Node pill = gui.text("").font(Type.MONO).textSize(Type.SMALL).wordWrap(false)
+                .padding(Length.dp(2), Length.dp(7)).corner(Length.dp(9)).background(Look.QUIET_WASH)
+                .textColor(Look.QUIET_INK);
+        Node head = gui.row().width(Length.FILL).gap(Length.dp(8)).alignItems(AlignItems.CENTER)
+                .scroll(false, false).clip(true).children(tag, name, pill);
+        IconView glyph = IconView.of(gui, FileFamily.FOLDERS).size(Length.dp(28));
+        Node facts = gui.text("").font(Type.MONO).textSize(Type.SMALL).textColor(Role.INK).wordWrap(false);
+        gui.landmark(landmark + ".facts", facts);
+        Node tile = gui.row().width(Length.FILL).height(Length.grow(1f)).gap(Length.dp(14))
+                .alignItems(AlignItems.CENTER).justify(Justify.CENTER).corner(Length.dp(14))
+                .background(Look.RAISED).children(glyph.node(), facts);
+        Node node = gui.column().width(Length.grow(1f)).height(Length.FILL).gap(Length.dp(8)).children(head, tile);
+        return new Half(node, name, pill, glyph, facts);
+    }
+
+    /**
+     * Show the conflict the explorer says, or, with none, the preview again. The halves are FROM's then TO's, each
+     * with its pill: newer in amber, older quiet, and none when neither is newer, which disables Keep newer.
+     */
+    void conflict(Conflict c) {
+        boolean on = c.twins().isPresent();
+        clash.visible(on);
+        main.visible(!on);
+        side.visible(!on);
+        if (!on) {
+            return;
+        }
+        fill(from, c.twins().get().here(), c.newer().map(n -> n == Side.FROM));
+        fill(to, c.twins().get().there(), c.newer().map(n -> n == Side.TO));
+        verdict.text(c.note());
+        keepNewer.enabled(c.newer().isPresent());
+    }
+
+    private static void fill(Half h, Row r, java.util.Optional<Boolean> newer) {
+        h.name().text(r.name());
+        h.pill().text(newer.map(n -> n ? "newer" : "older").orElse("same time"));
+        h.pill().background(newer.orElse(false) ? Look.ANCHOR_WASH : Look.QUIET_WASH);
+        h.pill().textColor(newer.orElse(false) ? Look.ANCHOR : Look.QUIET_INK);
+        h.glyph().icon(Columns.family(r));
+        String when = r.modified().equals(Instant.EPOCH) ? ""
+                : " · " + Dates.column(r.modified(), Instant.now(), ZoneId.systemDefault());
+        h.facts().text((r.folder() ? "folder" : Bytes.format(r.size())) + when);
+    }
+
+    /** Which of the conflict's buttons {@code address} is, or null. */
+    Resolve.Keep keep(String address) {
+        return keepNewer.address().equals(address) ? Resolve.Keep.NEWER
+                : keepBoth.address().equals(address) ? Resolve.Keep.BOTH : null;
+    }
+
+    String keepAddress(Resolve.Keep keep) {
+        return (keep == Resolve.Keep.NEWER ? keepNewer : keepBoth).address();
     }
 
     Node node() {

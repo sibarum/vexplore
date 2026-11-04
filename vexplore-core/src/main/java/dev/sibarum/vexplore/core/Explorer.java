@@ -10,6 +10,7 @@ import dev.sibarum.vexplore.core.Messages.Dest;
 import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Destinations;
 import dev.sibarum.vexplore.core.Messages.Destining;
+import dev.sibarum.vexplore.core.Messages.Conflict;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Dropped;
 import dev.sibarum.vexplore.core.Messages.Check;
@@ -66,6 +67,7 @@ import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Swap;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Tally;
+import dev.sibarum.vexplore.core.Messages.Resolve;
 import dev.sibarum.vexplore.core.Messages.Twins;
 import dev.sibarum.vexplore.core.Messages.TwoFolders;
 import dev.sibarum.vexplore.core.Messages.Undo;
@@ -147,12 +149,12 @@ import java.util.Set;
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
-        Back.class, Dropped.class, Accept.class, Checking.class, Checked.class})
+        Back.class, Dropped.class, Accept.class, Checking.class, Checked.class, Resolve.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
         Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class, Pair.class,
-        Fresh.class, Compared.class, Offers.class, Check.class, StopCheck.class})
+        Fresh.class, Compared.class, Offers.class, Check.class, StopCheck.class, Conflict.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -369,6 +371,7 @@ public final class Explorer {
         Step<State, Accept> accept = b.step("accept", Explorer::accept);
         Step<State, Checking> checking = b.step("checking", Explorer::checking);
         Step<State, Checked> checked = b.step("checked", Explorer::checked);
+        Step<State, Resolve> resolve = b.step("resolve", Explorer::resolve);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -405,7 +408,8 @@ public final class Explorer {
                 .on(Messages.DROPPED_TOPIC, dropped)
                 .on(Messages.ACCEPT_TOPIC, accept)
                 .on(Messages.CHECKING_TOPIC, checking)
-                .on(Messages.CHECKED_TOPIC, checked);
+                .on(Messages.CHECKED_TOPIC, checked)
+                .on(Messages.RESOLVE_TOPIC, resolve);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -594,6 +598,110 @@ public final class Explorer {
         out.send(Messages.COMPARED_TOPIC, new Compared(Side.FROM, Compare.of(from, to, checked)));
         out.send(Messages.COMPARED_TOPIC, new Compared(Side.TO, Compare.of(to, from, checked)));
         offers(s, out);
+        conflict(s, out);
+    }
+
+    // ------------------------------------------------------------------ the dock's conflict
+
+    /**
+     * The conflict the dock shows, sent whenever the comparison or the selection changes: the one row selected in the
+     * list used, if its name is <em>different in both</em>; with nothing selected, FROM's first such name; else none.
+     */
+    private static void conflict(State s, Out out) {
+        if (s.to().isEmpty()) {
+            return;
+        }
+        Optional<Twins> twins = conflicted(s);
+        if (twins.isEmpty()) {
+            out.send(Messages.CONFLICT_TOPIC, Conflict.NONE);
+            return;
+        }
+        Twins t = twins.get();
+        Relation rel = relations(s).get(t.here().path());
+        Optional<Side> newer = rel == Relation.NEWER ? Optional.of(Side.FROM)
+                : rel == Relation.OLDER ? Optional.of(Side.TO) : Optional.empty();
+        String note = newer.isPresent() ? "Same name, different file"
+                : t.here().folder() != t.there().folder() ? "Neither is newer: one is a folder"
+                : t.here().size() == t.there().size() ? "Neither is newer: the same time, read different"
+                : "Neither is newer: the same time, a different size";
+        out.send(Messages.CONFLICT_TOPIC, new Conflict(twins, newer, note));
+    }
+
+    /** The pair the dock shows, FROM's row first, by {@link #conflict}'s rule. */
+    private static Optional<Twins> conflicted(State s) {
+        if (s.pane(Side.FROM).folder().isEmpty() || s.pane(Side.TO).folder().isEmpty()) {
+            return Optional.empty();
+        }
+        Map<Path, Relation> relations = relations(s);
+        Map<String, Row> there = new HashMap<>();
+        for (Row r : s.pane(Side.TO).rows()) {
+            there.put(r.name(), r);
+        }
+        Set<Path> selected = s.selected();
+        if (selected.size() == 1) {
+            Optional<Row> one = s.pane().row(selected.iterator().next());
+            Optional<Row> here = one.flatMap(r -> s.used() == Side.FROM ? one
+                    : s.pane(Side.FROM).rows().stream().filter(f -> f.name().equals(r.name())).findFirst());
+            return here.filter(r -> conflicts(relations, r) && there.containsKey(r.name()))
+                    .map(r -> new Twins(r, there.get(r.name())));
+        }
+        if (!selected.isEmpty()) {
+            return Optional.empty();
+        }
+        return s.pane(Side.FROM).rows().stream()
+                .filter(r -> conflicts(relations, r) && there.containsKey(r.name()))
+                .min(java.util.Comparator.comparing(Row::name))
+                .map(r -> new Twins(r, there.get(r.name())));
+    }
+
+    private static boolean conflicts(Map<Path, Relation> relations, Row r) {
+        Relation rel = relations.get(r.path());
+        return rel != null && rel.group() == Relation.Group.DIFFERENT;
+    }
+
+    /**
+     * The dock's Keep newer or Keep both, for the pair it showed. Refused and said if either copy has changed or gone
+     * since, if it is no longer a conflict, or, for Keep newer, if neither copy is newer. Both move, on one drive or
+     * two, and end with the file in TO: the newer alone, or both under two names.
+     */
+    private static State resolve(State s, Resolve r, Out out) {
+        if (s.to().isEmpty() || s.pane(Side.FROM).folder().isEmpty() || s.pane(Side.TO).folder().isEmpty()) {
+            return s;
+        }
+        Twins t = r.twins();
+        String name = t.here().name();
+        if (!s.pane(Side.FROM).row(t.here().path()).equals(Optional.of(t.here()))
+                || !s.pane(Side.TO).row(t.there().path()).equals(Optional.of(t.there()))) {
+            refuse(out, name + " has changed since it was shown: look again");
+            return s;
+        }
+        Relation rel = relations(s).get(t.here().path());
+        if (rel == null || rel.group() != Relation.Group.DIFFERENT) {
+            refuse(out, name + " is no longer different in both");
+            return s;
+        }
+        Path to = s.pane(Side.TO).folder().get();
+        String from = ListFolder.name(s.pane(Side.FROM).folder().get());
+        String into = ListFolder.name(to);
+        if (r.keep() == Resolve.Keep.NEWER) {
+            if (rel == Relation.DIFFERENT) {
+                refuse(out, "Neither copy of " + name + " is newer");
+                return s;
+            }
+            if (rel == Relation.NEWER) {
+                return start(s, Plan.keepNewer(t.here(), t.there(), to), Way.DO, 0L, "Move the newer " + name
+                        + " into " + into + ", the older into Vexplore's trash", out);
+            }
+            return start(s, Plan.keepNewer(t.there(), t.here(), to), Way.DO, 0L, "Move the older " + name
+                    + " from " + from + " into Vexplore's trash", out);
+        }
+        Set<String> taken = new HashSet<>();
+        for (Row row : s.pane(Side.TO).rows()) {
+            taken.add(row.name());
+        }
+        Plan plan = Plan.aside(t.here(), to, taken);
+        String as = ListFolder.name(plan.steps().getFirst().to());
+        return start(s, plan, Way.DO, 0L, "Move " + name + " from " + from + " into " + into + " as " + as, out);
     }
 
     // ------------------------------------------------------------------ Two Folders' offers
@@ -1043,6 +1151,7 @@ public final class Explorer {
             out.send(Messages.COMPARED_TOPIC, new Compared(side, Map.of()));
         }
         out.send(Messages.OFFERS_TOPIC, Offers.NONE);
+        out.send(Messages.CONFLICT_TOPIC, Conflict.NONE);
         pair(next, out);
         summary(next, out);
         return wasTo ? dock(suggest(next, true, out), out) : next;
@@ -1408,6 +1517,7 @@ public final class Explorer {
      * between two files.
      */
     private static State dock(State s, Out out) {
+        conflict(s, out);
         Dock d = s.work().dock();
         if (s.selected().size() == 1) {
             Path one = s.selected().iterator().next();

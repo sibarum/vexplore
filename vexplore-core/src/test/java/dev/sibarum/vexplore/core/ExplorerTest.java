@@ -85,7 +85,7 @@ class ExplorerTest {
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
                 Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC,
                 Messages.FRESH_TOPIC, Messages.PAIR_TOPIC, Messages.COMPARED_TOPIC, Messages.OFFERS_TOPIC,
-                Messages.CHECK_TOPIC, Messages.STOP_CHECK_TOPIC)) {
+                Messages.CHECK_TOPIC, Messages.STOP_CHECK_TOPIC, Messages.CONFLICT_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -1147,5 +1147,84 @@ class ExplorerTest {
         tell(Messages.CHECKED_TOPIC, new Messages.Checked(check.run(), Set.of(), Set.of(), null));
         assertEquals("Stopped before any pair was read", seen(Status.class).getLast().message());
         assertEquals("Check them", card(REMOVE).go(), "nothing was read, so it is offered as before");
+    }
+
+    // ------------------------------------------------------------------ the dock's conflict
+
+    private Row inSub(String name, long size, Instant modified) {
+        return new Row(path("sub").resolve(name), name, false, size, modified, Kind.TEXT);
+    }
+
+    private static final Instant EARLIER = Instant.EPOCH.minusSeconds(3600);
+    private static final Instant LATER = Instant.EPOCH.plusSeconds(3600);
+
+    @Test
+    void theDockShowsTheFirstConflictAndKeepNewerMovesTheNewerIntoItsPlace() {
+        Row older = inSub("a.txt", 5, EARLIER);
+        offered(older);
+        Messages.Twins twins = new Messages.Twins(file("a.txt", 10), older);
+        assertEquals(new Messages.Conflict(Optional.of(twins), Optional.of(Side.FROM), "Same name, different file"),
+                seen(Messages.Conflict.class).getLast());
+        tell(Messages.RESOLVE_TOPIC, new Messages.Resolve(twins, Messages.Resolve.Keep.NEWER));
+        Plan plan = seen(Messages.Run.class).getLast().plan();
+        assertEquals(MOVE, plan.op());
+        assertEquals(List.of(new Plan.Step(older.path(), null), new Plan.Step(path("a.txt"), older.path())),
+                plan.steps(), "the older into the trash, then the newer into its place");
+
+        tell(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        assertEquals(Messages.Conflict.NONE, seen(Messages.Conflict.class).getLast(), "one folder has no conflict");
+    }
+
+    @Test
+    void keepNewerWhenToIsNewerTrashesOnlyFromsCopy() {
+        Row newer = inSub("a.txt", 5, LATER);
+        offered(newer);
+        Messages.Twins twins = new Messages.Twins(file("a.txt", 10), newer);
+        assertEquals(Optional.of(Side.TO), seen(Messages.Conflict.class).getLast().newer());
+        tell(Messages.RESOLVE_TOPIC, new Messages.Resolve(twins, Messages.Resolve.Keep.NEWER));
+        assertEquals(List.of(new Plan.Step(path("a.txt"), null)), seen(Messages.Run.class).getLast().plan().steps());
+    }
+
+    @Test
+    void keepBothMovesFromsCopyInUnderAFreeName() {
+        Row theirs = inSub("a.txt", 5, Instant.EPOCH);
+        offered(theirs, inSub("a (2).txt", 1));
+        Messages.Conflict shown = seen(Messages.Conflict.class).getLast();
+        assertEquals(Optional.empty(), shown.newer(), "the same time: neither is newer");
+        assertEquals("Neither is newer: the same time, a different size", shown.note());
+        tell(Messages.RESOLVE_TOPIC, new Messages.Resolve(shown.twins().get(), Messages.Resolve.Keep.NEWER));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "Keep newer is refused");
+        assertEquals("Neither copy of a.txt is newer", took(Status.class).getLast().message());
+        tell(Messages.RESOLVE_TOPIC, new Messages.Resolve(shown.twins().get(), Messages.Resolve.Keep.BOTH));
+        assertEquals(List.of(new Plan.Step(path("a.txt"), path("sub").resolve("a (3).txt"))),
+                seen(Messages.Run.class).getLast().plan().steps());
+    }
+
+    @Test
+    void aPairThatChangedSinceItWasShownIsRefused() {
+        Row older = inSub("a.txt", 5, EARLIER);
+        offered(older);
+        Messages.Twins stale = new Messages.Twins(file("a.txt", 10), inSub("a.txt", 6, EARLIER));
+        tell(Messages.RESOLVE_TOPIC, new Messages.Resolve(stale, Messages.Resolve.Keep.BOTH));
+        assertTrue(seen(Messages.Run.class).isEmpty());
+        assertEquals("a.txt has changed since it was shown: look again", took(Status.class).getLast().message());
+    }
+
+    @Test
+    void theRowSelectedPicksTheConflictAndSeveralPickNone() {
+        Row a = inSub("a.txt", 5, EARLIER);
+        Row b = inSub("b.txt", 6, EARLIER);
+        offered(a, b);
+        assertEquals("a.txt", seen(Messages.Conflict.class).getLast().twins().get().here().name(), "first by name");
+        tell(Messages.CHOSEN_TOPIC, new Messages.Chosen(Side.FROM, Set.of(path("b.txt"))));
+        assertEquals(new Messages.Twins(file("b.txt", 20), b), seen(Messages.Conflict.class).getLast().twins().get());
+        tell(Messages.CHOSEN_TOPIC, new Messages.Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
+        assertEquals(Messages.Conflict.NONE, seen(Messages.Conflict.class).getLast());
+    }
+
+    @Test
+    void noConflictLeavesTheDockAsItWas() {
+        offered(inSub("a.txt", 10));
+        assertEquals(Messages.Conflict.NONE, seen(Messages.Conflict.class).getLast(), "identical is no conflict");
     }
 }

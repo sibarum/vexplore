@@ -113,8 +113,9 @@ public record Plan(Op op, List<Step> steps, List<Skip> skipped, long bytes) {
     }
 
     /**
-     * One file or folder and where it goes. For a delete that is still a plan, {@code to} is null: the run picks the
-     * place in the trash. For a remove, {@code to} is what is removed and {@code from} the original it was copied from.
+     * One file or folder and where it goes. A {@code to} that is null, in a delete or a move still a plan, is the
+     * trash: the run picks the place in it, and records where. For a remove, {@code to} is what is removed and
+     * {@code from} the original it was copied from.
      */
     public record Step(Path from, Path to) {
     }
@@ -197,6 +198,42 @@ public record Plan(Op op, List<Step> steps, List<Skip> skipped, long bytes) {
     static boolean named(String name) {
         return !name.isBlank() && !name.equals(".") && !name.equals("..")
                 && name.indexOf('/') < 0 && name.indexOf('\\') < 0 && name.indexOf('\0') < 0;
+    }
+
+    /**
+     * A conflict settled for the newer copy: {@code older} into the trash, then {@code newer} into {@code to} under its
+     * name, unless it is in {@code to} already, where it stays. A move either way, so one undo takes it all back, the
+     * newer first. Were the trash step to fail, the move after it finds the name taken and fails too.
+     */
+    public static Plan keepNewer(Row newer, Row older, Path to) {
+        List<Step> steps = new ArrayList<>(2);
+        steps.add(new Step(older.path(), null));
+        long bytes = older.size();
+        Path folder = to.toAbsolutePath().normalize();
+        if (!folder.equals(newer.path().toAbsolutePath().normalize().getParent())) {
+            steps.add(new Step(newer.path(), folder.resolve(newer.name())));
+            bytes += newer.size();
+        }
+        return new Plan(Op.MOVE, steps, List.of(), bytes);
+    }
+
+    /** {@code row} moved into {@code destination} under the first free {@code name (2).ext} there. */
+    public static Plan aside(Row row, Path destination, Set<String> taken) {
+        String name = asideName(row.name(), row.folder(), taken);
+        Path to = destination.toAbsolutePath().normalize().resolve(name);
+        return new Plan(Op.MOVE, List.of(new Step(row.path(), to)), List.of(), row.size());
+    }
+
+    /** {@code clip.mp4} as {@code clip (2).mp4}, or the first {@code (n)} not {@code taken}; a folder's whole name. */
+    static String asideName(String name, boolean folder, Set<String> taken) {
+        String ext = folder ? "" : Kind.extension(name);
+        String stem = ext.isEmpty() ? name : name.substring(0, name.length() - ext.length() - 1);
+        String tail = ext.isEmpty() ? "" : "." + ext;
+        String next = name;
+        for (int i = 2; next.equals(name) || taken.contains(next); i++) {
+            next = stem + " (" + i + ")" + tail;
+        }
+        return next;
     }
 
     /** Into the trash: every row, the run choosing where in it. */
