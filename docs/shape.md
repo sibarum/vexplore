@@ -717,6 +717,60 @@ destination does, with an id per side, and its answer is a `Navigate` with that 
 - The rail's tiles and cards (slice 4), the dock's conflict (slice 5), the gallery's sections, ghosts and filter.
 - Sorting the list by group: the table sorts by a column, and the group is not one. The gallery orders by it.
 
+#### Slice 4, the rail from the comparison
+
+Sketched 2026-11-03, before any of it is written. The board's rail in Two Folders is *Suggestions*, *From comparing
+both folders*, the comparison's counts as tiles, and cards that each carry out one thing, with its own button. It
+draws no *Which files*, *Only if* or *Then*.
+
+- **On top of the rail in Two Folders**: the heading, then four tiles, two by two: *only in Downloads* (FROM's only
+  here), *different*, *identical* and *probably identical*. The board draws three; probably identical is a tile of
+  its own for the reason it is a group of its own. Counts, not buttons.
+- **Under them, the offers**, each a card with the rail's card's shape (headline, detail, button, how far it got):
+  - **Move what is only in FROM to TO**: *Move 5 files only in Downloads to Videos · 2.1 GB*, the first names, and
+    *Move 5*. A copy across two drives, as a drop is, planned the same way (`Plan.to` against TO's names), carried
+    out by `RunAction`, said and undone by Ctrl+Z as a drop is. The direction is the strip's arrow; Swap reverses it.
+  - **Remove the identical copies from FROM**: *Remove 3 identical copies from Downloads · 1 MB*. Per the ruling,
+    nothing is removed on the listings' word: the button first says *Check them*, which reads both copies of each
+    pair and compares them byte for byte, with a count and a Stop (*Checking · 2 of 3*). Pairs that match stay
+    identical; a pair that does not is *different* from then, in its marks and its tile, and leaves the card. Then the
+    button is *Remove 3*: into Vexplore's trash, undone by Ctrl+Z. Probably identical pairs are checked too, and once
+    they match they are identical.
+- **Below the offers, the selection's rail** (*Which files*, *Only if*, *Then*, its card), as now, while rows are
+  selected in the list used; its empty note is not shown in Two Folders, where the offers speak instead. With nothing
+  selected, the rows of the first offer are the list's marked reach (the handoff's *5 highlighted for the suggested
+  move*).
+- **One thing at a time**, as now: an offer pressed while a run or a check goes is refused and said.
+
+**Compared, not hashed.** The ruling says *hashed*. Both copies are on this machine, so reading the two side by side
+and stopping at the first byte that differs is exact and cheaper: a different pair is usually told in its first
+block, where two hashes would read both files whole. A hash earns its keep only for many-to-many or a remote side.
+The source is named for what it does, `CheckSame`.
+
+What the explorer keeps: `Work` gains the pairs checked, by the two rows (a `Row` holds its size and time, so a file
+that changed is a new pair and is checked again), and the check in flight. `Compare` takes the pairs checked, so a
+pair proven different is `DIFFERENT` and a probably identical pair proven the same is `IDENTICAL`.
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Offers(Tally tally, List<Offer> offers)` | state, explorer → view | the tiles' counts and the cards; empty in one folder |
+| `Tally(String here, int onlyHere, int different, int identical, int probably)` | in `Offers` | FROM's counts, `here` its folder's name for the first tile |
+| `Offer(Offer.Kind kind, Card card)`, `Kind { MOVE_ONLY_HERE, REMOVE_IDENTICAL }` | in `Offers` | one card, by what it does |
+| `Accept(Offer.Kind kind)` | edge, view → explorer | an offer's button: check, carry out, or stop the check, as the explorer's state says |
+| `Twins(Row here, Row there)` | in the below | a pair of copies, FROM's and TO's |
+| `Check(long run, List<Twins> twins)` | edge, explorer → `CheckSame` | read these pairs |
+| `Checking(long run, int done, int total)` | state, `CheckSame` → explorer | how far |
+| `Checked(long run, Set<Twins> same, Set<Twins> differ, String problem)` | edge, `CheckSame` → explorer | what it found, stopped or not; a pair it could not read is in neither, and said |
+| `StopCheck()` | edge, explorer → `CheckSame` | its `stop=` |
+
+The view sends only `Accept`: whether that press checks, carries out or stops is the explorer's to know, so the view
+never holds which.
+
+**Not in slice 4**: the conflict's card (*Replace kiln-cam.mp4 with newer*), which is slice 5's *Keep newer* and
+needs a plan that both trashes the older copy and moves the newer one; the board's *Skip clip-a.mp4*, since a drop
+already leaves alone what would go over a name (slice 2) and the move offer never includes an identical copy;
+*While dragging* and offers from TO to FROM (Swap, then the same offers).
+
 ## What M6 built differently
 
 Slice 1, two lists, built 2026-11-02:
