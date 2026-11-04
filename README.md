@@ -112,6 +112,7 @@ every message is in one file. Read these in this order.
 | `ListFolder.java`, `ListPlaces.java`, `FindPath.java`, `OpenFile.java`, `ReadSession.java`, `WriteSession.java` | the jobs: every touch of the disk, on the offload lane. What can go wrong is part of the reply. |
 | `Plan.java`, `Done.java`, `Operations.java` | what an action would do, what it did, and carrying it out: nothing overwritten, a delete into Vexplore's own trash, and an undo that is the reverse plan. |
 | `RunAction.java` | **the source** that carries out a plan, forward or back, on a thread of its own, with a count and a Stop. |
+| `CheckSame.java` | **the source** that reads pairs of copies side by side, in Two Folders, and says which match byte for byte, with a count and a Stop: what the rail reads before it offers to remove a copy as identical. |
 | `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk; and keeps what landed in the last twenty seconds, for the *new* tag. |
 | `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
 | `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
@@ -136,7 +137,7 @@ every message is in one file. Read these in this order.
 | `DockPanel.java` | the preview strip under the list, in Orbit's shape: one file's preview, or a note, and *Open with* beside it (a left click opens what suits the file, its menu names a program); every node built once. |
 | `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, or to the desktop's opener alone when that was named, and says which. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |
-| `RailPanel.java` | the Suggestion Rail in Orbit's words (Which files, Only if, Then): pills, six action tiles and the card with its round run button, every node built once and relabelled. A pill or a tile pressed is said as its row and place. |
+| `RailPanel.java` | the Suggestion Rail in Orbit's words: in Two Folders, the comparison's four counts and a card per offer, each with its own button; then (Which files, Only if, Then): pills, six action tiles and the card with its round run button, every node built once and relabelled. A pill or a tile pressed is said as its row and place. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |
 
 `Vexplore.java` is the entry point and the constants, and nothing else. The application edge — input, the

@@ -1,9 +1,13 @@
 package dev.sibarum.vexplore;
 
+import dev.sibarum.vexplore.core.Messages.Card;
 import dev.sibarum.vexplore.core.Messages.Chip;
+import dev.sibarum.vexplore.core.Messages.Offer;
+import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Suggested;
+import dev.sibarum.vexplore.core.Messages.Tally;
 import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.IconSource;
@@ -103,6 +107,15 @@ final class RailPanel {
     /** Where each action's chip was in what the explorer last sent, by {@link Act}'s order; -1 for not offered. */
     private final int[] offered = new int[Act.values().length];
 
+    /** Two Folders' offers: the tiles' count and label, and each offer's card, by {@link Offer.Kind}'s order. */
+    private final Node comparison;
+    private final List<Node[]> tallies = new ArrayList<>();
+    private final List<OfferCard> offerCards = new ArrayList<>();
+    /** Whether the offers are shown, which the empty note gives way to: as the explorer last said. */
+    private boolean comparing;
+    /** Whether the selection's rail has nothing to say, as the explorer last said. */
+    private boolean nothing = true;
+
     RailPanel(Gui gui) {
         this.gui = gui;
 
@@ -168,12 +181,14 @@ final class RailPanel {
                 .background(Role.RAISED).corner(Length.dp(20))
                 .children(top, detail, name.node());
 
+        comparison = comparison();
+
         // The steps scroll when a short window cannot hold them: a column that does not is laid out by shrinking its
         // children, which flattened the chips to slivers under a card of five lines. The card does not scroll with
         // them: it is pinned under them, so the button that carries it out is always in sight.
         Node column = gui.column().width(Length.FILL).height(Length.grow(1f)).gap(Length.rem(1.1f))
                 .scroll(false, true).clip(true)
-                .children(header, empty, bar, selects, conditions, actions, places);
+                .children(header, comparison, empty, bar, selects, conditions, actions, places);
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
                 .background(Look.RAIL).corner(Look.PANEL_CORNER).scroll(false, false).clip(true)
@@ -186,10 +201,14 @@ final class RailPanel {
         return node;
     }
 
-    /** Say what the explorer suggests: every pill and tile, the steps, the basis and the card, or the empty note. */
+    /**
+     * Say what the explorer suggests: every pill and tile, the steps, the basis and the card, or the empty note, which
+     * Two Folders' offers speak in place of.
+     */
     void show(Suggested s) {
         boolean none = s.empty();
-        empty.visible(none);
+        nothing = none;
+        empty.visible(none && !comparing);
         for (Node n : sections) {
             n.visible(!none);
         }
@@ -215,6 +234,115 @@ final class RailPanel {
         run.visible(running.isEmpty());
         stop.node().visible(!running.isEmpty());
         name.node().visible(running.isEmpty() && s.card().naming());
+    }
+
+    /**
+     * Two Folders' offers, above the rest: the comparison's counts as four tiles, and a card for each offer, its words
+     * the explorer's and its button its own. None in one folder, where the rail is the selection's alone.
+     */
+    void offers(Offers o) {
+        comparing = !o.tally().here().isEmpty();
+        comparison.visible(comparing);
+        Tally t = o.tally();
+        tally(0, t.onlyHere(), "only in " + t.here());
+        tally(1, t.different(), "different");
+        tally(2, t.identical(), "identical");
+        tally(3, t.probably(), "probably identical");
+        Offer.Kind[] kinds = Offer.Kind.values();
+        for (int i = 0; i < kinds.length; i++) {
+            Offer offer = null;
+            for (Offer each : o.offers()) {
+                if (each.kind() == kinds[i]) {
+                    offer = each;
+                }
+            }
+            OfferCard c = offerCards.get(i);
+            c.node.visible(offer != null);
+            if (offer != null) {
+                Card card = offer.card();
+                boolean going = !card.running().isEmpty();
+                c.headline.text(card.headline());
+                c.detail.text(card.detail());
+                c.tag.text(going ? card.running() : UNCHANGED);
+                // While its check or its run goes, the button is its Stop; the explorer knows which it means.
+                c.button.label(going ? "Stop" : card.go()).kind(going ? Button.Kind.SECONDARY : Button.Kind.PRIMARY)
+                        .enabled(going || !card.go().isEmpty());
+            }
+        }
+        empty.visible(nothing && !comparing);
+    }
+
+    /** Which offer {@code address} is the button of, or null. */
+    Offer.Kind accept(String address) {
+        Offer.Kind[] kinds = Offer.Kind.values();
+        for (int i = 0; i < kinds.length; i++) {
+            if (offerCards.get(i).button.address().equals(address)) {
+                return kinds[i];
+            }
+        }
+        return null;
+    }
+
+    private void tally(int i, int count, String label) {
+        tallies.get(i)[0].text(String.valueOf(count));
+        tallies.get(i)[1].text(label);
+    }
+
+    /** One offer's card: its words, how far it has got, and its own button. */
+    private record OfferCard(Node node, Node headline, Node detail, Node tag, Button button) {
+    }
+
+    /**
+     * The comparison, as the Two folders board draws it: where it comes from, the four counts two by two (the
+     * board's three, and probably identical, which is a group of its own), and a card per offer. Built once, hidden in
+     * one folder.
+     */
+    private Node comparison() {
+        Node from = gui.text("From comparing both folders").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM)
+                .wordWrap(false);
+        String[] names = {"only", "different", "identical", "probably"};
+        Role[] washes = {Look.FROM_WASH, Look.ANCHOR_WASH, Look.QUIET_WASH, Look.QUIET_WASH};
+        Role[] counts = {Look.FROM_INK, Look.ANCHOR, Look.QUIET_INK, Look.QUIET_INK};
+        Role[] labels = {Role.INK, Look.ANCHOR_INK, Look.QUIET_INK, Look.QUIET_INK};
+        Node grid = gui.column().width(Length.FILL).gap(Length.dp(6));
+        Node line = null;
+        for (int i = 0; i < names.length; i++) {
+            if (i % 2 == 0) {
+                line = gui.row().width(Length.FILL).gap(Length.dp(6)).scroll(false, false);
+                grid.append(line);
+            }
+            Node count = gui.text("0").font(Type.UI).textSize(Type.HEADING).textColor(counts[i]).wordWrap(false);
+            Node label = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(labels[i]).wordWrap(false);
+            Node tile = gui.column().width(Length.grow(1f)).padding(Length.dp(10)).gap(Length.dp(2))
+                    .corner(Length.dp(14)).background(washes[i]).scroll(false, false).clip(true)
+                    .children(count, label);
+            gui.landmark(Landmarks.RAIL_TALLY + "." + names[i], tile);
+            tallies.add(new Node[] {count, label});
+            line.append(tile);
+        }
+        Node column = gui.column().width(Length.FILL).gap(Length.rem(0.75f)).children(from, grid);
+        for (Offer.Kind kind : Offer.Kind.values()) {
+            String landmark = Landmarks.RAIL_OFFER + "." + (kind == Offer.Kind.MOVE_ONLY_HERE ? "move" : "remove");
+            Node headline = gui.text("").font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK).wordWrap(true)
+                    .width(Length.FILL);
+            Node detail = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(true)
+                    .width(Length.FILL);
+            Node tag = gui.text(UNCHANGED).font(Type.MONO).textSize(Type.SMALL).textColor(Role.FAINT)
+                    .wordWrap(false);
+            Button button = new Button(gui, "").kind(Button.Kind.PRIMARY).undoable(false).name(landmark + ".go");
+            gui.landmark(landmark + ".go", button.node());
+            Node card = gui.column().width(Length.FILL).padding(Length.rem(0.9f), Length.rem(1f))
+                    .gap(Length.rem(0.5f)).background(Role.RAISED).corner(Length.dp(18))
+                    .children(headline, detail, gui.row().width(Length.FILL).alignItems(AlignItems.CENTER)
+                            .gap(Length.rem(0.75f)).scroll(false, false)
+                            .children(tag, gui.row().width(Length.grow(1f)), button.node()));
+            card.visible(false);
+            gui.landmark(landmark, card);
+            offerCards.add(new OfferCard(card, headline, detail, tag, button));
+            column.append(card);
+        }
+        column.visible(false);
+        return column;
     }
 
     private void lit(int step, boolean on) {

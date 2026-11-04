@@ -1,6 +1,7 @@
 package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.Intent.Command;
+import dev.sibarum.vexplore.core.Messages.Accept;
 import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Back;
 import dev.sibarum.vexplore.core.Messages.Carry;
@@ -18,6 +19,7 @@ import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenWith;
 import dev.sibarum.vexplore.core.Messages.OpenWith.With;
+import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Places;
@@ -133,6 +135,7 @@ final class View {
     private final Sender<PlacesWanted> placesWanted;
     private final Sender<Back> back;
     private final Sender<Dropped> dropped;
+    private final Sender<Accept> accept;
     private final Sender<Intent> intents;
 
     /** The dock's picture, and the one it replaced, which may still be fading out: the view's to give back. */
@@ -145,12 +148,19 @@ final class View {
      */
     private Pair pair = new Pair(false, Side.FROM, Optional.empty(), false, Plan.Op.COPY);
 
+    /**
+     * The selection's rail and Two Folders' offers, as the explorer last said: between them, which rows are marked in
+     * which list.
+     */
+    private Suggested suggested = Suggested.NONE;
+    private Offers offers = Offers.NONE;
+
     View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
          Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
-         Sender<PlacesWanted> placesWanted, Sender<Back> back, Sender<Dropped> dropped,
+         Sender<PlacesWanted> placesWanted, Sender<Back> back, Sender<Dropped> dropped, Sender<Accept> accept,
          Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
@@ -176,6 +186,7 @@ final class View {
         this.placesWanted = placesWanted;
         this.back = back;
         this.dropped = dropped;
+        this.accept = accept;
         this.intents = intents;
         shortcuts();
         // Open with's menu: a left click opens what suits the file, and the menu names the program instead (FN-15).
@@ -245,7 +256,17 @@ final class View {
     /** The rail: its chips and card, and the rows it would reach marked in the list. */
     @Subscribe
     public void suggested(Suggested m) {
-        ui.suggested(m, pair.used());
+        suggested = m;
+        ui.suggested(m);
+        ui.reach(pair.used(), suggested, offers);
+    }
+
+    /** Two Folders' offers: the tiles and cards, and what the first would reach while nothing is chosen. */
+    @Subscribe
+    public void offers(Offers m) {
+        offers = m;
+        ui.offers(m);
+        ui.reach(pair.used(), suggested, offers);
     }
 
     // ------------------------------------------------------------------ what the jobs answer
@@ -372,6 +393,8 @@ final class View {
         Picked tile = ui.tile(m.button());
         if (tile != null) {
             picked.send(tile);
+        } else if (ui.accept(m.button()) != null) {
+            accept.send(new Accept(ui.accept(m.button())));
         } else if (ui.go(m.button())) {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {

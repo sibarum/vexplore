@@ -831,6 +831,26 @@ Slice 3, the comparison and Two Folders' frame, built 2026-11-03 against Orbit's
   1440 px (TODO, FN-8). A pane's Back is always enabled, since `Pair` says only whether the list used can go back
   (TODO).
 
+Slice 4, the rail from the comparison, built 2026-11-04:
+
+- **As sketched**: four tiles, a card per offer, `Accept` the view's only word, and `CheckSame` reading pairs side by
+  side with a count and a Stop. *Check them*, then *Remove 2*; a pair read the same is identical from then (its
+  hollow mark fills), one read different is different and leaves the card.
+- **`Offer` carries its reach** (`Set<Row>`), which the sketch left to the view: the rows the list marks while
+  nothing is selected are the explorer's to name, as the selection rail's reach is. The view keeps the last
+  `Suggested` and `Offers` and marks one or the other (`Ui.reach`).
+- **The check's state is `Work.Comparing`**: the pairs read, the check in flight, and the offer whose check or run
+  goes, so only that card says how far it has got. A check and a run never overlap; `start` refuses either while the
+  other goes.
+- **The move offer is the drop's plan** (`Plan.to` against TO's names, a move on one drive and a copy across two),
+  and its words are its entry's: *Moved 13 files only in Downloads to Videos*, undone by Ctrl+Z.
+- **Seen live**: Downloads against the Videos made for slice 3. *Check them* read two pairs (*Read 2 pairs: all
+  match*), firing-log.csv went from probably identical to identical, *Remove 2* put both into Vexplore's trash and
+  Ctrl+Z brought them back; *Move 13 files* moved them and Ctrl+Z moved them back. The disk is as it was.
+- **Not driven live**: Stop during a check (tested), a pair that differs (tested), a copy across two drives (tested
+  with the drop). The check of two small files is over before a frame shows its count.
+- **Framework**: a source's sender cannot be a lambda in a test (FN-16).
+
 ## The messages M8 adds
 
 Proposed 2026-11-02, before any of it is written. **(ruled 2026-11-02)** Orbit (*C · Orbit* on the *Vexplore

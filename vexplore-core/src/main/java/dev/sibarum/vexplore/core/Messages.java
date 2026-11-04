@@ -198,6 +198,15 @@ public final class Messages {
     }
 
     /**
+     * An offer's button, in Two Folders' rail: check its copies, carry it out, or stop the check, as the explorer's
+     * state says. The view never knows which.
+     */
+    public static final Topic<Accept> ACCEPT_TOPIC = Topic.edge(Accept.class);
+
+    public record Accept(Offer.Kind kind) {
+    }
+
+    /**
      * The window's history applied an entry: take back what entry {@code entry} did ({@link Undo}), or do it again
      * ({@link Redo}). The history holds only the number; what the entry did is the explorer's.
      */
@@ -413,6 +422,49 @@ public final class Messages {
         }
     }
 
+    /**
+     * Two Folders' rail, from the comparison: FROM's counts for the tiles, and the offers, each a card of its own with
+     * its own button. None in one folder. The latest is all that matters.
+     */
+    public static final Topic<Offers> OFFERS_TOPIC = Topic.state(Offers.class);
+
+    public record Offers(Tally tally, List<Offer> offers) {
+
+        public static final Offers NONE = new Offers(Tally.NONE, List.of());
+
+        public Offers {
+            offers = List.copyOf(offers);
+        }
+    }
+
+    /**
+     * FROM's rows by group, for the tiles: {@code here} is FROM's folder's name, the first tile's
+     * ({@code only in Downloads}).
+     */
+    public record Tally(String here, int onlyHere, int different, int identical, int probably) {
+
+        public static final Tally NONE = new Tally("", 0, 0, 0, 0);
+    }
+
+    /**
+     * One offer: what it does, its card ({@link Card}'s shape: the effect, the first names, the button's words, and
+     * how far it has got while it goes), and the rows it reaches, which the list marks while nothing is selected.
+     */
+    public record Offer(Kind kind, Card card, Set<Row> reach) {
+
+        public Offer {
+            reach = Set.copyOf(reach);
+        }
+
+        /** What an offer does. */
+        public enum Kind {
+            /** Move, or copy across two drives, what is only in FROM into TO's folder. */
+            MOVE_ONLY_HERE,
+            /** Remove FROM's identical copies, once each has been read against its copy in TO. */
+            REMOVE_IDENTICAL
+        }
+    }
+
     public static final Topic<Naming> NAMING_TOPIC = Topic.edge(Naming.class);
 
     public record Naming(String name) {
@@ -588,6 +640,44 @@ public final class Messages {
     public static final Topic<Ran> RAN_TOPIC = Topic.edge(Ran.class);
 
     public record Ran(long run, Done done) {
+    }
+
+    /** Two copies of a file, FROM's ({@code here}) and TO's ({@code there}), as each list last listed it. */
+    public record Twins(Row here, Row there) {
+    }
+
+    /** Read these pairs and say which match byte for byte ({@link CheckSame}): run {@code run}. */
+    public static final Topic<Check> CHECK_TOPIC = Topic.edge(Check.class);
+
+    public record Check(long run, List<Twins> twins) {
+        public Check {
+            twins = List.copyOf(twins);
+        }
+    }
+
+    /** How far check {@code run} has got: {@code done} of {@code total} pairs. The latest is all that matters. */
+    public static final Topic<Checking> CHECKING_TOPIC = Topic.state(Checking.class);
+
+    public record Checking(long run, int done, int total) {
+    }
+
+    /**
+     * What check {@code run} found, stopped or not: the pairs that match and the pairs that differ. A pair it could
+     * not read is in neither, and {@code problem} says why, for the first; null when every pair was read.
+     */
+    public static final Topic<Checked> CHECKED_TOPIC = Topic.edge(Checked.class);
+
+    public record Checked(long run, Set<Twins> same, Set<Twins> differ, String problem) {
+        public Checked {
+            same = Set.copyOf(same);
+            differ = Set.copyOf(differ);
+        }
+    }
+
+    /** Stop the check in flight, between two pairs ({@link CheckSame}'s {@code stop}). */
+    public static final Topic<StopCheck> STOP_CHECK_TOPIC = Topic.edge(StopCheck.class);
+
+    public record StopCheck() {
     }
 
     /**

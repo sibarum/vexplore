@@ -1,7 +1,10 @@
 package dev.sibarum.vexplore.core;
 
+import dev.sibarum.vexplore.core.Messages.Checking;
 import dev.sibarum.vexplore.core.Messages.Mark;
+import dev.sibarum.vexplore.core.Messages.Offer.Kind;
 import dev.sibarum.vexplore.core.Messages.Side;
+import dev.sibarum.vexplore.core.Messages.Twins;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -26,13 +29,14 @@ import java.util.Set;
  * @param aim     where a move or a copy would go
  * @param marks   the marks kept, newest first
  * @param dock    the preview asked for the dock
- * @param watched the folder each list's watch was asked for, and what landed in it lately
+ * @param watched   the folder each list's watch was asked for, and what landed in it lately
+ * @param comparing in Two Folders, the pairs of copies read and what they were found to be, and the offer in hand
  */
 record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
-            Aim aim, List<Mark> marks, Dock dock, Map<Side, Watched> watched) {
+            Aim aim, List<Mark> marks, Dock dock, Map<Side, Watched> watched, Comparing comparing) {
 
     static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of(),
-            Dock.NONE, Map.of());
+            Dock.NONE, Map.of(), Comparing.NONE);
 
     Work {
         journal = Map.copyOf(journal);
@@ -127,40 +131,42 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withTrash(Path value) {
-        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock, watched);
+        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock, watched, comparing);
     }
 
     /** Run {@code r} starts; its number is the next. */
     Work starting(Running r) {
-        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock, watched);
+        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock, watched, comparing);
     }
 
     Work at(int done) {
-        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks, dock, watched);
+        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks, dock, watched,
+                comparing);
     }
 
     /** The run is over, and entry {@code number} is now {@code entry}. */
     Work landed(long number, Entry entry) {
         Map<Long, Entry> next = new HashMap<>(journal);
         next.put(number, entry);
-        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks, dock, watched);
+        return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks, dock, watched,
+                comparing);
     }
 
     /** The run is over, and nothing is recorded: it did nothing. */
     Work idle() {
-        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock, watched);
+        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock, watched, comparing);
     }
 
     Work withAim(Aim value) {
-        return new Work(trash, runs, running, entries, journal, value, marks, dock, watched);
+        return new Work(trash, runs, running, entries, journal, value, marks, dock, watched, comparing);
     }
 
     Work withMarks(List<Mark> value) {
-        return new Work(trash, runs, running, entries, journal, aim, value, dock, watched);
+        return new Work(trash, runs, running, entries, journal, aim, value, dock, watched, comparing);
     }
 
     Work withDock(Dock value) {
-        return new Work(trash, runs, running, entries, journal, aim, marks, value, watched);
+        return new Work(trash, runs, running, entries, journal, aim, marks, value, watched, comparing);
     }
 
     /**
@@ -180,7 +186,7 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     Work withWatched(Side side, Watched value) {
         Map<Side, Watched> next = new HashMap<>(watched);
         next.put(side, value);
-        return new Work(trash, runs, running, entries, journal, aim, marks, dock, next);
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, next, comparing);
     }
 
     /**
@@ -193,6 +199,54 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
 
         Watched {
             fresh = Set.copyOf(fresh);
+        }
+    }
+
+    Work withComparing(Comparing value) {
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, watched, value);
+    }
+
+    /** Check {@code run} starts: its number is the next, counted with the runs. */
+    Work checking(Checking c, Kind offer) {
+        return new Work(trash, c.run(), running, entries, journal, aim, marks, dock, watched,
+                comparing.checking(c, offer));
+    }
+
+    /**
+     * Two Folders' comparison, as far as reading has taken it.
+     *
+     * @param checked  each pair read, FROM's copy first, and whether it matched byte for byte. A {@code Row} holds its
+     *                 size and time, so a copy that changed since is a pair not yet read
+     * @param checking the check in flight, and how far it has got; none when none goes
+     * @param offer    the offer whose check or run is in flight, whose card says how far it has got; none when idle
+     */
+    record Comparing(Map<Twins, Boolean> checked, Optional<Checking> checking, Optional<Kind> offer) {
+
+        static final Comparing NONE = new Comparing(Map.of(), Optional.empty(), Optional.empty());
+
+        Comparing {
+            checked = Map.copyOf(checked);
+        }
+
+        Comparing checking(Checking c, Kind kind) {
+            return new Comparing(checked, Optional.of(c), Optional.of(kind));
+        }
+
+        /** The check is over: what it found kept, beside what was found before. */
+        Comparing found(Map<Twins, Boolean> value) {
+            Map<Twins, Boolean> next = new HashMap<>(checked);
+            next.putAll(value);
+            return new Comparing(next, Optional.empty(), Optional.empty());
+        }
+
+        /** {@code kind}'s run is in flight, or, with none, nothing is. */
+        Comparing offering(Optional<Kind> kind) {
+            return new Comparing(checked, checking, kind);
+        }
+
+        /** Whether check {@code run} is the one in flight. */
+        boolean checks(long run) {
+            return checking.isPresent() && checking.get().run() == run;
         }
     }
 

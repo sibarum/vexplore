@@ -84,7 +84,8 @@ class ExplorerTest {
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
                 Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC,
-                Messages.FRESH_TOPIC, Messages.PAIR_TOPIC, Messages.COMPARED_TOPIC)) {
+                Messages.FRESH_TOPIC, Messages.PAIR_TOPIC, Messages.COMPARED_TOPIC, Messages.OFFERS_TOPIC,
+                Messages.CHECK_TOPIC, Messages.STOP_CHECK_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -1063,5 +1064,88 @@ class ExplorerTest {
         tell(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Side.TO), path("sub")));
         tell(Messages.BACK_TOPIC, new Messages.Back(Optional.of(Side.TO)));
         assertTrue(sent.isEmpty(), "said nothing, asked for nothing");
+    }
+
+    // ------------------------------------------------------------------ Two Folders' offers
+
+    /** TO in sub, holding {@code there}, listed again so the offers are said. */
+    private Messages.Offers offered(Row... there) {
+        twoFoldersToSub(there);
+        tell(Messages.STIRRED_TOPIC, new Messages.Stirred(Side.TO, path("sub")));
+        tell(Messages.LISTED_TOPIC, new Listed(asked().ticket(), path("sub"), List.of(there), null, TODAY, UTC));
+        return seen(Messages.Offers.class).getLast();
+    }
+
+    private Messages.Card card(Messages.Offer.Kind kind) {
+        return seen(Messages.Offers.class).getLast().offers().stream().filter(o -> o.kind() == kind).findFirst()
+                .orElseThrow().card();
+    }
+
+    private static final Messages.Offer.Kind MOVE_ONLY = Messages.Offer.Kind.MOVE_ONLY_HERE;
+    private static final Messages.Offer.Kind REMOVE = Messages.Offer.Kind.REMOVE_IDENTICAL;
+
+    @Test
+    void theOffersCountFromAndMoveWhatIsOnlyThereAtOnce() {
+        Messages.Offers offers = offered(inSub("a.txt", 10));
+        String here = dir.getFileName().toString();
+        assertEquals(new Messages.Tally(here, 1, 0, 1, 0), offers.tally());
+        assertEquals(List.of(MOVE_ONLY, REMOVE), offers.offers().stream().map(Messages.Offer::kind).toList());
+        Messages.Card move = offers.offers().getFirst().card();
+        assertEquals("Move 1 file only in " + here + " to sub · 20 B", move.headline());
+        assertEquals("Move 1 file", move.go());
+        assertEquals(Set.of(file("b.txt", 20)), offers.offers().getFirst().reach(), "marked while nothing is chosen");
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(MOVE_ONLY));
+        Messages.Run run = seen(Messages.Run.class).getLast();
+        assertEquals(List.of(path("sub").resolve("b.txt")), run.plan().steps().stream().map(Plan.Step::to).toList());
+        assertEquals("Moving · 0 of 1", card(MOVE_ONLY).running(), "its own card says how far it has got");
+        assertEquals("", card(REMOVE).running());
+    }
+
+    @Test
+    void identicalCopiesAreReadBeforeTheyCanBeRemoved() {
+        offered(inSub("a.txt", 10));
+        assertEquals("Check them", card(REMOVE).go());
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(REMOVE));
+        Messages.Check check = seen(Messages.Check.class).getLast();
+        Messages.Twins twins = new Messages.Twins(file("a.txt", 10), inSub("a.txt", 10));
+        assertEquals(List.of(twins), check.twins());
+        assertEquals("Checking · 0 of 1", card(REMOVE).running());
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(MOVE_ONLY));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "one thing at a time");
+        assertTrue(took(Status.class).getLast().alert());
+        tell(Messages.CHECKED_TOPIC, new Messages.Checked(check.run(), Set.of(twins), Set.of(), null));
+        assertEquals("Read 1 pair: it matches", seen(Status.class).getLast().message());
+        assertEquals("Remove 1", card(REMOVE).go());
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(REMOVE));
+        Messages.Run run = seen(Messages.Run.class).getLast();
+        assertEquals(Plan.Op.DELETE, run.plan().op());
+        assertEquals(List.of(path("a.txt")), run.plan().steps().stream().map(Plan.Step::from).toList(),
+                "FROM's copy, never TO's");
+    }
+
+    @Test
+    void aPairReadDifferentIsDifferentFromThen() {
+        offered(inSub("a.txt", 10));
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(REMOVE));
+        Messages.Check check = seen(Messages.Check.class).getLast();
+        Messages.Twins twins = check.twins().getFirst();
+        tell(Messages.CHECKED_TOPIC, new Messages.Checked(check.run(), Set.of(), Set.of(twins), null));
+        assertEquals(Relation.DIFFERENT, seen(Messages.Compared.class).stream()
+                .filter(c -> c.side() == Side.FROM).toList().getLast().rows().get(path("a.txt")));
+        Messages.Offers offers = seen(Messages.Offers.class).getLast();
+        assertEquals(1, offers.tally().different());
+        assertTrue(offers.offers().stream().noneMatch(o -> o.kind() == REMOVE), "nothing identical to remove");
+    }
+
+    @Test
+    void theRemoveButtonStopsItsOwnCheck() {
+        offered(inSub("a.txt", 10));
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(REMOVE));
+        tell(Messages.ACCEPT_TOPIC, new Messages.Accept(REMOVE));
+        assertEquals(List.of(new Messages.StopCheck()), seen(Messages.StopCheck.class));
+        Messages.Check check = seen(Messages.Check.class).getLast();
+        tell(Messages.CHECKED_TOPIC, new Messages.Checked(check.run(), Set.of(), Set.of(), null));
+        assertEquals("Stopped before any pair was read", seen(Status.class).getLast().message());
+        assertEquals("Check them", card(REMOVE).go(), "nothing was read, so it is offered as before");
     }
 }

@@ -214,3 +214,14 @@ a right click names one. A person who does not think to right-click never sees t
 **For the framework:** a menu button, declared as a context menu is (`Gui.menuButton(node, menu)`, or
 `Button.menu(Menu)`): the menu opens under the button on a left click, Enter or Space, and closes as a context menu
 does. Every *Open with*, *Sort by* and overflow button meets it.
+
+## FN-16 · A source's sender cannot be a lambda in a test 🔬
+
+`CheckSame` (M6, slice 4) is a `@Source` that sends a count as it reads, through a `Sender<Checking>` it is built
+with. A test that wants to run it on a temporary folder and read the count cannot hand it `counted::add`: `Sender` is
+not a functional interface. The test builds a bus, a tick, an inbox subscribed before the run, and
+`Sender.outside(bus, topic, Cause.source(...))`, and runs the tick after it, the shape `WatchFolderTest` already
+wrote. Six lines to say "collect what it sends".
+
+**For the framework:** a test sender, `Sender.collecting(List<T>)` or `Sender.of(Consumer<T>)`, that delivers to the
+consumer at once with no bus. Every source and every job with a progress topic meets it in its test.

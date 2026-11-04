@@ -93,6 +93,14 @@ final class Landmarks {
     /** The card's field for a rename's new name: Enter carries it out. */
     static final String RAIL_NAME = "rail.name";
 
+    /**
+     * Two Folders' offers on the rail: the comparison's tiles ({@code rail.tally.only}, {@code .different},
+     * {@code .identical}, {@code .probably}) and each offer's card and its button ({@code rail.offer.move},
+     * {@code rail.offer.move.go}, {@code rail.offer.remove}, {@code rail.offer.remove.go}).
+     */
+    static final String RAIL_TALLY = "rail.tally";
+    static final String RAIL_OFFER = "rail.offer";
+
     /** The Preview Dock, under the list, and its header: the file's name, its tier, and the note when there is none. */
     static final String DOCK = "dock";
     static final String DOCK_NAME = "dock.name";

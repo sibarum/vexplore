@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore.core;
 
+import dev.sibarum.vexplore.core.Messages.Accept;
 import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Back;
 import dev.sibarum.vexplore.core.Messages.Carry;
@@ -11,6 +12,9 @@ import dev.sibarum.vexplore.core.Messages.Destinations;
 import dev.sibarum.vexplore.core.Messages.Destining;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Dropped;
+import dev.sibarum.vexplore.core.Messages.Check;
+import dev.sibarum.vexplore.core.Messages.Checked;
+import dev.sibarum.vexplore.core.Messages.Checking;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Compared;
 import dev.sibarum.vexplore.core.Messages.Find;
@@ -31,6 +35,8 @@ import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenWith;
 import dev.sibarum.vexplore.core.Messages.OpenWith.With;
+import dev.sibarum.vexplore.core.Messages.Offer;
+import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
@@ -55,9 +61,12 @@ import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Stirred;
 import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
+import dev.sibarum.vexplore.core.Messages.StopCheck;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Swap;
 import dev.sibarum.vexplore.core.Messages.Summary;
+import dev.sibarum.vexplore.core.Messages.Tally;
+import dev.sibarum.vexplore.core.Messages.Twins;
 import dev.sibarum.vexplore.core.Messages.TwoFolders;
 import dev.sibarum.vexplore.core.Messages.Undo;
 import dev.sibarum.vexplore.core.Messages.Unwatch;
@@ -88,6 +97,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -137,12 +147,12 @@ import java.util.Set;
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
-        Back.class, Dropped.class})
+        Back.class, Dropped.class, Accept.class, Checking.class, Checked.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
         Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class, Pair.class,
-        Fresh.class, Compared.class})
+        Fresh.class, Compared.class, Offers.class, Check.class, StopCheck.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -356,6 +366,9 @@ public final class Explorer {
         Step<State, Swap> swap = b.step("swap", Explorer::swap);
         Step<State, Back> back = b.step("back", Explorer::back);
         Step<State, Dropped> dropped = b.step("dropped", Explorer::dropped);
+        Step<State, Accept> accept = b.step("accept", Explorer::accept);
+        Step<State, Checking> checking = b.step("checking", Explorer::checking);
+        Step<State, Checked> checked = b.step("checked", Explorer::checked);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -389,7 +402,10 @@ public final class Explorer {
                 .on(Messages.TWO_FOLDERS_TOPIC, twoFolders)
                 .on(Messages.SWAP_TOPIC, swap)
                 .on(Messages.BACK_TOPIC, back)
-                .on(Messages.DROPPED_TOPIC, dropped);
+                .on(Messages.DROPPED_TOPIC, dropped)
+                .on(Messages.ACCEPT_TOPIC, accept)
+                .on(Messages.CHECKING_TOPIC, checking)
+                .on(Messages.CHECKED_TOPIC, checked);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -574,8 +590,244 @@ public final class Explorer {
         }
         List<Row> from = s.pane(Side.FROM).rows();
         List<Row> to = s.pane(Side.TO).rows();
-        out.send(Messages.COMPARED_TOPIC, new Compared(Side.FROM, Compare.of(from, to)));
-        out.send(Messages.COMPARED_TOPIC, new Compared(Side.TO, Compare.of(to, from)));
+        Map<Twins, Boolean> checked = s.work().comparing().checked();
+        out.send(Messages.COMPARED_TOPIC, new Compared(Side.FROM, Compare.of(from, to, checked)));
+        out.send(Messages.COMPARED_TOPIC, new Compared(Side.TO, Compare.of(to, from, checked)));
+        offers(s, out);
+    }
+
+    // ------------------------------------------------------------------ Two Folders' offers
+
+    /** FROM's rows by relation to TO's, as far as the listings and the copies read can say. */
+    private static Map<Path, Relation> relations(State s) {
+        return Compare.of(s.pane(Side.FROM).rows(), s.pane(Side.TO).rows(), s.work().comparing().checked());
+    }
+
+    /** FROM's rows only in FROM, in the list's order: what the move offer reaches. */
+    private static List<Row> onlyHere(State s, Map<Path, Relation> relations) {
+        return s.pane(Side.FROM).rows().stream().filter(r -> relations.get(r.path()) == Relation.ONLY_HERE).toList();
+    }
+
+    /** FROM's identical and probably identical files, each with its copy in TO: what the remove offer reaches. */
+    private static List<Twins> twins(State s, Map<Path, Relation> relations) {
+        Map<String, Row> there = new HashMap<>();
+        for (Row r : s.pane(Side.TO).rows()) {
+            there.put(r.name(), r);
+        }
+        List<Twins> out = new ArrayList<>();
+        for (Row r : s.pane(Side.FROM).rows()) {
+            Relation rel = relations.get(r.path());
+            if (rel == Relation.IDENTICAL || rel == Relation.PROBABLY_IDENTICAL) {
+                out.add(new Twins(r, there.get(r.name())));
+            }
+        }
+        return out;
+    }
+
+    /** What is only in FROM, planned into TO's folder against its names: a move on one drive, a copy across two. */
+    private static Plan moving(State s, List<Row> rows) {
+        Set<String> taken = new HashSet<>();
+        for (Row r : s.pane(Side.TO).rows()) {
+            taken.add(r.name());
+        }
+        return Plan.to(drop(s), rows, s.pane(Side.TO).folder().orElseThrow(), taken);
+    }
+
+    /** {@code Move 5 files only in Downloads to Videos}: the move offer's words, and its entry's. */
+    private static String moveWords(State s, Plan plan) {
+        int n = plan.count();
+        return (plan.op() == Plan.Op.MOVE ? "Move " : "Copy ") + n + (n == 1 ? " file" : " files") + " only in "
+                + ListFolder.name(s.pane(Side.FROM).folder().orElseThrow()) + " to "
+                + ListFolder.name(s.pane(Side.TO).folder().orElseThrow());
+    }
+
+    /** {@code Remove 3 identical copies from Downloads}: the remove offer's words, and its entry's. */
+    private static String removeWords(State s, int n) {
+        return "Remove " + n + (n == 1 ? " identical copy" : " identical copies") + " from "
+                + ListFolder.name(s.pane(Side.FROM).folder().orElseThrow());
+    }
+
+    /** The first few names, and how many more. */
+    private static String named(List<Row> rows) {
+        StringBuilder b = new StringBuilder();
+        int named = Math.min(rows.size(), 3);
+        for (int i = 0; i < named; i++) {
+            b.append(i == 0 ? "" : ", ").append(rows.get(i).name());
+        }
+        if (rows.size() > named) {
+            b.append(" and ").append(rows.size() - named).append(" more");
+        }
+        return b.toString();
+    }
+
+    private static String sized(long bytes) {
+        return bytes > 0 ? " · " + Bytes.format(bytes) : "";
+    }
+
+    /**
+     * Two Folders' rail, from the comparison: FROM's counts and the offers, each worded with how far it has got while
+     * its check or its run goes. Nothing is offered while both folders are not yet listed.
+     */
+    private static void offers(State s, Out out) {
+        if (s.to().isEmpty() || s.pane(Side.FROM).folder().isEmpty() || s.pane(Side.TO).folder().isEmpty()) {
+            return;
+        }
+        Map<Path, Relation> relations = relations(s);
+        int[] by = new int[Relation.Group.values().length];
+        for (Relation r : relations.values()) {
+            by[r.group().ordinal()]++;
+        }
+        Tally tally = new Tally(ListFolder.name(s.pane(Side.FROM).folder().get()),
+                by[Relation.Group.ONLY_HERE.ordinal()],
+                by[Relation.Group.DIFFERENT.ordinal()], by[Relation.Group.IDENTICAL.ordinal()],
+                by[Relation.Group.PROBABLY_IDENTICAL.ordinal()]);
+        Work.Comparing c = s.work().comparing();
+        String running = s.work().running().map(Running::said).orElse("");
+        List<Offer> offers = new ArrayList<>();
+        List<Row> only = onlyHere(s, relations);
+        Plan move = only.isEmpty() ? null : moving(s, only);
+        if (move != null && move.count() > 0) {
+            String words = moveWords(s, move);
+            List<Row> moved = move.steps().stream().map(st -> s.pane(Side.FROM).row(st.from()).orElseThrow()).toList();
+            long bytes = moved.stream().mapToLong(Row::size).sum();
+            boolean going = c.offer().equals(Optional.of(Offer.Kind.MOVE_ONLY_HERE));
+            offers.add(new Offer(Offer.Kind.MOVE_ONLY_HERE, new Card(words + sized(bytes), named(moved),
+                    words.substring(0, words.indexOf(" only in ")), going ? running : "", false), Set.copyOf(moved)));
+        }
+        List<Twins> twins = twins(s, relations);
+        if (!twins.isEmpty()) {
+            List<Row> copies = twins.stream().map(Twins::here).toList();
+            long bytes = copies.stream().mapToLong(Row::size).sum();
+            long unread = twins.stream().filter(t -> !c.checked().containsKey(t)).count();
+            long probably = twins.stream().filter(t -> relations.get(t.here().path()) == Relation.PROBABLY_IDENTICAL)
+                    .count();
+            String there = ListFolder.name(s.pane(Side.TO).folder().get());
+            String detail;
+            String go;
+            if (unread > 0) {
+                detail = named(copies) + ". Each is read against its copy in " + there + " first, and nothing is"
+                        + " removed until it matches" + (probably == 0 ? "" : ". " + probably + " only probably"
+                        + " identical: the same size, a different time");
+                go = "Check them";
+            } else {
+                detail = named(copies) + ". Read byte for byte: each matches its copy in " + there
+                        + ". Into Vexplore's trash; Ctrl+Z puts them back";
+                go = "Remove " + copies.size();
+            }
+            boolean mine = c.offer().equals(Optional.of(Offer.Kind.REMOVE_IDENTICAL));
+            String how = !mine ? "" : c.checking().map(k -> "Checking · " + k.done() + " of " + k.total())
+                    .orElse(running);
+            offers.add(new Offer(Offer.Kind.REMOVE_IDENTICAL, new Card(removeWords(s, copies.size()) + sized(bytes),
+                    detail, go, how, false), Set.copyOf(copies)));
+        }
+        out.send(Messages.OFFERS_TOPIC, new Offers(tally, offers));
+    }
+
+    /**
+     * An offer's button. The move is carried out at once, as the card says. The remove reads every pair not read yet
+     * first, and is carried out only once each has matched; pressed while its check goes, it stops the check. One
+     * thing at a time: a press while anything else goes is refused.
+     */
+    private static State accept(State s, Accept a, Out out) {
+        if (s.to().isEmpty() || s.pane(Side.FROM).folder().isEmpty() || s.pane(Side.TO).folder().isEmpty()) {
+            return s;
+        }
+        Work.Comparing c = s.work().comparing();
+        if (c.checking().isPresent()) {
+            if (a.kind() == Offer.Kind.REMOVE_IDENTICAL) {
+                out.send(Messages.STOP_CHECK_TOPIC, new StopCheck());
+            } else {
+                refuse(out, "Something is already being done: wait for it, or press Stop");
+            }
+            return s;
+        }
+        Map<Path, Relation> relations = relations(s);
+        if (a.kind() == Offer.Kind.MOVE_ONLY_HERE) {
+            List<Row> only = onlyHere(s, relations);
+            if (only.isEmpty()) {
+                return s;
+            }
+            Plan plan = moving(s, only);
+            return plan.count() == 0 ? s : offering(s, start(s, plan, Way.DO, 0L, moveWords(s, plan), out), a, out);
+        }
+        List<Twins> twins = twins(s, relations);
+        if (twins.isEmpty()) {
+            return s;
+        }
+        List<Twins> unread = twins.stream().filter(t -> !c.checked().containsKey(t)).toList();
+        if (unread.isEmpty()) {
+            Plan plan = Plan.delete(twins.stream().map(Twins::here).toList());
+            return offering(s, start(s, plan, Way.DO, 0L, removeWords(s, twins.size()), out), a, out);
+        }
+        if (s.work().running().isPresent()) {
+            refuse(out, "Something is already being done: wait for it, or press Stop");
+            return s;
+        }
+        Checking k = new Checking(s.work().runs() + 1, 0, unread.size());
+        out.send(Messages.CHECK_TOPIC, new Check(k.run(), unread));
+        State next = s.withWork(s.work().checking(k, a.kind()));
+        offers(next, out);
+        return next;
+    }
+
+    /** A run an offer started: its card says how far it has got. Nothing, if the run was refused. */
+    private static State offering(State was, State next, Accept a, Out out) {
+        if (next.work().running().isEmpty() || was.work().running().isPresent()) {
+            return next;
+        }
+        State marked = next.withWork(next.work().withComparing(next.work().comparing()
+                .offering(Optional.of(a.kind()))));
+        offers(marked, out);
+        return marked;
+    }
+
+    /** How far the check has got: its card's count. */
+    private static State checking(State s, Checking k, Out out) {
+        if (!s.work().comparing().checks(k.run())) {
+            return s;
+        }
+        Work.Comparing c = s.work().comparing();
+        State next = s.withWork(s.work().withComparing(new Work.Comparing(c.checked(), Optional.of(k), c.offer())));
+        offers(next, out);
+        return next;
+    }
+
+    /**
+     * What reading the pairs found, kept: a pair that matched is identical from now, one that did not is different,
+     * in the lists' marks, the tiles and the offers. Said on the status line, and what could not be read is said too.
+     */
+    private static State checked(State s, Checked k, Out out) {
+        if (!s.work().comparing().checks(k.run())) {
+            return s;
+        }
+        int total = s.work().comparing().checking().get().total();
+        Map<Twins, Boolean> found = new HashMap<>();
+        k.same().forEach(t -> found.put(t, true));
+        k.differ().forEach(t -> found.put(t, false));
+        State next = s.withWork(s.work().withComparing(s.work().comparing().found(found)));
+        int read = k.same().size() + k.differ().size();
+        StringBuilder words = new StringBuilder();
+        if (read == 0) {
+            words.append(k.problem() == null ? "Stopped before any pair was read" : "No pair could be read");
+        } else {
+            words.append("Read ").append(read).append(read == 1 ? " pair: " : " pairs: ");
+            if (k.differ().isEmpty()) {
+                words.append(read == 1 ? "it matches" : "all match");
+            } else {
+                words.append(k.same().size()).append(" match, ").append(k.differ().iterator().next().here().name())
+                        .append(k.differ().size() == 1 ? " differs"
+                                : " and " + (k.differ().size() - 1) + " more differ");
+            }
+            if (read < total && k.problem() == null) {
+                words.append(". Stopped after ").append(read).append(" of ").append(total);
+            }
+        }
+        if (k.problem() != null) {
+            words.append(". Could not read ").append(k.problem());
+        }
+        out.send(Messages.STATUS_TOPIC, new Status(words.toString(), k.problem() != null));
+        compare(next, out);
+        return next;
     }
 
     /** The status line's counts: the list used, and in Two Folders the other one's rows. */
@@ -790,6 +1042,7 @@ public final class Explorer {
         for (Side side : Side.values()) {
             out.send(Messages.COMPARED_TOPIC, new Compared(side, Map.of()));
         }
+        out.send(Messages.OFFERS_TOPIC, Offers.NONE);
         pair(next, out);
         summary(next, out);
         return wasTo ? dock(suggest(next, true, out), out) : next;
@@ -1074,7 +1327,7 @@ public final class Explorer {
     }
 
     private static State start(State s, Plan plan, Way way, long entry, String words, Out out) {
-        if (s.work().running().isPresent()) {
+        if (s.work().running().isPresent() || s.work().comparing().checking().isPresent()) {
             refuse(out, "Something is already being done: wait for it, or press Stop");
             return s;
         }
@@ -1096,6 +1349,9 @@ public final class Explorer {
         }
         State next = s.withWork(s.work().at(p.done()));
         out.send(Messages.SUGGESTED_TOPIC, said(next));
+        if (next.work().comparing().offer().isPresent()) {
+            offers(next, out);
+        }
         return next;
     }
 
@@ -1128,7 +1384,9 @@ public final class Explorer {
             words.append(". ").append(d.failed().size()).append(" could not be: ").append(d.failed().getFirst());
         }
         out.send(Messages.STATUS_TOPIC, new Status(words.toString(), !d.failed().isEmpty()));
-        State next = s.withWork(work);
+        // An offer's run is over: its card says so at once, and again once the lists say what it did.
+        State next = s.withWork(work.withComparing(work.comparing().offering(Optional.empty())));
+        offers(next, out);
         out.send(Messages.SUGGESTED_TOPIC, said(next));
         // Both lists, in Two Folders: what a run did may have reached either.
         State again = next;

@@ -3,6 +3,8 @@ package dev.sibarum.vexplore;
 import dev.sibarum.vexplore.core.Bytes;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Menu;
+import dev.sibarum.vexplore.core.Messages.Offer;
+import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Pair;
 import dev.sibarum.vexplore.core.Messages.Place;
 import dev.sibarum.vexplore.core.Messages.Picked;
@@ -431,10 +433,29 @@ final class Ui {
      * What the rail suggests: its chips and card, and the rows its effect would reach marked in the list. Marked, never
      * selected, so ignoring the rail costs nothing. A row is a value, so the explorer's rows are the list's own.
      */
-    void suggested(Suggested s, Side used) {
+    void suggested(Suggested s) {
         rail.show(s);
-        list(used).marks(s.reach());
-        list(used.other()).marks(List.of());
+    }
+
+    /** Two Folders' offers: the comparison's tiles and a card for each, on the rail above the selection's. */
+    void offers(Offers o) {
+        rail.offers(o);
+    }
+
+    /** Which offer {@code address} is the button of, or null. */
+    Offer.Kind accept(String address) {
+        return rail.accept(address);
+    }
+
+    /**
+     * The rows marked in the lists: the selection's rail's reach, in the list used; or, while it has nothing to say in
+     * Two Folders, what the first offer would reach, in FROM, which every offer is about.
+     */
+    void reach(Side used, Suggested s, Offers o) {
+        Set<Row> marked = !s.empty() || o.offers().isEmpty() ? s.reach() : o.offers().getFirst().reach();
+        Side in = !s.empty() || o.offers().isEmpty() ? used : Side.FROM;
+        list(in).marks(marked);
+        list(in.other()).marks(List.of());
     }
 
     /** Whether {@code address} is the card's button. */
