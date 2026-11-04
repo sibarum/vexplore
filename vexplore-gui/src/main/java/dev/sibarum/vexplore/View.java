@@ -5,6 +5,7 @@ import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Back;
 import dev.sibarum.vexplore.core.Messages.Carry;
 import dev.sibarum.vexplore.core.Messages.Chosen;
+import dev.sibarum.vexplore.core.Messages.Compared;
 import dev.sibarum.vexplore.core.Messages.Destine;
 import dev.sibarum.vexplore.core.Messages.Docked;
 import dev.sibarum.vexplore.core.Messages.Dropped;
@@ -99,8 +100,13 @@ import java.util.Optional;
 @dev.vexelray.framework.api.View
 final class View {
 
-    /** What the view's folder picker is asked as, and answered by: it asks for nothing else. */
+    /**
+     * What the view's folder picker is asked as, and answered by: the rail's destination, or a pane's own folder in Two
+     * Folders. It asks for nothing else.
+     */
     private static final long PICK_FOLDER = 1L;
+    private static final long PICK_FROM = 2L;
+    private static final long PICK_TO = 3L;
 
     private final Gui gui;
     private final Ui ui;
@@ -269,7 +275,7 @@ final class View {
     public void fieldSubmitted(TextField.Submitted m) {
         if (m.field().equals(ui.pathAddress())) {
             go.send(new Go(m.text().strip()));
-            ui.closePath(pair.used());
+            ui.closePath(pair);
         } else if (m.field().equals(ui.nameAddress())) {
             rename.send(new Rename(m.text()));
         }
@@ -385,6 +391,19 @@ final class View {
         } else if (ui.choose(m.button())) {
             Path shown = ui.shown();
             pickFile.send(PickFile.folder(PICK_FOLDER, shown == null ? "" : shown.toString()));
+        } else if (ui.paneBack(m.button()) != null) {
+            back.send(new Back(Optional.of(ui.paneBack(m.button()))));
+        } else if (ui.paneUp(m.button()) != null) {
+            Side side = ui.paneUp(m.button());
+            Path shown = ui.folder(side);
+            if (shown != null && shown.getParent() != null) {
+                navigate.send(new Navigate(Optional.of(side), shown.getParent()));
+            }
+        } else if (ui.paneChoose(m.button()) != null) {
+            Side side = ui.paneChoose(m.button());
+            Path shown = ui.folder(side);
+            String at = shown == null ? "" : shown.toString();
+            pickFile.send(PickFile.folder(side == Side.TO ? PICK_TO : PICK_FROM, at));
         } else if (ui.recall(m.button()) >= 0) {
             recallMark.send(new RecallMark(ui.recall(m.button())));
         } else if (ui.forget(m.button()) >= 0) {
@@ -425,12 +444,26 @@ final class View {
         ui.naming(m.name());
     }
 
-    /** The folder picker answered: a folder picked is the destination; a cancel changes nothing. */
+    /**
+     * The folder picker answered: for the rail, a folder picked is the destination; for a pane's Choose folder, it is
+     * shown in that pane. A cancel changes nothing.
+     */
     @Subscribe
     public void folderPicked(dev.vexelray.framework.core.Picked m) {
-        if (m.id() == PICK_FOLDER && !m.isCancelled()) {
-            destine.send(new Destine(Path.of(m.path())));
+        if (m.isCancelled()) {
+            return;
         }
+        if (m.id() == PICK_FOLDER) {
+            destine.send(new Destine(Path.of(m.path())));
+        } else if (m.id() == PICK_FROM || m.id() == PICK_TO) {
+            navigate.send(new Navigate(Optional.of(m.id() == PICK_TO ? Side.TO : Side.FROM), Path.of(m.path())));
+        }
+    }
+
+    /** How each list's rows stand to the other's, in Two Folders: marked in that list by their group. */
+    @Subscribe
+    public void compared(Compared m) {
+        ui.compared(m.side(), m.rows());
     }
 
     /**
@@ -452,7 +485,7 @@ final class View {
     }
 
     void closePath() {
-        ui.closePath(pair.used());
+        ui.closePath(pair);
     }
 
     /**

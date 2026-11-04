@@ -2,6 +2,8 @@ package dev.sibarum.vexplore;
 
 import dev.sibarum.vexplore.core.Messages;
 import dev.sibarum.vexplore.core.Messages.Go;
+import dev.sibarum.vexplore.core.Messages.Navigate;
+import dev.sibarum.vexplore.core.Relation;
 import dev.vexelray.framework.core.PickFile;
 import dev.vexelray.framework.core.Picked;
 import dev.vexelray.framework.shell.Dialogs;
@@ -18,6 +20,7 @@ import sibarum.atchung.Sender;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
 
@@ -200,6 +203,38 @@ class ViewTest {
         eventually("swapped", () -> pairs.getLast().used() == Messages.Side.FROM);
         shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
         eventually("one", () -> !pairs.getLast().two());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
+
+    /**
+     * Two Folders' frame and the comparison through the window: the places go, the title names both folders, a pane's
+     * own Up goes in that pane, and each row's mark follows the other folder; none of it in one frame.
+     */
+    @Test
+    void twoFoldersComparesTheListsAndEachPaneGoesItsOwnWay() throws Exception {
+        List<Messages.Compared> compared = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.COMPARED_TOPIC, compared::add);
+        Path left = Files.createDirectory(dir.resolve("left")).toAbsolutePath().normalize();
+        Path right = Files.createDirectory(dir.resolve("right")).toAbsolutePath().normalize();
+        Files.writeString(left.resolve("a.txt"), "a");
+        Files.writeString(left.resolve("b.txt"), "b");
+        Files.writeString(right.resolve("a.txt"), "longer");
+        go(left);
+        eventually("the rows", () -> wiring.ui().rows() == 2);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        eventually("TO in left", () -> left.equals(wiring.ui().folder(Messages.Side.TO)));
+        shell.bus().publish(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Messages.Side.TO), right));
+        eventually("TO in right", () -> right.equals(wiring.ui().folder(Messages.Side.TO)));
+        eventually("compared", () -> !compared.isEmpty()
+                && compared.getLast().rows().containsKey(right.resolve("a.txt")));
+        Messages.Compared from = compared.stream().filter(c -> c.side() == Messages.Side.FROM).toList().getLast();
+        assertEquals(Relation.ONLY_HERE, from.rows().get(left.resolve("b.txt")));
+        assertEquals(Relation.Group.DIFFERENT, from.rows().get(left.resolve("a.txt")).group());
+        assertEquals(left, wiring.ui().folder(Messages.Side.FROM), "FROM stayed where it was");
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        eventually("the marks put down", () -> compared.getLast().rows().isEmpty());
         for (int i = 0; i < 30; i++) {
             VexelApplication.frame(shell);
         }

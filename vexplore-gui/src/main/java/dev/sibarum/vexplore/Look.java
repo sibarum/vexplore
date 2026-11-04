@@ -81,6 +81,29 @@ final class Look {
     static final Role ANCHOR_WASH = token(0x2a1f14);
     static final Role ANCHOR_INK = token(0xf3d9a8);
 
+    // ---------------------------------------------------------------- Two Folders, from Orbit's Two folders board
+
+    /** FROM's tag: the violet wash of {@code chosen}, with light violet words. The marks of <em>only here</em> too. */
+    static final Role FROM_WASH = token(0x2d2547);
+    static final Role FROM_INK = token(0xd8c8ff);
+
+    /** TO's tag, in a cyan of its own, so the two sides are told apart at a glance and in a screenshot. */
+    static final Role TO_WASH = token(0x12303d);
+    static final Role TO_INK = token(0xc7f0ff);
+
+    /**
+     * The quiet chip: an identical row's mark, and the tag of the list not used. Neither violet nor amber, since an
+     * identical copy is neither a choice nor a reason.
+     */
+    static final Role QUIET_WASH = token(0x221f2e);
+    static final Role QUIET_INK = token(0xc8c2d8);
+
+    /** A pane's own round buttons: a step above the panel they sit on. */
+    static final Role RAISED = token(0x1b1824);
+
+    /** The hairlines of the strip between the two lists. */
+    static final Role BRIDGE = token(0x262233);
+
     // ---------------------------------------------------------------- families
 
     /**

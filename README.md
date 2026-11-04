@@ -115,6 +115,7 @@ every message is in one file. Read these in this order.
 | `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk; and keeps what landed in the last twenty seconds, for the *new* tag. |
 | `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
 | `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
+| `Compare.java`, `Relation.java` | **the comparison** in Two Folders, a pure function: two listings in, each row's relation to the other side out (only here, newer, identical...), by name, size and time. The explorer runs it in a step. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
 | `Preview.java`, `Previews.java`, `ReadPreview.java` | the Preview Dock's ladder: what one file is (its thumbnail if it is a picture or a video, its first lines if it is text, its bytes if not), and the job that reads it. Nothing in a file is executed. |
 | `Kind.java`, `Bytes.java`, `Dates.java` | what a file is, a size and a time in a person's words: no disk and no widget, so they live here. |
@@ -128,10 +129,10 @@ every message is in one file. Read these in this order.
 | `View.java` | **the view**, a `@View`: run on the GUI thread in each frame, hearing the explorer and the widgets as messages; the explorer's messages shown (`Shown` is the breadcrumb and the list) and the person's gestures told (`Go`, `Navigate`, `Chosen`, `Activated`, `Picked`, `Menu`, `OpenWith`, `Use`, `TwoFolders`, `Swap`, `Back`, `Dropped`). It asks `ListPlaces` for the places itself, once the window opens. It decides nothing else. |
 | `Intent.java` | what a key chord asks of the view: the message the gesture was declared to send. |
 | `Ui.java` | the window, in the design's regions. Holds no state; it shows what the view hands it. |
-| `Columns.java` | the list's columns, drawn from a row alone, and the *new* tag after a name. |
+| `Columns.java` | the list's columns, drawn from a row alone; the *new* tag after a name, and in Two Folders the comparison's mark before it. |
 | `Sidebar.java` | Orbit's sidebar: the places, flat, the one the folder shown is in filled, and the marks under them. |
-| `FolderList.java` | one file list with its header in Two Folders (FROM or TO, and the folder's name, in the accent while used) and its tags; `Ui` builds two. |
-| `Tags.java` | the rows tagged *new*: the list's second marked set, told whole, which a list cannot hold (FN-12). |
+| `FolderList.java` | one file list on its own panel, with its heading (in Two Folders, the board's pane header: its side's tag, its own Back, Up and Choose folder, and its path) and its tags; `Ui` builds two. |
+| `Tags.java` | a set a list marks its rows with beside its own, told whole, which a list cannot hold (FN-12): the *new* tag, and the comparison's marks. |
 | `DockPanel.java` | the preview strip under the list, in Orbit's shape: one file's preview, or a note, and *Open with* beside it (a left click opens what suits the file, its menu names a program); every node built once. |
 | `HandOff.java` | the job that hands a file to Rasterware where the installer put it, else to the desktop's opener, or to the desktop's opener alone when that was named, and says which. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |

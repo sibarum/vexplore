@@ -752,6 +752,31 @@ Slice 2, the drag, built 2026-11-03 (after M8's slices 1 to 5):
   that a person would have seen, and the framework's rule is that such a drop commits nothing; `down`, `move`, `settle`,
   `up` and a `click` to put the latched carry down moved the file. A copy across two drives is tested, not driven.
 
+Slice 3, the comparison and Two Folders' frame, built 2026-11-03 against Orbit's Two folders board:
+
+- **As sketched in `-core`**: `Compare.of(here, there)`, one pass a side, fifty thousand rows a side well under a
+  step's budget; `Relation` with its `Group`; `Compared` keyed by side, sent for both lists whenever either listing
+  lands and on Swap, and empty for both on the way back to one folder. `Navigate` and `Back` keep their old
+  constructors, which mean the list used, so no way in that already sent one changed.
+- **A pane's button for a TO that is gone does nothing**, rather than act on FROM: a click queued before *Back to one
+  folder* must not move the other list.
+- **The marks are six nodes a row**, one per relation that has a mark, all but one hidden, through `Tags<K>` (FN-12,
+  met again and written there). Newer, older and different share the bang; a script tells them apart by the mark's
+  role, which is its words.
+- **The pane header is one column**: the bar (tag and the three buttons) and the path shown only in Two Folders, the
+  name and count always. Its fixed height went, since TO no longer holds Swap and the two headers are alike.
+- **Each list is its own panel** now, rounded, in one folder as in two; the region that held both is the ground.
+- **The places are hidden with `SplitPane.alone`**, which keeps the sidebar's width for when it comes back.
+- **Ctrl+L in Two Folders** brings the path's pill back in the title's place while the field is open, for the list
+  used; Enter or Esc puts the title back. Found while writing the ottermate script, which would otherwise have typed
+  into a field nobody could see.
+- **Seen live**: Downloads against a Videos folder made to hold one of each relation. The marks were as the table
+  says, TO's Up and Back went up and came back in TO alone, Swap carried the marks across, and one folder brought
+  the places, the breadcrumb and no marks back.
+- **Not solved: the names.** Hiding the places gave NAME about 40 px; it is still cut to four or five letters at
+  1440 px (TODO, FN-8). A pane's Back is always enabled, since `Pair` says only whether the list used can go back
+  (TODO).
+
 ## The messages M8 adds
 
 Proposed 2026-11-02, before any of it is written. **(ruled 2026-11-02)** Orbit (*C · Orbit* on the *Vexplore

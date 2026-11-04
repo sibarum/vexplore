@@ -27,9 +27,12 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
       already the names a script would use. One scripted run through the main path is worth more than several
       unit tests of the view.
 - [ ] Held Shift and Control as intent (0.1's `Intents`): waits for a modifiers topic (framework-notes FN-9).
-- [ ] **Two Folders: NAME shrinks to its icon in both lists** at 1440 px, the places, both lists and the rail
-      sharing the width (FN-8). The tree is gone (M8), and it still does not fit: wait on FN-8, or give Two Folders
-      fewer or narrower columns.
+- [ ] **Two Folders: NAME is cut to four or five letters in both lists** at 1440 px (FN-8). Slice 3 of M6 hid the
+      places in Two Folders, as Orbit's board does, which gave NAME about 40 px back; the rail's third of the width
+      and TYPE, SIZE and MODIFIED keep the rest. Waits on FN-8, or on the gallery, which has no columns.
+- [ ] **A pane's own Back is always enabled in Two Folders**, and does nothing for a pane with nowhere to go back to
+      (but uses it). `Pair.back` says only whether the list used has somewhere; one per side would need `Pair` to
+      grow.
 - [ ] In a window under about 1000 px wide at zoom 1, the list's NAME column shrinks to its icon while TYPE, SIZE and
       MODIFIED stay whole (framework-notes FN-8).
 - [ ] `Picked` is a chip's place, resolved against the rail the explorer last sent. A listing that lands in the frame

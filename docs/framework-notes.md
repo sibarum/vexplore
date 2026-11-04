@@ -186,6 +186,12 @@ the whole set each time, worn by a row realized later, as `marks` is. Two-folder
 (*newer here*, *only here*), so the shape is a map from a mark's name to its set and its look, rather than a second
 field.
 
+**Met again in M6, slice 3 (2026-11-03).** The comparison marks each row with its relation to the other folder, and a
+row's relation changes when the *other* folder does, never its own. `Tags` grew into the shape above: `Tags<K>`, each
+row wearing at most one key, the name cell building a node per key (six marks, all hidden but one) and the set told
+whole. Two instances per list now, *new* and the relation, beside the rail's `marks`. An icon in a cell has no name a
+script can read, so each mark's `role` is its words (`newer here`); a per-row tag the list drew would name itself.
+
 ## FN-14 · A button is one label, with nothing beside it 🔬
 
 Orbit's rail (M8, slice 3) draws each *Which files* and *Only if* pill as its words with the count in a badge at its

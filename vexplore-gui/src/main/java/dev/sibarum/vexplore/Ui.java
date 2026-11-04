@@ -13,18 +13,22 @@ import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Plan;
+import dev.sibarum.vexplore.core.Relation;
 import dev.sibarum.vexplore.core.Suggestions.Act;
 import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.Gui;
+import dev.vexelray.gui.core.IconSource;
 import dev.vexelray.gui.core.Node;
 import dev.vexelray.gui.core.drop.DropEffect;
 import dev.vexelray.gui.core.drop.PayloadType;
 import dev.vexelray.gui.core.layout.LayoutEnums.AlignItems;
 import dev.vexelray.gui.core.layout.LayoutEnums.Direction;
+import dev.vexelray.gui.core.layout.LayoutEnums.Justify;
 import dev.vexelray.gui.core.layout.Length;
 import dev.vexelray.gui.core.style.Paint;
 import dev.vexelray.gui.core.style.Role;
 import dev.vexelray.gui.icons.Icon;
+import dev.vexelray.gui.icons.IconView;
 import dev.vexelray.gui.widget.Breadcrumb;
 import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.Cue;
@@ -40,6 +44,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -95,7 +100,13 @@ final class Ui {
     private final IconButton up;
     private final IconButton one;
     private final IconButton two;
-    private final Button swap;
+    private final IconButton swap;
+    private final Node nav;
+    private final Node where;
+    private final Node title;
+    private final Node titleWords;
+    private final Node bridge;
+    private final SplitPane body;
     private final Sidebar sidebar;
     private final FolderList from;
     private final FolderList to;
@@ -119,7 +130,7 @@ final class Ui {
         path.node().width(Length.FILL).font(Type.MONO).textSize(Type.SMALL).visible(false);
         gui.landmark(Landmarks.PATH, path.node());
         // The path as a pill: the breadcrumb, or the field in its place.
-        Node where = gui.row().width(Length.grow(1f)).height(ROUND).alignItems(AlignItems.CENTER)
+        where = gui.row().width(Length.grow(1f)).height(ROUND).alignItems(AlignItems.CENTER)
                 .padding(Length.ZERO, Length.dp(6)).corner(Length.dp(20)).background(Look.LIST)
                 .border(Length.dp(1), Role.LINE).scroll(false, false).clip(true)
                 .children(crumbs.node(), path.node());
@@ -135,6 +146,16 @@ final class Ui {
         Node views = gui.row().alignItems(AlignItems.CENTER).gap(Length.dp(4)).padding(Length.dp(4))
                 .corner(Length.dp(20)).background(Look.LIST).border(Length.dp(1), Role.LINE)
                 .children(one.node(), two.node());
+        nav = gui.row().gap(Length.dp(6)).children(back.node(), up.node());
+        // Two Folders' title, where Back, Up and the path are in one: what the mode is for, and which way it goes.
+        // Each pane has its own Back, Up and folder.
+        titleWords = gui.text("").font(Type.UI).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(false);
+        title = gui.row().width(Length.grow(1f)).alignItems(AlignItems.CENTER).gap(Length.dp(12))
+                .scroll(false, false).clip(true)
+                .children(gui.text("Compare & move").font(Type.UI).textSize(Type.HEADING).textColor(Role.INK)
+                        .wordWrap(false), titleWords);
+        title.visible(false);
+        gui.landmark(Landmarks.TITLE, title);
         Node top = gui.row()
                 .width(Length.FILL).height(Type.TOP_BAR)
                 .padding(Length.ZERO, Look.GAP)
@@ -143,24 +164,33 @@ final class Ui {
                 .background(Look.CHROME)
                 .scroll(false, false)
                 .clip(true)
-                .children(gui.row().gap(Length.dp(6)).children(back.node(), up.node()), where, views);
+                .children(nav, where, title, views);
 
         // The places and the marks, on the ground, where the tree was.
         sidebar = new Sidebar(gui);
-        // FROM always, and TO beside it in Two Folders, sharing the list's room equally; TO hidden takes none. Swap
-        // sides is TO's to offer, in its header.
-        from = new FolderList(gui, Landmarks.LIST, Landmarks.HEADER_FROM, "FROM");
-        to = new FolderList(gui, Landmarks.LIST_TO, Landmarks.HEADER_TO, "TO");
+        // FROM always, and TO beside it in Two Folders, each on a panel of its own, sharing the room equally either
+        // side of the strip; TO and the strip hidden take none.
+        from = new FolderList(gui, Side.FROM, FolderList.Names.FROM);
+        to = new FolderList(gui, Side.TO, FolderList.Names.TO);
         to.node().visible(false);
         // Each list carries its rows as a type of its own and takes only the other's, so a list never offers to take what
         // came from itself. What a drop does is declared with each Pair, from the two folders' drives.
         from.carries(FROM_ROWS);
         to.carries(TO_ROWS);
-        swap = new Button(gui, "Swap sides").kind(Button.Kind.GHOST).name(Landmarks.SWAP);
-        gui.landmark(Landmarks.SWAP, swap.node());
-        to.append(swap.node());
+        // The strip between them, as the Two folders board draws it: which way things go, FROM to TO, and Swap sides.
+        // Fixed, not a split's gutter, so neither list can be dragged narrower than the other.
+        swap = round(gui, VexploreIcon.SWAP, "Swap sides", Landmarks.SWAP);
+        swap.size(Length.dp(34), Length.dp(15));
+        swap.node().corner(Length.dp(17)).background(Look.RAISED);
+        Node arrow = gui.row().size(Length.dp(34), Length.dp(34)).corner(Length.dp(17)).background(Role.ACCENT)
+                .alignItems(AlignItems.CENTER).justify(Justify.CENTER)
+                .children(IconView.of(gui, Icon.ARROW_RIGHT).size(Length.dp(16)).tint(Look.CHROME).node());
+        bridge = gui.column().width(Length.dp(44)).height(Length.FILL).alignItems(AlignItems.CENTER)
+                .justify(Justify.CENTER).gap(Length.dp(10))
+                .children(seam(), arrow, swap.node(), seam());
+        bridge.visible(false);
         Node lists = gui.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
-                .children(from.node(), to.node());
+                .children(from.node(), bridge, to.node());
 
         // The rail is there whenever the list is, empty or not: one that appeared with its first suggestion would move
         // every row. It is a share of the room beside the places rather than the handoff's 25 rem, which a split's
@@ -171,7 +201,7 @@ final class Ui {
         dock = new DockPanel(gui);
         // Orbit's panels: the list, the dock and the rail each a rounded panel on the ground, the gaps between them the
         // splits' gutters, so the gap is what a pointer drags. The places sit on the ground itself.
-        Node listPanel = region(Look.LIST, lists).corner(Look.PANEL_CORNER).clip(true);
+        Node listPanel = region(Look.CHROME, lists);
         SplitPane listing = new SplitPane(gui, SplitPane.Orientation.STACKED, listPanel,
                 dock.node()).sized(SplitPane.Pane.SECOND).size(Type.DOCK).minFirst(Type.LIST_MIN_HEIGHT)
                 .gutter(Look.GAP).line(Look.SEAM);
@@ -179,7 +209,7 @@ final class Ui {
                 .sized(SplitPane.Pane.SECOND).size(Type.RAIL)
                 .minFirst(Type.LIST_MIN).minSecond(Type.RAIL_MIN)
                 .gutter(Look.GAP).line(Look.SEAM);
-        SplitPane body = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.CHROME, sidebar.node()),
+        body = new SplitPane(gui, SplitPane.Orientation.SIDE_BY_SIDE, region(Look.CHROME, sidebar.node()),
                 work.node()).size(Type.SIDEBAR).gutter(Look.GAP).line(Look.SEAM);
         body.node().width(Length.FILL).height(Length.grow(1f));
         Node ground = gui.column().width(Length.FILL).height(Length.grow(1f)).padding(Length.ZERO, Look.GAP)
@@ -198,11 +228,16 @@ final class Ui {
     }
 
     /** A round button of the top bar, bordered on a panel's fill as Orbit draws it, named for scripts. */
-    private static IconButton round(Gui gui, Icon icon, String name, String landmark) {
+    private static IconButton round(Gui gui, IconSource icon, String name, String landmark) {
         IconButton b = new IconButton(gui, icon, name).name(landmark).size(ROUND, ROUND_ICON);
         b.node().corner(Length.dp(20)).border(Length.dp(1), Role.LINE).background(Look.LIST);
         gui.landmark(landmark, b.node());
         return b;
+    }
+
+    /** One of the strip's two hairlines, either side of its arrow and Swap. */
+    private Node seam() {
+        return gui.row().size(Length.dp(2), Length.dp(120)).background(Look.BRIDGE);
     }
 
     /** A region of the body: a column of its token's colour, holding its one widget. */
@@ -262,6 +297,26 @@ final class Ui {
         return one.address().equals(address);
     }
 
+    /** Which pane's own Back {@code address} is, or null. */
+    Side paneBack(String address) {
+        return from.back(address) ? Side.FROM : to.back(address) ? Side.TO : null;
+    }
+
+    /** Which pane's own Up {@code address} is, or null. */
+    Side paneUp(String address) {
+        return from.up(address) ? Side.FROM : to.up(address) ? Side.TO : null;
+    }
+
+    /** Which pane's own Choose folder {@code address} is, or null. */
+    Side paneChoose(String address) {
+        return from.choose(address) ? Side.FROM : to.choose(address) ? Side.TO : null;
+    }
+
+    /** The folder the list on {@code side} shows, or null before its first listing. */
+    Path folder(Side side) {
+        return list(side).folder();
+    }
+
     // ------------------------------------------------------------------ the folders shown
 
     /** The folder the breadcrumb shows, or null for none yet: its last segment. */
@@ -275,9 +330,19 @@ final class Ui {
         return from.count();
     }
 
-    /** What the explorer listed, in the list it is for. */
+    /** What the explorer listed, in the list it is for; and Two Folders' title, which names both folders. */
     void show(Shown s) {
         list(s.side()).show(s);
+        Path left = from.folder();
+        Path right = to.folder();
+        if (left != null && right != null) {
+            titleWords.text(FolderList.name(left) + " → " + FolderList.name(right));
+        }
+    }
+
+    /** How each row of the list on {@code side} stands to the other list, marked in it; none in one folder. */
+    void compared(Side side, Map<Path, Relation> rows) {
+        list(side).compared(rows);
     }
 
     /**
@@ -287,6 +352,12 @@ final class Ui {
      */
     void pair(Pair p) {
         to.node().visible(p.two());
+        bridge.visible(p.two());
+        // Two Folders, as the board draws it: no places, and the top bar's title where Back, Up and the path were.
+        body.alone(p.two() ? SplitPane.Pane.SECOND : null);
+        nav.visible(!p.two());
+        where.visible(!p.two());
+        title.visible(p.two());
         DropEffect effect = p.drop() == Plan.Op.MOVE ? DropEffect.MOVE : DropEffect.COPY;
         from.takes(TO_ROWS, effect);
         to.takes(FROM_ROWS, effect);
@@ -440,8 +511,13 @@ final class Ui {
 
     // ------------------------------------------------------------------ the path field
 
-    /** Ctrl+L: the field in the breadcrumb's place, the keyboard in it and its text selected, so typing replaces it. */
+    /**
+     * Ctrl+L: the field in the breadcrumb's place, the keyboard in it and its text selected, so typing replaces it. In
+     * Two Folders the pill comes back in the title's place while the field is open, for the list used.
+     */
     void editPath() {
+        title.visible(false);
+        where.visible(true);
         crumbs.node().visible(false);
         path.node().visible(true);
         gui.focus(path.node());
@@ -449,14 +525,16 @@ final class Ui {
     }
 
     /**
-     * Esc, or Enter once the field is sent: the breadcrumb back, and the keyboard in the list, where the folder the
-     * field named is about to be. A hidden field keeps the keyboard otherwise, and typing would land in it unseen
-     * (framework-notes FN-3).
+     * Esc, or Enter once the field is sent: the breadcrumb back, or in Two Folders the title, and the keyboard in the
+     * list, where the folder the field named is about to be. A hidden field keeps the keyboard otherwise, and typing
+     * would land in it unseen (framework-notes FN-3).
      */
-    void closePath(Side used) {
+    void closePath(Pair p) {
         path.node().visible(false);
         crumbs.node().visible(true);
-        gui.focus(list(used).rowsNode());
+        where.visible(!p.two());
+        title.visible(p.two());
+        gui.focus(list(p.used()).rowsNode());
     }
 
     /** The path field's node, for the Esc that is claimed only while it has the keyboard. */

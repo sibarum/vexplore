@@ -37,19 +37,29 @@ final class Landmarks {
     /** Two Folders' TO list, on the right; hidden in one folder. */
     static final String LIST_TO = "list.to";
 
-    /** Each list's header in Two Folders: its side and its folder's name, in the accent on the list used. */
+    /** Each list's header: its folder's name and count, and in Two Folders its side's tag and its path. */
     static final String HEADER_FROM = "list.from.header";
     static final String HEADER_TO = "list.to.header";
 
+    /** Each pane's own Back, Up and Choose folder, in its header in Two Folders (Orbit's Two folders board). */
+    static final String BACK_FROM = "list.from.back";
+    static final String UP_FROM = "list.from.up";
+    static final String CHOOSE_FROM = "list.from.choose";
+    static final String BACK_TO = "list.to.back";
+    static final String UP_TO = "list.to.up";
+    static final String CHOOSE_TO = "list.to.choose";
+
     /**
-     * The top bar's Back and Up, and its view switch: List, one folder, and Two folders. Swap sides is in the TO list's
-     * header.
+     * The top bar's Back and Up, and its view switch: List, one folder, and Two folders. In Two Folders, its
+     * title ({@code Compare & move}, {@code Downloads → Videos}) where Back, Up and the path were, and Swap sides in the
+     * strip between the two lists.
      */
     static final String BACK = "top.back";
     static final String UP = "top.up";
     static final String ONE_FOLDER = "top.list";
     static final String TWO_FOLDERS = "top.two";
-    static final String SWAP = "list.to.swap";
+    static final String TITLE = "top.title";
+    static final String SWAP = "bridge.swap";
 
     /** The Suggestion Rail, at the right. */
     static final String RAIL = "rail";
