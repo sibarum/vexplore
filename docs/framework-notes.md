@@ -61,7 +61,12 @@ the sized pane giving way down to its own minimum. Every application with a side
 
 
 
-## FN-3 · A hidden node keeps the keyboard 🔬
+## FN-3 · A hidden node keeps the keyboard 🔬 (fixed 2026-11-04)
+
+*Fixed in vexelray-gui (`InputDispatcher.handOnHiddenFocus`, held by `FocusHandOnTest`): a node hidden while it has
+the keyboard hands it to the next focusable node in Tab order, before the next frame's keys, and `Gui.blur()` lets
+go of it on purpose. `Ui.closePath` still focuses the list itself, since that is where it wants the keyboard. Kept
+below as found.*
 
 The path field takes the breadcrumb's place while Ctrl+L has it, and Esc hides it again. Hidden, it still had the
 keyboard (`ottermate tree` showed it `hidden focused`), so the next keys typed would have gone into a field nobody can
@@ -85,7 +90,13 @@ Every application that opens anything (MainFrame's links, the IDE's "show in fol
 write the same call and the same "could not open" wording. A framework job for it, `Open(target)` answered by
 `Opened(target, problem)`, would be the message-model shape of what `Links` already does.
 
-## FN-5 · Keys typed straight after a chord that moves the keyboard land where it was 🔬
+## FN-5 · Keys typed straight after a chord that moves the keyboard land where it was 🔬 (fixed 2026-11-04)
+
+*Fixed in vexelray-gui, without the declaration proposed below: a chord that sends a message holds back the rest of
+that frame's input and delivers it at the start of the next, by when the view has heard the message and moved the
+keyboard (`InputDispatcher.holdRest`, held by `FocusHandOnTest`). Every application gets it with nothing to declare.
+Driven again with no `settle` between `key CTRL+L` and `type C:/Users/User/Documents`: the field got every
+character. Scripts no longer need that `settle`. Kept below as found.*
 
 Ctrl+L is declared as a chord that sends an `Intent`; the view hears it in the next frame and focuses the path
 field. Keystrokes that arrive before that frame go to whatever had the keyboard. Driven by ottermate with no
