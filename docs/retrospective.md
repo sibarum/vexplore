@@ -31,6 +31,76 @@ reasons and the full method.
 
 ## Milestones
 
+## M6 · Two Folders · 2026-11-04
+
+One new finding (FN-16), small, and FN-12 met again and grown. FN-14 and FN-15 were written while M6 waited, by M8's
+slices 3 and 4, and are read back with M8. Two Folders went where the stack said: the steps that knew nothing of two
+folders read the used pane through methods and passed unchanged across the move, a drop is planned in the step that
+hears it because the explorer already holds the other list's names, and a comparison of fifty thousand rows a side is
+a pure function well inside a step's budget. Every action the comparison offers (a drop, *Remove*, *Move*, *Keep
+newer*, *Keep both*) is a `Plan` the existing run carries out and the existing `Done.reverse` takes back with one
+Ctrl+Z; M6 added no `Op` and no undo of its own.
+
+### The shapes
+
+| | The promise | What happened | How it looked |
+| --- | --- | --- | --- |
+| FN-12 | A list says what it knows about a row that is not a choice | One marked set, and a relation set by the other folder | `Tags<K>`: six nodes a row, two per list |
+| FN-16 | A part is tested by handing it what it needs | `Sender` is no lambda | A bus, a tick and an inbox to collect a count |
+
+### What would stop each
+
+12. As M5 said, now with its third and fourth set: a list holds named marks, a map from a mark's name to its set and
+    its look, told whole and worn by a row realized later. A mark the list drew would also name itself to a script,
+    where an icon in a cell needs its words put in its `role` (FN-12).
+16. A test sender, `Sender.of(Consumer<T>)` or `Sender.collecting(List<T>)`, delivering at once with no bus. Every
+    source and every job with a progress topic meets it (FN-16).
+
+### My own mistakes
+
+- **A question the design had already answered.** Planning slices 3 to 5, I asked the person where a STATUS column
+  should sit and how wide, when design C (Orbit) had since grown a Two Folders board that draws the comparison as
+  marks and cards, with no such column. They pointed me at it; the slices were re-planned against the board. The
+  rule: before asking how something should look, look at whether the chosen design draws it.
+- **A script that expected the wrong count.** Slice 4's live run waited for *Moved 12 files*; the offer moved 13.
+  The run stopped after the move and before its undo, so the disk was left changed and I moved the files back by hand
+  before running again. As in M3 and M4: wait on what the window says, counted from the fixture, not from memory, and
+  a script that changes the disk undoes itself before it checks anything it might miss.
+- **A note that claimed a test before it existed.** Slice 5's notes in shape.md said selection picking the conflict
+  was tested in `-core`; it was not yet. Caught on reading the notes back, and the test written. A note says what was
+  done, and is written after it.
+- **A test that heard nothing, again.** `ExplorerTest` saw no `Conflict` because `CONFLICT_TOPIC` was not among the
+  topics it listens to: M4's mistake, word for word, and M4's rule (a new topic goes on that list in the same edit)
+  was not followed.
+- **A view test that forgot the session.** `ViewTest`'s *Keep both* was refused with *Nothing can be done before the
+  session is read*, because the test never published `Recalled`. `start()` says why it refuses, which made it a
+  one-line fix; a test of anything that runs publishes the session first.
+- **Words read only after they were seen.** *Downloads's copy* went into the status line and was reworded to
+  *kiln-cam.mp4 from Downloads* after the live run, so the wording the window now shows was tested and not seen.
+- **A gesture the tool made too fast.** Slice 2's first drag was `ottermate`'s one-step `drag`, which carries and
+  drops with no frame between; the framework rightly commits nothing for that. The step-by-step gesture (`down`,
+  `move`, `settle`, `up`) worked. Not a gap in either: a drag a person could not make is not a drag.
+
+### Not seen
+
+- **The names.** At 1440 px NAME is still four or five letters in each list (FN-8, TODO); hiding the places did not
+  give it enough.
+- **A copy across two drives**, in a drop, a *Move* offer or a *Keep*: tested, never driven.
+- **A TO copy that is the newer, neither newer, a stale press, Stop during a check**: tested in `-core`, not driven.
+- **The check's count.** Two small files are read before a frame shows how far it has got.
+
+### What to keep exactly as it is
+
+- **One plan, one run, one undo.** Four new actions and not one new way to touch the disk: each says its effect in
+  an entry's words before it runs and in the past tense after, and Ctrl+Z reverses each whole.
+- **Facts derived, not remembered.** The comparison, the offers and the conflict are worked out from both listings
+  whenever either changes and sent whole; a press is checked against the listings, so a pair that changed since it was
+  shown is refused and said, with no copy of what was shown to go stale.
+- **The used pane behind methods.** Making `State` two panes and its old fields methods let 43 tests prove the move
+  before any test of two folders was written.
+- **Nothing built after the first frame.** The marks, the tiles and the dock's two halves are kept nodes, shown,
+  hidden and rewritten; an `IconView` changing its source passed `Cuts`.
+
 ## M5 · Fresh files · 2026-11-02
 
 One finding (FN-12): a list marks one set of rows, and the rail's reach already has it, so the *new* tag is a second
