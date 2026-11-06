@@ -236,7 +236,7 @@ public final class Suggestions {
                 action.add(new Chip(a.chip(), 0, a == applied.act()));
             }
             Set<Row> reach = new LinkedHashSet<>(targets);
-            return new Suggested(basis, select, condition, action, reach, card(), false, List.of());
+            return new Suggested(basis, select, condition, action, reach, card(), false, List.of(), "");
         }
 
         /** {@code Move 9 files · 6.5 GB}, and the first few names. */

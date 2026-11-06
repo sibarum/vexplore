@@ -151,7 +151,11 @@ beside them each is about 390 px, so NAME is its icon in both. Taking the tree a
 **For the framework:** a minimum per column (`Column.of(..., Length.grow(1)).min(Length.rem(12))`), with the fixed
 columns giving way past it, last column first. Every table whose one growing column is its identity meets it.
 
-## FN-9 · Held Shift and Control have no topic 🔬
+## FN-9 · Held Shift and Control have no topic 🔬 (fixed 2026-11-05)
+
+*Fixed in vexelray-framework: the explorer hears `Modifiers` for the main window, holds it in its state, and while
+Shift or Control is held the rail's Which files row is what the key proposes (`Intents`, back from 0.1), headed
+"a range" or "a rule"; choosing one makes it the selection. A drop's copy or move by the key held is not done.*
 
 The design's second principle reads a held modifier as intent: Shift held proposes where a range ends, Control held
 proposes the rule the picks are examples of. 0.1's `Intents` computed both. On 0.2 an application cannot hear which
@@ -241,3 +245,13 @@ wrote. Six lines to say "collect what it sends".
 
 **For the framework:** a test sender, `Sender.collecting(List<T>)` or `Sender.of(Consumer<T>)`, that delivers to the
 consumer at once with no bus. Every source and every job with a progress topic meets it in its test.
+
+## FN-17 · A table's sort is the widget's alone 🔬
+
+Shift held proposes where a range ends, "down to the end of this run", which is an order: the list's, as the person
+sees it. `Table` sorts on a header click and says nothing of it, so the explorer has only the listing's order, and
+`Intents` reasons in that. A person who has sorted by size and holds Shift is offered a run they cannot see. Nothing
+was worked around: the proposals are in the listing's order, and say so in `Intents`' javadoc.
+
+**For the framework:** the table says its order when it changes (`Table.SORTED`, the column's key and a direction),
+so a part that reasons about what is next to what reasons in the order shown.

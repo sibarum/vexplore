@@ -22,6 +22,7 @@ import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Why;
 import dev.vexelray.framework.core.CloseRequested;
+import dev.vexelray.framework.core.Modifiers;
 import dev.vexelray.framework.core.Open;
 import dev.vexelray.framework.core.Opened;
 import dev.vexelray.framework.core.WindowOpened;
@@ -311,6 +312,60 @@ class ExplorerTest {
         sent.clear();
         tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Suggestions.Act.RENAME.name()));
         assertEquals("Rename is not offered for these", took(Status.class).getFirst().message());
+    }
+
+    // ------------------------------------------------------------------ held keys as intent (FN-9)
+
+    private void hold(boolean shift, boolean control) {
+        tell(Modifiers.TOPIC, new Modifiers(CloseRequested.MAIN, shift, control, false, false));
+    }
+
+    @Test
+    void shiftHeldProposesWhereARangeEndsAndChoosingOneSelectsIt() {
+        showing(dir, file("a.txt", 1), file("b.txt", 2), file("c.txt", 3), folder("sub"));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
+        sent.clear();
+
+        hold(true, false);
+        Suggested rail = took(Suggested.class).getLast();
+        assertEquals("a range", rail.proposing());
+        assertEquals("Down to the end of this text file run", rail.select().getFirst().label());
+        assertEquals(3, rail.select().getFirst().count());
+
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.SELECT, 0));
+        Set<Path> three = Set.of(path("a.txt"), path("b.txt"), path("c.txt"));
+        assertEquals(three, took(Shown.class).getLast().select(), "the list is told to show them selected");
+
+        hold(false, false);
+        Suggested back = took(Suggested.class).getLast();
+        assertEquals("", back.proposing(), "let go, the row is the rail's own again");
+        assertTrue(back.select().stream().noneMatch(c -> c.label().startsWith("Down to")), back.select().toString());
+        assertEquals(3, back.select().stream().filter(Messages.Chip::on).findFirst().orElseThrow().count(),
+                "and it is about the three now");
+    }
+
+    @Test
+    void controlHeldProposesTheRuleThePicksAreExamplesOf() {
+        showing(dir, file("a.txt", 1), video("b.mp4", 2), file("c.txt", 3));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
+        sent.clear();
+        hold(false, true);
+        Suggested rail = took(Suggested.class).getLast();
+        assertEquals("a rule", rail.proposing());
+        assertEquals("All text files here", rail.select().getFirst().label());
+        assertEquals(2, rail.select().getFirst().count());
+    }
+
+    @Test
+    void keysHeldInAnotherWindowOrWithNothingSelectedProposeNothing() {
+        showing(dir, file("a.txt", 1), file("b.txt", 2));
+        tell(Modifiers.TOPIC, new Modifiers("settings", true, false, false, false));
+        hold(true, false);
+        assertTrue(seen(Suggested.class).isEmpty(), "nothing selected: no rail to change");
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
+        assertEquals("a range", took(Suggested.class).getLast().proposing(), "held before the click, heard after it");
+        tell(Modifiers.TOPIC, new Modifiers("settings", false, false, false, false));
+        assertTrue(seen(Suggested.class).isEmpty(), "another window's keys are its own");
     }
 
     @Test
@@ -1006,9 +1061,9 @@ class ExplorerTest {
     void aDropAcrossTwoDrivesIsACopy() {
         assumeTrue(java.io.File.separatorChar == '\\', "drives are Windows'");
         Pane onC = Pane.NONE.asking(Path.of("C:\\a"), Set.of(), 1L);
-        Explorer.State across = Explorer.State.initial().withPane(Side.FROM, onC).withTo(Optional.of(Path.of("D:\\b")));
+        Explorer.State across = Explorer.State.initial().withPane(Side.FROM, onC).twoFolders(Optional.of(Path.of("D:\\b")));
         assertEquals(COPY, Explorer.drop(across));
-        Explorer.State one = Explorer.State.initial().withPane(Side.FROM, onC).withTo(Optional.of(Path.of("C:\\b")));
+        Explorer.State one = Explorer.State.initial().withPane(Side.FROM, onC).twoFolders(Optional.of(Path.of("C:\\b")));
         assertEquals(MOVE, Explorer.drop(one));
     }
 

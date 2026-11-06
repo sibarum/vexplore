@@ -21,12 +21,12 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 - [ ] Places on Linux are the Windows names under home; 0.1 read the XDG user directories (`ListPlaces`).
 - [ ] A list row's accessible name leaves out the file name (`row "FOLDER Today 22:16"`), so a script cannot
       find a row by name. The name cell is an icon and text in a row box; find out what the table names a row from.
-- [ ] Opening a file (Enter on it) is tested in `ExplorerTest` but not driven live: it starts a real program on
-      the desktop.
 - [ ] Automation coverage: `--automation=0` (or `-Dautomation=0`) opens a driving socket on a free port and prints it, and the landmarks in `Landmarks.java` are
       already the names a script would use. One scripted run through the main path is worth more than several
       unit tests of the view.
-- [ ] Held Shift and Control as intent (0.1's `Intents`): waits for a modifiers topic (framework-notes FN-9).
+- [ ] A drop copying or moving by the key held (0.1's `Drops`): the drop's message would carry the keys held at the
+      release (framework-notes FN-9).
+- [ ] Shift's ranges are in the listing's order, not the order a column sort shows (framework-notes FN-17).
 - [ ] **Two Folders: NAME is cut to four or five letters in both lists** at 1440 px (FN-8). Slice 3 of M6 hid the
       places in Two Folders, as Orbit's board does, which gave NAME about 40 px back; the rail's third of the width
       and TYPE, SIZE and MODIFIED keep the rest. Waits on FN-8, or on the gallery, which has no columns.

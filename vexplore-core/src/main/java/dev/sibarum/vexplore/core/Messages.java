@@ -341,16 +341,19 @@ public final class Messages {
     /**
      * The whole Suggestion Rail: what it is based on (the lead file's name), each row of chips, the rows the effect
      * would reach (marked in the list, never selected), and the card. {@link #NONE} when nothing is selected.
+     * {@code proposing}: while Shift or Control is held, what the Which files row offers instead, in the words its
+     * heading takes ({@code a range}, {@code a rule}); empty otherwise.
      */
     public static final Topic<Suggested> SUGGESTED_TOPIC = Topic.state(Suggested.class);
 
     public record Suggested(String basis, List<Chip> select, List<Chip> condition, List<Chip> action,
-                            Set<Row> reach, Card card, boolean placing, List<Chip> places) {
+                            Set<Row> reach, Card card, boolean placing, List<Chip> places, String proposing) {
 
         /** The same rail, its card saying how far a run has got. */
         public Suggested running(String words) {
             return new Suggested(basis, select, condition, action, reach,
-                    new Card(card.headline(), card.detail(), card.go(), words, card.naming()), placing, places);
+                    new Card(card.headline(), card.detail(), card.go(), words, card.naming()), placing, places,
+                    proposing);
         }
 
         /**
@@ -358,12 +361,17 @@ public final class Messages {
          * with where they would go.
          */
         public Suggested placed(boolean placing, List<Chip> places, Card card) {
-            return new Suggested(basis, select, condition, action, reach, card, placing, places);
+            return new Suggested(basis, select, condition, action, reach, card, placing, places, proposing);
+        }
+
+        /** The same rail, its Which files row what a held key proposes ({@code how}), as {@code chips}. */
+        public Suggested proposed(String how, List<Chip> chips) {
+            return new Suggested(basis, chips, condition, action, reach, card, placing, places, how);
         }
 
         /** Nothing selected: an empty rail, and no row marked. */
         public static final Suggested NONE = new Suggested("", List.of(), List.of(), List.of(), Set.of(),
-                Card.NONE, false, List.of());
+                Card.NONE, false, List.of(), "");
 
         public Suggested {
             select = List.copyOf(select);

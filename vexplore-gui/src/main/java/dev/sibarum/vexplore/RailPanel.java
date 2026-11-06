@@ -64,6 +64,8 @@ import java.util.Locale;
 final class RailPanel {
 
     /** How many pills each row can offer: the engine's scopes and conditions. */
+    /** The first step's heading. */
+    private static final String WHICH = "Which files";
     private static final int SELECTS = 4;
     private static final int CONDITIONS = 3;
     /** Places for a move or a copy: the destination picked, when it is not suggested, and three suggested. */
@@ -86,6 +88,8 @@ final class RailPanel {
     private final Node node;
     private final Node basisChip;
     private final Node basis;
+    /** Which files' heading, which says what a held Shift or Control proposes while it is held. */
+    private final Node selectTitle;
     private final Node empty;
     private final List<Node> steps = new ArrayList<>();
     private final List<Node> sections = new ArrayList<>();
@@ -141,7 +145,8 @@ final class RailPanel {
         empty = note(EMPTY);
         gui.landmark(Landmarks.RAIL_EMPTY, empty);
 
-        Node selects = section(1, "Which files", pills(select, SELECTS, Landmarks.RAIL_SELECT));
+        selectTitle = gui.text(WHICH).font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK);
+        Node selects = section(1, selectTitle, pills(select, SELECTS, Landmarks.RAIL_SELECT));
         Node conditions = section(2, "Only if", pills(condition, CONDITIONS, Landmarks.RAIL_CONDITION));
         Node actions = section(3, "Then", tiles());
         sections.addAll(List.of(bar, selects, conditions, actions));
@@ -216,6 +221,7 @@ final class RailPanel {
         card.visible(!none || !running.isEmpty());
         basisChip.visible(!none);
         basis.text(none ? "" : "based on " + s.basis());
+        selectTitle.text(s.proposing().isEmpty() ? WHICH : WHICH + " · " + s.proposing());
         fill(select, s.select());
         fill(condition, s.condition());
         boolean acting = tiles(s.action());
@@ -516,9 +522,12 @@ final class RailPanel {
     }
 
     private Node section(int number, String title, Node content) {
+        return section(number, gui.text(title).font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK), content);
+    }
+
+    private Node section(int number, Node title, Node content) {
         Node label = gui.row().gap(Length.rem(0.6f)).alignItems(AlignItems.CENTER).children(
-                gui.text(String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL).textColor(Role.ACCENT),
-                gui.text(title).font(Type.UI).textSize(Type.RAIL_TEXT).textColor(Role.INK));
+                gui.text(String.valueOf(number)).font(Type.MONO).textSize(Type.SMALL).textColor(Role.ACCENT), title);
         return gui.column().width(Length.FILL).gap(Length.rem(0.6f)).children(label, content);
     }
 

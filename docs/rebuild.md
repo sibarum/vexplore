@@ -79,8 +79,8 @@ file goes to `Launch`. A path on the command line opens that folder, or the fold
 **M2. The rail states its effect.** *Done 2026-11-02.* Select, Condition, Action as chips; the rows a suggestion
 would reach shown with `ListView.marks` (marked, never selected); the card at the bottom that says what would happen
 first. No action runs yet. **(ruled 2026-11-02)** The rail is a third of the room beside the tree, not 25 rem, so a
-narrow window narrows it with the list (framework-notes FN-2). Held Shift and Control wait for a modifiers topic
-(FN-9).
+narrow window narrows it with the list (framework-notes FN-2). Held Shift and Control propose a range or a rule in
+the Which files row (FN-9, done 2026-11-05).
 
 **M3. Actions.** *Done 2026-11-02, in four slices ([shape.md](shape.md)).* Move, Copy, Archive, Delete into
 Vexplore's trash, Rename one, Mark. Planned by `PlanAction`, run by `RunAction` with a count and a cancel in the
@@ -143,7 +143,7 @@ taken to the framework rather than worked around for long.
 
 | Need | Where 0.2 stands | Until then |
 | --- | --- | --- |
-| **Held Shift / Ctrl as intent** (the design's second principle) | `Seams.modifiers()` is the widget library's; the roadmap gives an application a state topic once a witness asks | Asked at M2 (framework-notes FN-9). Suggestions work from the selection alone until it lands |
+| **Held Shift / Ctrl as intent** (the design's second principle) | `Seams.modifiers()` is the widget library's; the roadmap gives an application a state topic once a witness asks | Asked at M2 (framework-notes FN-9); the topic landed 2026-11-05, and the rail proposes from it again |
 | **A drop onto a tree row** | `TreeView` takes only its own items; no declared drop zone (roadmap: "Vexplore is that witness") | drops between lists only (M6) |
 | **Chips that wrap** | no wrap in `FlexLayout`; `Node.wrap` planned and paused | two chips to a row, counted, as 0.1 did |
 | **Progress** | no widget | a count in the rail's notice line, from `RunAction` |

@@ -85,6 +85,9 @@ import dev.sibarum.vexplore.core.Work.Way;
 import dev.vexelray.framework.api.Component;
 import dev.vexelray.framework.api.Hears;
 import dev.vexelray.framework.api.Publishes;
+import dev.vexelray.framework.api.Withers;
+import dev.vexelray.framework.core.CloseRequested;
+import dev.vexelray.framework.core.Modifiers;
 import dev.vexelray.framework.core.Open;
 import dev.vexelray.framework.core.Opened;
 import dev.vexelray.framework.core.WindowOpened;
@@ -131,8 +134,9 @@ import java.util.Set;
  *
  * <p>The disk is the jobs' ({@link ListFolder}, {@link FindPath}, {@link ReadSession}, {@link WriteSession}, and
  * the framework's own {@code Open} for handing a file to the desktop): a step sends a request and a later step acts
- * on the reply. A slow disk is a slow answer, never a stalled lane. Jobs answer in no order, so a listing carries a ticket, and one overtaken by a later ask is
- * dropped: a slow share answering after the person has moved on never shows the folder they left.
+ * on the reply. A slow disk is a slow answer, never a stalled lane. Jobs answer in no order, so a listing carries a
+ * ticket, and one overtaken by a later ask is dropped: a slow share answering after the person has moved on never
+ * shows the folder they left.
  *
  * <h2>Where it is built</h2>
  *
@@ -145,8 +149,8 @@ import java.util.Set;
  */
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
-        Activated.class, Opened.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
-        Redo.class, Destinations.class, Destine.class, Planned.class,
+        Activated.class, Opened.class, Modifiers.class, Picked.class, Carry.class, Progress.class, Ran.class,
+        Undo.class, Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
         Back.class, Dropped.class, Accept.class, Checking.class, Checked.class, Resolve.class})
@@ -179,13 +183,33 @@ public final class Explorer {
      * @param armed   whether the restore is done: before then a write would overwrite what is being restored
      * @param last    the session last sent to be remembered, so an unchanged one is not written again
      * @param work    what has been carried out and can be taken back, and the run in flight
+     * @param held    the modifier keys held in the main window: Shift or Control held turns the rail's Select row
+     *                into what the key proposes ({@link Intents})
      */
+    @Withers
     record State(Pane from, Optional<Pane> to, Side used, long tickets, Pick pick, Rail rail,
-                 Optional<Path> started, boolean armed, Optional<Remember> last, Work work) {
+                 Optional<Path> started, boolean armed, Optional<Remember> last, Work work, Modifiers held)
+            implements ExplorerStateWithers {
 
         static State initial() {
             return new State(Pane.NONE, Optional.empty(), Side.FROM, 0L, Pick.NONE, Rail.EMPTY, Optional.empty(),
-                    false, Optional.empty(), Work.NONE);
+                    false, Optional.empty(), Work.NONE, Modifiers.released(CloseRequested.MAIN));
+        }
+
+        /** Whether a key that proposes is held: Shift for a range, Control for a rule. */
+        boolean proposing() {
+            return held.shift() || held.control();
+        }
+
+        /** What the held key proposes for the selection in the list used, or nothing. */
+        List<Intents.Candidate> intents() {
+            if (selected().isEmpty()) {
+                return List.of();
+            }
+            if (held.shift()) {
+                return Intents.shift(rows(), selected(), zone());
+            }
+            return held.control() ? Intents.control(rows(), selected(), today(), zone()) : List.of();
         }
 
         /** The list on {@code side}: FROM's when there is no TO. */
@@ -236,43 +260,41 @@ public final class Explorer {
 
         /** The list on {@code side} is now {@code value}. */
         State withPane(Side side, Pane value) {
-            Pane f = side == Side.TO && to.isPresent() ? from : value;
-            Optional<Pane> t = side == Side.TO && to.isPresent() ? Optional.of(value) : to;
-            return new State(f, t, used, tickets, pick, rail, started, armed, last, work);
+            return side == Side.TO && to.isPresent() ? withTo(Optional.of(value)) : withFrom(value);
+        }
+
+        /** A new listing asked for: the next ticket, and the rail put down, since it was about rows going away. */
+        private State askingAnew() {
+            return withTickets(tickets + 1).withPick(Pick.NONE).withRail(Rail.EMPTY);
         }
 
         /** Asking for {@code value}'s listing in the list used: nothing is picked in a folder not yet shown. */
         State asking(Path value, Set<Path> then) {
-            return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
-                    .withPane(used, pane().asking(value, then, tickets + 1));
+            return askingAnew().withPane(used, pane().asking(value, then, tickets + 1));
         }
 
         /** Back, in the list used: its folder before this one asked for, nothing picked in it yet. */
         State returning() {
-            return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
-                    .withPane(used, pane().returning(tickets + 1));
+            return askingAnew().withPane(used, pane().returning(tickets + 1));
         }
 
         /** The list on {@code side} used from now: the rail is put down, since it was about the other list's rows. */
         State using(Side side) {
-            return new State(from, to, side, tickets, Pick.NONE, Rail.EMPTY, started, armed, last, work);
+            return withUsed(side).withPick(Pick.NONE).withRail(Rail.EMPTY);
         }
 
         /** Two Folders with TO asking for {@code folder}'s listing, or back to one, FROM used. */
-        State withTo(Optional<Path> folder) {
+        State twoFolders(Optional<Path> folder) {
             if (folder.isEmpty()) {
-                return new State(from, Optional.empty(), Side.FROM, tickets, Pick.NONE, Rail.EMPTY, started, armed,
-                        last, work);
+                return withTo(Optional.empty()).using(Side.FROM);
             }
-            Pane opened = Pane.NONE.asking(folder.get(), Set.of(), tickets + 1);
-            return new State(from, Optional.of(opened), used, tickets + 1, pick, rail, started, armed, last, work);
+            return withTickets(tickets + 1).withTo(Optional.of(Pane.NONE.asking(folder.get(), Set.of(), tickets + 1)));
         }
 
         /** FROM and TO trade places, and their watches with them; the list used is the same folder as before. */
         State swapped() {
             Work w = work.withWatched(Side.FROM, work.watched(Side.TO)).withWatched(Side.TO, work.watched(Side.FROM));
-            return new State(to.orElseThrow(), Optional.of(from), used.other(), tickets, pick, rail, started, armed,
-                    last, w);
+            return withFrom(to.orElseThrow()).withTo(Optional.of(from)).withUsed(used.other()).withWork(w);
         }
 
         /**
@@ -280,8 +302,7 @@ public final class Explorer {
          * stay selected in the explorer as they do in the list. The pick is put down: what it picked has been done.
          */
         State relisting(Side side) {
-            return new State(from, to, used, tickets + 1, Pick.NONE, Rail.EMPTY, started, armed, last, work)
-                    .withPane(side, pane(side).relisting(tickets + 1));
+            return askingAnew().withPane(side, pane(side).relisting(tickets + 1));
         }
 
         /**
@@ -290,36 +311,23 @@ public final class Explorer {
          * undoes it.
          */
         State stirring(Side side) {
-            return new State(from, to, used, tickets + 1, pick, rail, started, armed, last, work)
-                    .withPane(side, pane(side).relisting(tickets + 1));
+            return withTickets(tickets + 1).withPane(side, pane(side).relisting(tickets + 1));
         }
 
         State withSelected(Set<Path> value) {
             return withPane(used, pane().withSelected(value));
         }
 
-        State withPick(Pick value) {
-            return new State(from, to, used, tickets, value, rail, started, armed, last, work);
-        }
-
-        State withRail(Rail value) {
-            return new State(from, to, used, tickets, pick, value, started, armed, last, work);
-        }
-
         State withStarted(Path value) {
-            return new State(from, to, used, tickets, pick, rail, Optional.of(value), armed, last, work);
+            return withStarted(Optional.of(value));
         }
 
         State withArmed() {
-            return new State(from, to, used, tickets, pick, rail, started, true, last, work);
+            return withArmed(true);
         }
 
         State withLast(Remember value) {
-            return new State(from, to, used, tickets, pick, rail, started, armed, Optional.of(value), work);
-        }
-
-        State withWork(Work value) {
-            return new State(from, to, used, tickets, pick, rail, started, armed, last, value);
+            return withLast(Optional.of(value));
         }
 
         /** The row at {@code path} in the list used, or none: one the list showed before this listing, or never. */
@@ -344,6 +352,7 @@ public final class Explorer {
         Step<State, Chosen> chosen = b.step("chosen", Explorer::chosen);
         Step<State, Activated> activated = b.step("activated", Explorer::activated);
         Step<State, Opened> started = b.step("started", Explorer::started);
+        Step<State, Modifiers> held = b.step("held", Explorer::held);
         Step<State, Picked> picked = b.step("picked", Explorer::picked);
         Step<State, Carry> carry = b.step("carry", Explorer::carry);
         Step<State, Progress> progress = b.step("progress", Explorer::progress);
@@ -382,6 +391,7 @@ public final class Explorer {
                 .on(Messages.CHOSEN_TOPIC, chosen)
                 .on(Messages.ACTIVATED_TOPIC, activated)
                 .on(Opened.TOPIC, started)
+                .on(Modifiers.TOPIC, held)
                 .on(Messages.PICKED_TOPIC, picked)
                 .on(Messages.CARRY_TOPIC, carry)
                 .on(Messages.PROGRESS_TOPIC, progress)
@@ -1136,13 +1146,13 @@ public final class Explorer {
             if (s.from().folder().isEmpty()) {
                 return s;
             }
-            State next = s.withTo(s.from().folder());
+            State next = s.twoFolders(s.from().folder());
             out.send(Messages.LISTING_TOPIC, new Listing(next.tickets(), s.from().folder().get()));
             pair(next, out);
             return next;
         }
         boolean wasTo = s.used() == Side.TO;
-        State next = s.withTo(Optional.empty());
+        State next = s.twoFolders(Optional.empty());
         if (s.work().watched(Side.TO).folder().isPresent()) {
             out.send(Messages.UNWATCH_TOPIC, new Unwatch(Side.TO));
             next = watched(next, Side.TO, Watched.NONE, out);
@@ -1233,6 +1243,13 @@ public final class Explorer {
         if (s.rail().equals(Rail.EMPTY)) {
             return s;
         }
+        if (p.slot() == Slot.SELECT && s.proposing()) {
+            List<Intents.Candidate> offered = s.intents();
+            if (!offered.isEmpty()) {
+                return p.index() < offered.size() ? choose(s, offered.get(p.index()).paths(), out)
+                        : suggest(s, true, out);
+            }
+        }
         if (p.slot() == Slot.DESTINATION) {
             List<Dest> offered = s.work().aim().offered();
             return p.index() < offered.size()
@@ -1244,6 +1261,36 @@ public final class Explorer {
 
     private static State suggest(State s, Out out) {
         return suggest(s, false, out);
+    }
+
+    /**
+     * A key held or let go in the main window. Shift or Control held turns the rail's Which files row into what the key
+     * proposes, and letting go turns it back; any other change of the keys changes nothing shown. Another window's
+     * keys are its own.
+     */
+    private static State held(State s, Modifiers m, Out out) {
+        if (!m.main()) {
+            return s;
+        }
+        State next = s.withHeld(m);
+        boolean same = m.shift() == s.held().shift() && m.control() == s.held().control();
+        if (same || next.rail().equals(Rail.EMPTY)) {
+            return next;
+        }
+        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /**
+     * A proposal chosen: {@code paths} become the selection in the list used, the list is told to show them selected,
+     * and the rail is worked out again for them, as a selection the person made in the list would be.
+     */
+    private static State choose(State s, Set<Path> paths, Out out) {
+        State next = s.withSelected(paths);
+        Pane p = next.pane();
+        p.folder().ifPresent(f -> out.send(Messages.SHOWN_TOPIC, new Shown(next.used(), f, p.rows(), paths)));
+        summary(next, out);
+        return dock(suggest(next, true, out), out);
     }
 
     /**
@@ -1324,6 +1371,14 @@ public final class Explorer {
      */
     private static Suggested said(State s) {
         Suggested rail = s.rail().worded();
+        List<Intents.Candidate> intents = s.proposing() && !rail.empty() ? s.intents() : List.of();
+        if (!intents.isEmpty()) {
+            List<Chip> chips = new ArrayList<>();
+            for (Intents.Candidate c : intents) {
+                chips.add(new Chip(c.label(), c.count(), false));
+            }
+            rail = rail.proposed(s.held().shift() ? "a range" : "a rule", chips);
+        }
         Plan.Op op = s.rail().applied().act() == null ? null : s.rail().applied().act().placed();
         if (op != null && !rail.empty()) {
             rail = placed(rail, s.work().aim());
