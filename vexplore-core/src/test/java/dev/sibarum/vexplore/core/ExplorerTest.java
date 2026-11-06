@@ -12,8 +12,6 @@ import dev.sibarum.vexplore.core.Messages.Remember;
 import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Side;
-import dev.sibarum.vexplore.core.Messages.Start;
-import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Listed;
 import dev.sibarum.vexplore.core.Messages.Listing;
 import dev.sibarum.vexplore.core.Messages.Navigate;
@@ -24,6 +22,8 @@ import dev.sibarum.vexplore.core.Messages.Slot;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Why;
 import dev.vexelray.framework.core.CloseRequested;
+import dev.vexelray.framework.core.Open;
+import dev.vexelray.framework.core.Opened;
 import dev.vexelray.framework.core.WindowOpened;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,7 +79,7 @@ class ExplorerTest {
         new Explorer(tick.inbox("explorer"));
         Inbox heard = tick.inbox("heard");
         for (Topic<?> t : List.of(Messages.LISTING_TOPIC, Messages.SHOWN_TOPIC, Messages.SUMMARY_TOPIC,
-                Messages.START_TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
+                Open.TOPIC, Messages.STATUS_TOPIC, Messages.FIND_TOPIC, Messages.RECALL_TOPIC,
                 Messages.REMEMBER_TOPIC, Messages.SUGGESTED_TOPIC, Messages.RUN_TOPIC, Messages.RECORDED_TOPIC,
                 Messages.DESTINING_TOPIC, Messages.PLANNING_TOPIC, Messages.NAMING_TOPIC,
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
@@ -269,7 +269,7 @@ class ExplorerTest {
         sent.clear();
         showing(dir, folder("sub"), file("a.txt", 10));
         tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("a.txt")));
-        assertEquals(List.of(new Start(path("a.txt"))), took(Start.class));
+        assertEquals(List.of(new Open(path("a.txt").toString())), took(Open.class));
     }
 
     @Test
@@ -288,11 +288,11 @@ class ExplorerTest {
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
         sent.clear();
         tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.OPEN));
-        assertEquals(List.of(new Start(path("a.txt"))), took(Start.class));
+        assertEquals(List.of(new Open(path("a.txt").toString())), took(Open.class));
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
         sent.clear();
         tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.OPEN));
-        assertTrue(seen(Start.class).isEmpty(), "never several programs at once");
+        assertTrue(seen(Open.class).isEmpty(), "never several programs at once");
         assertTrue(took(Status.class).getFirst().alert());
     }
 
@@ -315,7 +315,7 @@ class ExplorerTest {
 
     @Test
     void aFileThatWillNotOpenIsSaid() {
-        tell(Messages.STARTED_TOPIC, new Started(path("a.txt"), "no opener"));
+        tell(Opened.TOPIC, new Opened(path("a.txt").toString(), "no opener"));
         assertTrue(took(Status.class).getFirst().alert());
     }
 

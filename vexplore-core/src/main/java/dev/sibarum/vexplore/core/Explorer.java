@@ -58,9 +58,7 @@ import dev.sibarum.vexplore.core.Messages.Run;
 import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Slot;
-import dev.sibarum.vexplore.core.Messages.Start;
 import dev.sibarum.vexplore.core.Messages.Stirred;
-import dev.sibarum.vexplore.core.Messages.Started;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.StopCheck;
 import dev.sibarum.vexplore.core.Messages.Suggested;
@@ -87,6 +85,8 @@ import dev.sibarum.vexplore.core.Work.Way;
 import dev.vexelray.framework.api.Component;
 import dev.vexelray.framework.api.Hears;
 import dev.vexelray.framework.api.Publishes;
+import dev.vexelray.framework.core.Open;
+import dev.vexelray.framework.core.Opened;
 import dev.vexelray.framework.core.WindowOpened;
 import sibarum.atchung.Inbox;
 import sibarum.atchung.Ledger;
@@ -129,9 +129,9 @@ import java.util.Set;
  *
  * <h2>Effects are jobs</h2>
  *
- * <p>The disk is the jobs' ({@link ListFolder}, {@link FindPath}, {@link OpenFile}, {@link ReadSession},
- * {@link WriteSession}): a step sends a request and a later step acts on the reply. A slow disk is a slow answer,
- * never a stalled lane. Jobs answer in no order, so a listing carries a ticket, and one overtaken by a later ask is
+ * <p>The disk is the jobs' ({@link ListFolder}, {@link FindPath}, {@link ReadSession}, {@link WriteSession}, and
+ * the framework's own {@code Open} for handing a file to the desktop): a step sends a request and a later step acts
+ * on the reply. A slow disk is a slow answer, never a stalled lane. Jobs answer in no order, so a listing carries a ticket, and one overtaken by a later ask is
  * dropped: a slow share answering after the person has moved on never shows the folder they left.
  *
  * <h2>Where it is built</h2>
@@ -145,12 +145,12 @@ import java.util.Set;
  */
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
-        Activated.class, Started.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
+        Activated.class, Opened.class, Picked.class, Carry.class, Progress.class, Ran.class, Undo.class,
         Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
         Back.class, Dropped.class, Accept.class, Checking.class, Checked.class, Resolve.class})
-@Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Start.class, Recall.class,
+@Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Open.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
         Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class, Pair.class,
@@ -343,7 +343,7 @@ public final class Explorer {
         Step<State, Listed> listed = b.step("listed", Explorer::listed);
         Step<State, Chosen> chosen = b.step("chosen", Explorer::chosen);
         Step<State, Activated> activated = b.step("activated", Explorer::activated);
-        Step<State, Started> started = b.step("started", Explorer::started);
+        Step<State, Opened> started = b.step("started", Explorer::started);
         Step<State, Picked> picked = b.step("picked", Explorer::picked);
         Step<State, Carry> carry = b.step("carry", Explorer::carry);
         Step<State, Progress> progress = b.step("progress", Explorer::progress);
@@ -381,7 +381,7 @@ public final class Explorer {
                 .on(Messages.LISTED_TOPIC, listed)
                 .on(Messages.CHOSEN_TOPIC, chosen)
                 .on(Messages.ACTIVATED_TOPIC, activated)
-                .on(Messages.STARTED_TOPIC, started)
+                .on(Opened.TOPIC, started)
                 .on(Messages.PICKED_TOPIC, picked)
                 .on(Messages.CARRY_TOPIC, carry)
                 .on(Messages.PROGRESS_TOPIC, progress)
@@ -1099,7 +1099,7 @@ public final class Explorer {
         if (row.get().folder()) {
             return remember(show(used, a.path(), Set.of(), out), out);
         }
-        out.send(Messages.START_TOPIC, new Start(a.path()));
+        out.send(Open.TOPIC, new Open(a.path().toString()));
         return used;
     }
 
@@ -1180,9 +1180,9 @@ public final class Explorer {
     }
 
     /** What opening a file came to: said either way, since what opens it is another program and may take a moment. */
-    private static State started(State s, Started st, Out out) {
-        String name = ListFolder.name(st.file());
-        if (st.problem() != null) {
+    private static State started(State s, Opened st, Out out) {
+        String name = ListFolder.name(Path.of(st.target()));
+        if (!st.opened()) {
             refuse(out, "Can't open " + name + ": " + st.problem());
         } else {
             out.send(Messages.STATUS_TOPIC, new Status("Opened " + name, false));

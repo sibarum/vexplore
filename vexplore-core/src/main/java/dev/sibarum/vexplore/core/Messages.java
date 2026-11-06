@@ -18,7 +18,7 @@ import java.util.Set;
  *
  * <p>The application is three kinds of part, and none of them holds another. The {@link Explorer} decides; it owns the
  * session, and changes it only by running its own declared steps. The view, in the {@code -gui} module, shows; it
- * owns the widgets. The jobs ({@link ListFolder}, {@link FindPath}, {@link Launch} and the rest) touch the disk, on
+ * owns the widgets. The jobs ({@link ListFolder}, {@link FindPath} and the rest) touch the disk, on
  * the job lane. Each sends a record on a topic and the others hear it on their own lane, so no state is
  * shared and nothing needs a lock.
  *
@@ -556,18 +556,6 @@ public final class Messages {
         }
     }
 
-    /** Open a file as the shell would, association and all ({@link Launch}). */
-    public static final Topic<Start> START_TOPIC = Topic.edge(Start.class);
-
-    public record Start(Path file) {
-    }
-
-    /** {@code problem} is why it could not be opened, or null. */
-    public static final Topic<Started> STARTED_TOPIC = Topic.edge(Started.class);
-
-    public record Started(Path file, String problem) {
-    }
-
     /**
      * The preview strip's Open with: the file it previews, opened by {@code with}. A left click is the program that
      * suits the file; the button's menu names one.
@@ -584,7 +572,7 @@ public final class Messages {
 
     /**
      * Hand a file to Rasterware where it is installed, else to the desktop's opener, or, not {@code rasterware}, to the
-     * desktop's opener only ({@code -gui}'s {@code HandOff}). Its own reply, not {@link Started}: two jobs answering
+     * desktop's opener only ({@code -gui}'s {@code HandOff}). Its own reply, not the framework's {@code Opened}: two jobs answering
      * one record would share one topic, and the explorer could not tell which had opened it.
      */
     public static final Topic<Handing> HANDING_TOPIC = Topic.edge(Handing.class);

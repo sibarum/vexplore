@@ -13,12 +13,13 @@ import java.util.function.Predicate;
 
 /**
  * Hand a file to Rasterware, the suite's viewer, where the installer put it ({@link Apps#spawn}); where it is not
- * installed, to the desktop's own opener, as {@code OpenFile} does, and the reply says which. Not waited for:
- * Rasterware is a process of its own, which outlives this one.
+ * installed, to the desktop's own opener, as the framework's {@code Open} does, and the reply says which. Not waited
+ * for: Rasterware is a process of its own, which outlives this one.
  *
- * <p>In {@code -gui} rather than beside {@code OpenFile}, because {@link Apps} is the framework shell's and
- * {@code -core} builds against none of it. Rasterware takes the file's path as its one argument; it is installed as
- * {@code pix}, a command name the suite renames together later.
+ * <p>In {@code -gui} rather than {@code -core}, because {@link Apps} is the framework shell's and {@code -core}
+ * builds against none of it. It calls the engine's opener itself rather than sending {@code Open}: a job sends
+ * nothing, and which program answers is its one decision. Rasterware takes the file's path as its one argument; it is
+ * installed as {@code pix}, a command name the suite renames together later.
  */
 @Job
 public final class HandOff {

@@ -78,7 +78,12 @@ is the same.
 **For the framework:** a node hidden while it has the keyboard gives it up, to the next focusable node in order, as
 a removed node presumably must; or `Gui.blur()`. Any application that swaps one control for another in place meets it.
 
-## FN-4 · Opening a file with the desktop is the framework's, and private 🔬
+## FN-4 · Opening a file with the desktop is the framework's, and private 🔬 (fixed 2026-11-05)
+
+*Fixed in vexelray-framework: a part sends `Open(target)` and hears `Opened(target, problem)`, both in
+`dev.vexelray.framework.core`, answered on the job lane by the framework with no recipe or `Core` entry. `OpenFile`,
+`Start` and `Started` are gone, and `-core` no longer names `vexelray-os-api`. `HandOff` still calls the engine's
+opener itself, as its fallback when Rasterware is not installed.*
 
 M1 opens a file on Enter, as the desktop's file manager would. The build's isolation check rightly refuses an
 `os.name` test in `-core`, and the engine already has the seam, `NativePlatform.open`, with an opener per OS module.
