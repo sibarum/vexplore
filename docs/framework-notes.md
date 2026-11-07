@@ -212,7 +212,11 @@ row wearing at most one key, the name cell building a node per key (six marks, a
 whole. Two instances per list now, *new* and the relation, beside the rail's `marks`. An icon in a cell has no name a
 script can read, so each mark's `role` is its words (`newer here`); a per-row tag the list drew would name itself.
 
-## FN-14 · A button is one label, with nothing beside it 🔬
+## FN-14 · A button is one label, with nothing beside it 🔬 (fixed 2026-11-07)
+
+*Fixed in vexelray-gui: a `Button` is a row holding its words and a badge, `Button.badge(String)`, inside its press, its
+focus and its look, and accent while a chip is pressed. The rail's pills carry their counts in it. Nothing outside a
+button styles its text now; the overrides that did all set the default except the marks' smaller size, which is gone.*
 
 Orbit's rail (M8, slice 3) draws each *Which files* and *Only if* pill as its words with the count in a badge at its
 far end, the badge violet while the pill is picked. `Button` is a text node with the button's role: its label is all

@@ -22,8 +22,6 @@ import dev.vexelray.gui.icons.IconView;
 import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.IconButton;
 import dev.vexelray.gui.widget.TextField;
-import dev.vexelray.text.TextLayout.HAlign;
-import dev.vexelray.text.TextLayout.VAlign;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,10 +54,10 @@ import java.util.Locale;
  * so a picked pill clicked again is shown picked again at once ({@link #held}), in the frame it was clicked; any other
  * press waits for the explorer's {@link Suggested}, which shows every pill as it is.
  *
- * <h2>A count after a dot</h2>
+ * <h2>A count in a badge</h2>
  *
- * <p>Orbit puts a pill's count in a badge at its end. A {@link Button} is one label and holds nothing beside it
- * (framework-notes FN-14), so the count follows the words, {@code Just this file · 1}, as it did.
+ * <p>Each pill's count is in a badge at its far end, as Orbit draws it ({@link Button#badge}), accent while the pill is
+ * picked.
  */
 final class RailPanel {
 
@@ -436,7 +434,7 @@ final class RailPanel {
             Button b = row.get(i);
             if (i < chips.size()) {
                 Chip c = chips.get(i);
-                b.label(c.count() > 0 ? c.label() + " · " + c.count() : c.label()).show(c.on());
+                b.label(c.label()).badge(c.count() > 0 ? String.valueOf(c.count()) : "").show(c.on());
                 b.node().visible(true);
             } else {
                 b.show(false);
@@ -471,8 +469,7 @@ final class RailPanel {
         Node column = gui.column().width(Length.FILL).gap(Length.dp(6));
         for (int i = 0; i < count; i++) {
             Button b = new Button(gui, "").toggle(true).undoable(false).name(name + "." + i);
-            b.node().font(Type.UI).textSize(Type.RAIL_TEXT).width(Length.FILL).height(PILL).corner(Length.dp(22))
-                    .padding(Length.ZERO, Length.dp(16)).align(HAlign.LEFT, VAlign.MIDDLE);
+            b.node().width(Length.FILL).height(PILL).corner(Length.dp(22)).padding(Length.ZERO, Length.dp(16));
             gui.landmark(name + "." + i, b.node());
             into.add(b);
             column.append(b.node());

@@ -60,7 +60,6 @@ final class Sidebar {
         Node kept = gui.column().width(Length.FILL).gap(Length.rem(0.3f)).children(none);
         for (int i = 0; i < MARKS; i++) {
             Button recall = new Button(gui, "").kind(Button.Kind.GHOST).name(Landmarks.MARK + "." + i);
-            recall.node().font(Type.UI).textSize(Type.SMALL);
             gui.landmark(Landmarks.MARK + "." + i, recall.node());
             IconButton drop = new IconButton(gui, Icon.CLOSE, "Forget this mark").name(Landmarks.FORGET + "." + i);
             gui.landmark(Landmarks.FORGET + "." + i, drop.node());
