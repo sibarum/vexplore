@@ -235,7 +235,10 @@ a right click names one. A person who does not think to right-click never sees t
 `Button.menu(Menu)`): the menu opens under the button on a left click, Enter or Space, and closes as a context menu
 does. Every *Open with*, *Sort by* and overflow button meets it.
 
-## FN-16 · A source's sender cannot be a lambda in a test 🔬
+## FN-16 · A source's sender cannot be a lambda in a test 🔬 (fixed 2026-11-07)
+
+*Fixed in atchung: `Sender.collecting(topic, list)` adds each send to the list at once, with no bus, tick or inbox.
+`CheckSameTest` and `WatchFolderTest` use it. A list rather than a `Consumer`, so a sender stays no callback (T7.2).*
 
 `CheckSame` (M6, slice 4) is a `@Source` that sends a count as it reads, through a `Sender<Checking>` it is built
 with. A test that wants to run it on a temporary folder and read the count cannot hand it `counted::add`: `Sender` is

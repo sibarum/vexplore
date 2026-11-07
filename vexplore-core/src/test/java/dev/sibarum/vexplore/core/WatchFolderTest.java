@@ -9,13 +9,11 @@ import dev.sibarum.vexplore.core.WatchFolder.Arrivals;
 import dev.sibarum.vexplore.core.WatchFolder.Burst;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import sibarum.atchung.Atchung;
 import sibarum.atchung.Sender;
-import sibarum.atchung.Tick;
-import sibarum.probe.Cause;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -56,13 +54,11 @@ class WatchFolderTest {
 
     @Test
     void aFileArrivingIsSaidAndAStopEndsTheRunQuietly() throws Exception {
-        Atchung bus = Atchung.create();
-        Tick tick = bus.tick(null);
+        // Sent from the watch's own thread, so into lists that are safe there.
         List<Stirred> heard = new CopyOnWriteArrayList<>();
         List<Freshness> fresh = new CopyOnWriteArrayList<>();
-        tick.inbox("heard").subscribe(Messages.STIRRED_TOPIC, heard::add, 64);
-        tick.inbox("fresh").subscribe(Messages.FRESHNESS_TOPIC, fresh::add, 64);
-        WatchFolder watch = watch(bus);
+        WatchFolder watch = new WatchFolder(Sender.collecting(Messages.STIRRED_TOPIC, heard),
+                Sender.collecting(Messages.FRESHNESS_TOPIC, fresh));
         AtomicReference<Unwatched> ended = new AtomicReference<>();
         Thread run = new Thread(() -> ended.set(watch.run(new Watch(Side.FROM, dir))), "test-watch");
         run.start();
@@ -71,7 +67,6 @@ class WatchFolderTest {
         for (int i = 0; (heard.isEmpty() || fresh.isEmpty()) && System.nanoTime() < deadline; i++) {
             Files.writeString(dir.resolve("landed-" + i + ".txt"), "x");
             Thread.sleep(150L);
-            tick.run(System.nanoTime() + 1_000_000L, Tick.ONE_THREAD);
         }
         assertFalse(heard.isEmpty(), "a file landing was said");
         assertEquals(dir, heard.getFirst().folder());
@@ -88,14 +83,10 @@ class WatchFolderTest {
 
     @Test
     void aFolderThatIsNotThereSaysSo() {
-        Unwatched u = watch(Atchung.create()).run(new Watch(Side.FROM, dir.resolve("gone")));
+        Unwatched u = new WatchFolder(Sender.collecting(Messages.STIRRED_TOPIC, new ArrayList<>()),
+                Sender.collecting(Messages.FRESHNESS_TOPIC, new ArrayList<>()))
+                .run(new Watch(Side.FROM, dir.resolve("gone")));
         assertTrue(u.problem() != null && !u.problem().isEmpty(), "said why");
-    }
-
-    private static WatchFolder watch(Atchung bus) {
-        Cause.Source source = Cause.source("test.watch", Cause.Kind.IO);
-        return new WatchFolder(Sender.outside(bus, Messages.STIRRED_TOPIC, source),
-                Sender.outside(bus, Messages.FRESHNESS_TOPIC, source));
     }
 
     @Test

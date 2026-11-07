@@ -7,17 +7,14 @@ import dev.sibarum.vexplore.core.Messages.Row;
 import dev.sibarum.vexplore.core.Messages.Twins;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import sibarum.atchung.Atchung;
 import sibarum.atchung.Sender;
-import sibarum.atchung.Tick;
-import sibarum.probe.Cause;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,11 +25,8 @@ class CheckSameTest {
     @TempDir
     Path dir;
 
-    private final Atchung bus = Atchung.create();
-    private final Tick tick = bus.tick(null);
-    private final List<Checking> counted = new CopyOnWriteArrayList<>();
-    private final CheckSame check = new CheckSame(Sender.outside(bus, Messages.CHECKING_TOPIC,
-            Cause.source("test.check", Cause.Kind.IO)));
+    private final List<Checking> counted = new ArrayList<>();
+    private final CheckSame check = new CheckSame(Sender.collecting(Messages.CHECKING_TOPIC, counted));
 
     private Twins twins(String name, byte[] here, byte[] there) throws Exception {
         Path a = Files.createDirectories(dir.resolve("a")).resolve(name);
@@ -64,12 +58,10 @@ class CheckSameTest {
         Twins late = twins("late.bin", big(false), big(true));
         Twins longer = twins("longer.txt", "abc".getBytes(), "abcd".getBytes());
         Twins empty = twins("empty.txt", new byte[0], new byte[0]);
-        tick.inbox("counted").subscribe(Messages.CHECKING_TOPIC, counted::add, 64);
         Checked c = check.run(new Check(7L, List.of(same, late, longer, empty)));
         assertEquals(Set.of(same, empty), c.same());
         assertEquals(Set.of(late, longer), c.differ());
         assertEquals(null, c.problem());
-        tick.run(System.nanoTime() + 1_000_000L, Tick.ONE_THREAD);
         assertEquals(new Checking(7L, 4, 4), counted.getLast(), "the count, the latest of it");
     }
 
