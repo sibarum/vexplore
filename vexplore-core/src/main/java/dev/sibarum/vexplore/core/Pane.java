@@ -25,15 +25,17 @@ import java.util.Set;
  * @param zone     the zone a row's day is read in
  * @param selected the rows selected, as the list last said
  * @param back     the folders this list showed before, newest first, for the top bar's Back (M8)
+ * @param order    the order the list's table shows {@code rows} in, as it last said ({@code Ordered}); kept from
+ *                 folder to folder, as the table keeps its sort
  */
 record Pane(Optional<Path> folder, long asked, Set<Path> select, List<Row> rows, LocalDate today, ZoneId zone,
-            Set<Path> selected, List<Path> back) {
+            Set<Path> selected, List<Path> back, Order order) {
 
     /** How many folders Back can go to. */
     static final int BACK = 20;
 
     static final Pane NONE = new Pane(Optional.empty(), 0L, Set.of(), List.of(), LocalDate.EPOCH, ZoneOffset.UTC,
-            Set.of(), List.of());
+            Set.of(), List.of(), Order.LISTED);
 
     Pane {
         select = Set.copyOf(select);
@@ -53,18 +55,18 @@ record Pane(Optional<Path> folder, long asked, Set<Path> select, List<Row> rows,
             next.addFirst(folder.get());
             before = next.size() > BACK ? next.subList(0, BACK) : next;
         }
-        return new Pane(Optional.of(value), ticket, then, List.of(), today, zone, Set.of(), before);
+        return new Pane(Optional.of(value), ticket, then, List.of(), today, zone, Set.of(), before, order);
     }
 
     /** Back: asking as {@code ticket} for the folder shown before this one, no longer one to go back to then. */
     Pane returning(long ticket) {
         return new Pane(Optional.of(back.getFirst()), ticket, Set.of(), List.of(), today, zone, Set.of(),
-                back.subList(1, back.size()));
+                back.subList(1, back.size()), order);
     }
 
     /** The folder shown, asked for again as {@code ticket}: what is selected is kept, as the list keeps it. */
     Pane relisting(long ticket) {
-        return new Pane(folder, ticket, Set.of(), rows, today, zone, selected, back);
+        return new Pane(folder, ticket, Set.of(), rows, today, zone, selected, back, order);
     }
 
     /** The folder's rows landed: of what was selected, only what is still there. */
@@ -75,11 +77,20 @@ record Pane(Optional<Path> folder, long asked, Set<Path> select, List<Row> rows,
                 still.add(r.path());
             }
         }
-        return new Pane(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still, back);
+        return new Pane(folder, asked, Set.of(), l.rows(), l.today(), l.zone(), still, back, order);
     }
 
     Pane withSelected(Set<Path> value) {
-        return new Pane(folder, asked, select, rows, today, zone, value, back);
+        return new Pane(folder, asked, select, rows, today, zone, value, back, order);
+    }
+
+    Pane withOrder(Order value) {
+        return new Pane(folder, asked, select, rows, today, zone, selected, back, value);
+    }
+
+    /** The rows in the order the list shows them. */
+    List<Row> shown() {
+        return order.apply(rows);
     }
 
     /** The row at {@code path}, or none: one the list showed before this listing, or never. */

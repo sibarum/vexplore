@@ -74,6 +74,15 @@ public final class Messages {
         }
     }
 
+    /**
+     * The order a list shows its rows in, as its table last said, header clicks and all: what the explorer reasons in
+     * when it reasons about what is next to what (Shift's ranges). Keyed by the list, so each keeps its latest.
+     */
+    public static final Topic<Ordered> ORDERED_TOPIC = Topic.state(Ordered.class, Ordered::side);
+
+    public record Ordered(Side side, Order order) {
+    }
+
     /** What is selected in a list, as it last said: its rows turned back into their paths by the view. */
     public static final Topic<Chosen> CHOSEN_TOPIC = Topic.edge(Chosen.class);
 

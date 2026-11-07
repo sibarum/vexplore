@@ -246,7 +246,12 @@ wrote. Six lines to say "collect what it sends".
 **For the framework:** a test sender, `Sender.collecting(List<T>)` or `Sender.of(Consumer<T>)`, that delivers to the
 consumer at once with no bus. Every source and every job with a progress topic meets it in its test.
 
-## FN-17 · A table's sort is the widget's alone 🔬
+## FN-17 · A table's sort is the widget's alone 🔬 (no gap, 2026-11-07)
+
+*Not a gap, and the note below was wrong: `Table` already says its order after every change, header clicks included
+(`Table.SORTED`, a column and a direction). Written before reading `Table`. What was missing was Vexplore's: the view
+now tells the explorer as `Ordered`, each list keeps its `Order`, the table sorts by `Order`'s own comparators, and
+`Intents` reasons over the rows as shown.*
 
 Shift held proposes where a range ends, "down to the end of this run", which is an order: the list's, as the person
 sees it. `Table` sorts on a header click and says nothing of it, so the explorer has only the listing's order, and

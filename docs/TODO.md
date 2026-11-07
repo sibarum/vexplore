@@ -26,7 +26,6 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
       unit tests of the view.
 - [ ] A drop copying or moving by the key held (0.1's `Drops`): the drop's message would carry the keys held at the
       release (framework-notes FN-9).
-- [ ] Shift's ranges are in the listing's order, not the order a column sort shows (framework-notes FN-17).
 - [ ] **Two Folders: NAME is cut to four or five letters in both lists** at 1440 px (FN-8). Slice 3 of M6 hid the
       places in Two Folders, as Orbit's board does, which gave NAME about 40 px back; the rail's third of the width
       and TYPE, SIZE and MODIFIED keep the rest. Waits on FN-8, or on the gallery, which has no columns.

@@ -21,9 +21,8 @@ import java.util.function.Predicate;
  * so the answer is the rule. Choosing one replaces the selection with its paths, which is the Select step made
  * without naming it; ignoring all of them costs nothing, because nothing here changes anything.
  *
- * <p>Pure, like {@link Suggestions}: it reads rows and nothing else, so it is tested with no window. The order is the
- * listing's: a list the person has sorted by a column shows another, which the explorer does not hear
- * (framework-notes FN-17).
+ * <p>Pure, like {@link Suggestions}: it reads rows and nothing else, so it is tested with no window. The rows come in
+ * the order the list shows them ({@link Order}), so "down" is the way the eye goes, whatever the sort.
  */
 public final class Intents {
 

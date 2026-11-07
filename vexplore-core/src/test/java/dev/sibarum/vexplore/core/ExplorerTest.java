@@ -345,6 +345,26 @@ class ExplorerTest {
     }
 
     @Test
+    void shiftsRangesRunInTheOrderTheListShows() {
+        showing(dir, file("a.txt", 1), file("b.txt", 2), file("c.txt", 3));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("c.txt"))));
+        hold(true, false);
+        assertEquals("Up to the start of this text file run", took(Suggested.class).getLast().select().getFirst().label(),
+                "c.txt is last as listed: the run is above it");
+
+        // Sorted by size, largest first, c.txt is at the top and the other two are below it.
+        tell(Messages.ORDERED_TOPIC, new Messages.Ordered(Side.FROM, new Order(Order.By.SIZE, true)));
+        Suggested rail = took(Suggested.class).getLast();
+        assertEquals("a range", rail.proposing());
+        assertEquals("Down to the end of this text file run", rail.select().getFirst().label());
+        assertEquals(3, rail.select().getFirst().count());
+
+        tell(Messages.ORDERED_TOPIC, new Messages.Ordered(Side.FROM, Order.LISTED));
+        assertEquals("Up to the start of this text file run", took(Suggested.class).getLast().select().getFirst().label(),
+                "back in the listing's order");
+    }
+
+    @Test
     void controlHeldProposesTheRuleThePicksAreExamplesOf() {
         showing(dir, file("a.txt", 1), video("b.mp4", 2), file("c.txt", 3));
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));

@@ -19,6 +19,7 @@ import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenWith;
+import dev.sibarum.vexplore.core.Messages.Ordered;
 import dev.sibarum.vexplore.core.Messages.OpenWith.With;
 import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Resolve;
@@ -118,6 +119,7 @@ final class View {
     private final Sender<Go> go;
     private final Sender<Navigate> navigate;
     private final Sender<Chosen> chosen;
+    private final Sender<Ordered> ordered;
     private final Sender<Activated> activated;
     private final Sender<Picked> picked;
     private final Sender<Carry> carry;
@@ -161,8 +163,9 @@ final class View {
     /** The conflict the dock shows, as the explorer last said: the pair a press of its buttons carries. */
     private Conflict conflict = Conflict.NONE;
 
-    View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Activated> activated,
-         Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
+    View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Ordered> ordered,
+         Sender<Activated> activated, Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop,
+         Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
@@ -173,6 +176,7 @@ final class View {
         this.go = go;
         this.navigate = navigate;
         this.chosen = chosen;
+        this.ordered = ordered;
         this.activated = activated;
         this.picked = picked;
         this.carry = carry;
@@ -330,6 +334,15 @@ final class View {
         Side side = ui.listSide(m.table());
         if (side != null) {
             chosen.send(new Chosen(side, Ui.paths(m.chosen())));
+        }
+    }
+
+    /** A list sorted by a header click, or put back in the listing's order: the explorer reasons in what is shown. */
+    @Subscribe
+    public void listSorted(Table.Sorted m) {
+        Side side = ui.listSide(m.table());
+        if (side != null) {
+            ordered.send(new Ordered(side, Columns.order(m.column(), m.direction())));
         }
     }
 

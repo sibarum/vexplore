@@ -39,6 +39,7 @@ import dev.sibarum.vexplore.core.Messages.OpenWith.With;
 import dev.sibarum.vexplore.core.Messages.Offer;
 import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Pair;
+import dev.sibarum.vexplore.core.Messages.Ordered;
 import dev.sibarum.vexplore.core.Messages.Picked;
 import dev.sibarum.vexplore.core.Messages.Planned;
 import dev.sibarum.vexplore.core.Messages.Planning;
@@ -149,8 +150,8 @@ import java.util.Set;
  */
 @Component
 @Hears({WindowOpened.class, Recalled.class, Go.class, Found.class, Navigate.class, Listed.class, Chosen.class,
-        Activated.class, Opened.class, Modifiers.class, Picked.class, Carry.class, Progress.class, Ran.class,
-        Undo.class, Redo.class, Destinations.class, Destine.class, Planned.class,
+        Activated.class, Opened.class, Modifiers.class, Ordered.class, Picked.class, Carry.class, Progress.class,
+        Ran.class, Undo.class, Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
         Back.class, Dropped.class, Accept.class, Checking.class, Checked.class, Resolve.class})
@@ -207,9 +208,9 @@ public final class Explorer {
                 return List.of();
             }
             if (held.shift()) {
-                return Intents.shift(rows(), selected(), zone());
+                return Intents.shift(pane().shown(), selected(), zone());
             }
-            return held.control() ? Intents.control(rows(), selected(), today(), zone()) : List.of();
+            return held.control() ? Intents.control(pane().shown(), selected(), today(), zone()) : List.of();
         }
 
         /** The list on {@code side}: FROM's when there is no TO. */
@@ -353,6 +354,7 @@ public final class Explorer {
         Step<State, Activated> activated = b.step("activated", Explorer::activated);
         Step<State, Opened> started = b.step("started", Explorer::started);
         Step<State, Modifiers> held = b.step("held", Explorer::held);
+        Step<State, Ordered> ordered = b.step("ordered", Explorer::ordered);
         Step<State, Picked> picked = b.step("picked", Explorer::picked);
         Step<State, Carry> carry = b.step("carry", Explorer::carry);
         Step<State, Progress> progress = b.step("progress", Explorer::progress);
@@ -392,6 +394,7 @@ public final class Explorer {
                 .on(Messages.ACTIVATED_TOPIC, activated)
                 .on(Opened.TOPIC, started)
                 .on(Modifiers.TOPIC, held)
+                .on(Messages.ORDERED_TOPIC, ordered)
                 .on(Messages.PICKED_TOPIC, picked)
                 .on(Messages.CARRY_TOPIC, carry)
                 .on(Messages.PROGRESS_TOPIC, progress)
@@ -1278,6 +1281,18 @@ public final class Explorer {
             return next;
         }
         out.send(Messages.SUGGESTED_TOPIC, said(next));
+        return next;
+    }
+
+    /**
+     * A list ordered anew, by a header click: kept with the list, so what the explorer reasons about in order is what
+     * the person sees. Only a held key's proposals read the order, so only they are said again.
+     */
+    private static State ordered(State s, Ordered o, Out out) {
+        State next = s.withPane(o.side(), s.pane(o.side()).withOrder(o.order()));
+        if (o.side() == next.used() && next.proposing() && !next.rail().equals(Rail.EMPTY)) {
+            out.send(Messages.SUGGESTED_TOPIC, said(next));
+        }
         return next;
     }
 

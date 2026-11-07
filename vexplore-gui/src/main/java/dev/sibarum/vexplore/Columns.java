@@ -4,6 +4,7 @@ import dev.sibarum.vexplore.core.Bytes;
 import dev.sibarum.vexplore.core.Dates;
 import dev.sibarum.vexplore.core.Kind;
 import dev.sibarum.vexplore.core.Messages.Row;
+import dev.sibarum.vexplore.core.Order;
 import dev.sibarum.vexplore.core.Relation;
 import dev.vexelray.gui.core.IconSource;
 import dev.vexelray.gui.core.Node;
@@ -20,10 +21,8 @@ import dev.vexelray.text.TextLayout.VAlign;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -44,15 +43,28 @@ final class Columns {
     private Columns() {
     }
 
+    /**
+     * The columns, in {@link Order.By}'s order after {@code LISTED}, each sorted by that order's comparator: the
+     * explorer orders rows by the same ones when it hears which the person clicked ({@link #order}).
+     */
     static List<Table.Column<Row>> of(Tags<String> fresh, Tags<Relation> compared) {
-        Comparator<Row> byName = Comparator.comparing(r -> r.name().toLowerCase(Locale.ROOT));
         return List.of(
-                Table.Column.of("NAME", Length.grow(1), (g, r) -> name(g, r, fresh, compared), byName),
-                Table.Column.of("TYPE", Length.rem(5f), Columns::type, Comparator.comparing(Row::typeLabel)),
+                Table.Column.of("NAME", Length.grow(1), (g, r) -> name(g, r, fresh, compared),
+                        Order.By.NAME.comparator()),
+                Table.Column.of("TYPE", Length.rem(5f), Columns::type, Order.By.TYPE.comparator()),
                 Table.Column.of("SIZE", Length.rem(6.5f), (g, r) -> cell(g, r.folder() ? "" : Bytes.format(r.size()),
-                        Type.UI, Type.BODY, Role.INK, HAlign.RIGHT), Comparator.comparingLong(Row::size)),
+                        Type.UI, Type.BODY, Role.INK, HAlign.RIGHT), Order.By.SIZE.comparator()),
                 Table.Column.of("MODIFIED", Length.rem(9.5f), (g, r) -> cell(g, modified(r), Type.UI, Type.BODY,
-                        Role.DIM, HAlign.LEFT), Comparator.comparing(Row::modified)));
+                        Role.DIM, HAlign.LEFT), Order.By.MODIFIED.comparator()));
+    }
+
+    /** What the table at column {@code column}, running {@code direction}, orders by: as {@link #of} lays them out. */
+    static Order order(int column, Table.Sort direction) {
+        Order.By[] by = Order.By.values();
+        if (column < 0 || column + 1 >= by.length || direction == Table.Sort.NONE) {
+            return Order.LISTED;
+        }
+        return new Order(by[column + 1], direction == Table.Sort.DESCENDING);
     }
 
     /**
