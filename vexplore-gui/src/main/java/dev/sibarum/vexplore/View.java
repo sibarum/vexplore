@@ -53,6 +53,7 @@ import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.edit.History;
 import dev.vexelray.gui.core.input.ClaimScope;
 import dev.vexelray.gui.core.input.Shortcut;
+import dev.vexelray.gui.keymap.Keymap;
 import dev.vexelray.gui.fileicons.FileFamily;
 import dev.vexelray.gui.icons.Icon;
 import dev.vexelray.gui.widget.Breadcrumb;
@@ -163,9 +164,9 @@ final class View {
     /** The conflict the dock shows, as the explorer last said: the pair a press of its buttons carries. */
     private Conflict conflict = Conflict.NONE;
 
-    View(Gui gui, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen, Sender<Ordered> ordered,
-         Sender<Activated> activated, Sender<Picked> picked, Sender<Carry> carry, Sender<Stop> stop,
-         Sender<Undo> undo, Sender<Redo> redo,
+    View(Gui gui, Keymap keys, Ui ui, Sender<Go> go, Sender<Navigate> navigate, Sender<Chosen> chosen,
+         Sender<Ordered> ordered, Sender<Activated> activated, Sender<Picked> picked, Sender<Carry> carry,
+         Sender<Stop> stop, Sender<Undo> undo, Sender<Redo> redo,
          Sender<PickFile> pickFile, Sender<Destine> destine, Sender<Rename> rename,
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
@@ -199,7 +200,7 @@ final class View {
         this.accept = accept;
         this.resolve = resolve;
         this.intents = intents;
-        shortcuts();
+        commands(keys);
         // Open with's menu: a left click opens what suits the file, and the menu names the program instead (FN-15).
         gui.menu(ui.openWithNode(), dev.vexelray.gui.core.input.Menu.builder()
                 .item(FileFamily.IMAGES, "Rasterware", openWith, new OpenWith(With.RASTERWARE))
@@ -208,31 +209,34 @@ final class View {
     }
 
     /**
-     * Every chord, as a declaration: the chord and the {@link Intent} it sends. Chords a text field leaves alone, so a
-     * focused field never needs to outrank them, except two that are claimed only where they mean something: Esc on the
-     * path field, and Backspace on the list, which in a field deletes a character. Zoom is here too: which chord zooms,
-     * or whether zooming exists at all, is the application's to say; how far it goes is {@code Appearance.ZoomRange},
-     * the framework's.
+     * Every command the keyboard reaches across the window, as a declaration: a stable id, what the person calls it,
+     * the chords it starts with, and the {@link Intent} it sends. The chords are the person's to change: the
+     * framework's key bindings list these, and a rebind moves the claim without this view hearing of it. The id is
+     * what the person's changes are stored under, so it is the part to keep stable. Chords a text field leaves alone,
+     * so a focused field never needs to outrank them, except two that are claimed only where they mean something, and
+     * stay the code's: Esc on the path field, and Backspace on the list, which in a field deletes a character. Zoom is
+     * here too: which chord zooms, or whether zooming exists at all, is the application's to say; how far it goes is
+     * {@code Appearance.ZoomRange}, the framework's.
      */
-    private void shortcuts() {
-        chord(Shortcut.of(Key.L, Modifier.CONTROL), Command.EDIT_PATH);
+    private void commands(Keymap keys) {
+        command(keys, "go.path", "Edit the path", Command.EDIT_PATH, Shortcut.of(Key.L, Modifier.CONTROL));
         gui.claim(ui.pathNode(), Shortcut.of(Key.ESCAPE), ClaimScope.FOCUSED, intents, new Intent(Command.CLOSE_PATH));
-        chord(Shortcut.of(Key.UP, Modifier.ALT), Command.UP);
-        chord(Shortcut.of(Key.LEFT, Modifier.ALT), Command.BACK);
+        command(keys, "go.up", "Up a folder", Command.UP, Shortcut.of(Key.UP, Modifier.ALT));
+        command(keys, "go.back", "Back", Command.BACK, Shortcut.of(Key.LEFT, Modifier.ALT));
         for (Side side : Side.values()) {
             gui.claim(ui.rowsNode(side), Shortcut.of(Key.BACKSPACE), ClaimScope.FOCUSED, intents,
                     new Intent(Command.UP));
         }
-        chord(Shortcut.of(Key.EQUAL, Modifier.CONTROL), Command.ZOOM_IN);
-        chord(Shortcut.of(Key.MINUS, Modifier.CONTROL), Command.ZOOM_OUT);
-        chord(Shortcut.of(Key.DIGIT_0, Modifier.CONTROL), Command.ZOOM_RESET);
-        chord(Shortcut.of(Key.NUMPAD_ADD, Modifier.CONTROL), Command.ZOOM_IN);
-        chord(Shortcut.of(Key.NUMPAD_SUBTRACT, Modifier.CONTROL), Command.ZOOM_OUT);
-        chord(Shortcut.of(Key.NUMPAD_0, Modifier.CONTROL), Command.ZOOM_RESET);
+        command(keys, "view.zoom-in", "Zoom in", Command.ZOOM_IN,
+                Shortcut.of(Key.EQUAL, Modifier.CONTROL), Shortcut.of(Key.NUMPAD_ADD, Modifier.CONTROL));
+        command(keys, "view.zoom-out", "Zoom out", Command.ZOOM_OUT,
+                Shortcut.of(Key.MINUS, Modifier.CONTROL), Shortcut.of(Key.NUMPAD_SUBTRACT, Modifier.CONTROL));
+        command(keys, "view.zoom-reset", "Reset zoom", Command.ZOOM_RESET,
+                Shortcut.of(Key.DIGIT_0, Modifier.CONTROL), Shortcut.of(Key.NUMPAD_0, Modifier.CONTROL));
     }
 
-    private void chord(Shortcut shortcut, Command command) {
-        gui.shortcut(shortcut, intents, new Intent(command));
+    private void command(Keymap keys, String id, String label, Command command, Shortcut... chords) {
+        keys.action(id, label, chords).sends(intents, new Intent(command));
     }
 
     @Subscribe
