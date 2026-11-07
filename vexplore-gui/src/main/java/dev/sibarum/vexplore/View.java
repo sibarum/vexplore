@@ -201,8 +201,8 @@ final class View {
         this.resolve = resolve;
         this.intents = intents;
         commands(keys);
-        // Open with's menu: a left click opens what suits the file, and the menu names the program instead (FN-15).
-        gui.menu(ui.openWithNode(), dev.vexelray.gui.core.input.Menu.builder()
+        // Open with drops its menu on a left click, Enter or Space, and each line names the program.
+        ui.openWith(dev.vexelray.gui.core.input.Menu.builder()
                 .item(FileFamily.IMAGES, "Rasterware", openWith, new OpenWith(With.RASTERWARE))
                 .item(Icon.DISPLAY, "The desktop's own program", openWith, new OpenWith(With.DESKTOP))
                 .build());
@@ -434,8 +434,6 @@ final class View {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {
             stop.send(new Stop());
-        } else if (ui.openWith(m.button())) {
-            openWith.send(new OpenWith(With.SUITED));
         } else if (ui.back(m.button())) {
             back();
         } else if (ui.up(m.button())) {

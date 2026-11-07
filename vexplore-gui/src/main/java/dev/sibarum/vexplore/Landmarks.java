@@ -113,7 +113,7 @@ final class Landmarks {
     /** A picture's thumbnail, or a video's poster frame. */
     static final String DOCK_PICTURE = "dock.picture";
 
-    /** The preview strip's Open with: a left click opens the file with what suits it, its menu names a program. */
+    /** The preview strip's Open with: a menu button whose lines name the program to open the file with. */
     static final String DOCK_OPEN = "dock.open-with";
 
     /**

@@ -133,9 +133,8 @@ final class DockPanel {
                 .scroll(true, true).clip(true).children(note, stage, measure, body);
         main = gui.column().width(Length.grow(1f)).height(Length.FILL).gap(Length.rem(0.6f)).clip(true)
                 .children(header, content);
-        // Open with, in a column at the strip's right as Orbit draws it, an icon and its words on a pill. A left click
-        // opens the file with what suits it (Vexplore has no viewer of its own: a picture or a video is Rasterware's);
-        // the view declares its menu, which names one (framework-notes FN-15).
+        // Open with, in a column at the strip's right as Orbit draws it, an icon and its words on a pill: a menu button,
+        // whose menu the view declares, a line per program (Vexplore has no viewer of its own).
         openWith = new IconButton(gui, Icon.OPEN, "Open with").name(Landmarks.DOCK_OPEN)
                 .tile(Length.dp(40), Length.dp(16));
         openWith.node().direction(Direction.ROW).width(Length.FILL).height(Length.dp(40)).corner(Length.dp(20))
@@ -237,14 +236,9 @@ final class DockPanel {
         return node;
     }
 
-    /** Whether {@code address} is Open with. */
-    boolean openWith(String address) {
-        return openWith.address().equals(address);
-    }
-
-    /** Open with's node, for the menu the view declares on it. */
-    Node openWithNode() {
-        return openWith.node();
+    /** Declare what Open with drops: a line per program, each sending what it names. */
+    void openWith(dev.vexelray.gui.core.input.Menu programs) {
+        openWith.menu(programs);
     }
 
     /** Show what the explorer says the dock holds. */

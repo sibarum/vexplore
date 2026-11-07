@@ -222,7 +222,11 @@ focused. Vexplore keeps the count after the words, `Just this file · 1`, as it 
 **For the framework:** a button with a trailing slot (`Button.trailing(Node)` or a `badge(String)`), inside its press,
 its focus and its pressed look. A chip with a count, a tab with a number, a menu item with a shortcut all meet it.
 
-## FN-15 · A button cannot open a menu 🔬
+## FN-15 · A button cannot open a menu 🔬 (fixed 2026-11-07)
+
+*Fixed in vexelray-gui: `Button.menu(Menu)` and `IconButton.menu(Menu)` drop a declared menu from the button on a
+left click, Enter or Space. Open with is one now, so its left click names the two programs; the left click that
+opened what suits the file is gone.*
 
 Orbit's preview strip (M8, slice 4) has *Open with*: a button whose menu names the program, Rasterware or the
 desktop's own. An application declares a menu only as a node's context menu (`Gui.menu`, opened by a right click);

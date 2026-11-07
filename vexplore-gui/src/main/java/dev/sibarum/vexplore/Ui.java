@@ -479,14 +479,9 @@ final class Ui {
         return rail.go(address);
     }
 
-    /** Whether {@code address} is the preview strip's Open with. */
-    boolean openWith(String address) {
-        return dock.openWith(address);
-    }
-
-    /** Open with's node, for the menu the view declares on it. */
-    Node openWithNode() {
-        return dock.openWithNode();
+    /** Declare what the preview strip's Open with drops: a line per program. */
+    void openWith(dev.vexelray.gui.core.input.Menu programs) {
+        dock.openWith(programs);
     }
 
     /** Whether {@code address} is the card's Stop. */
