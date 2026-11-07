@@ -1058,22 +1058,30 @@ class ExplorerTest {
     @Test
     void rowsDroppedOnTheOtherListAreMovedThereAtOnce() {
         twoFoldersToSub();
-        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"), path("b.txt"))));
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"), path("b.txt")), MOVE));
         Messages.Run run = took(Messages.Run.class).getLast();
-        assertEquals(MOVE, run.plan().op(), "one drive: a move");
+        assertEquals(MOVE, run.plan().op(), "a move, as the drop said");
         assertEquals(List.of(path("sub").resolve("a.txt"), path("sub").resolve("b.txt")),
                 run.plan().steps().stream().map(Plan.Step::to).toList());
     }
 
     @Test
+    void aDropAKeyMadeACopyIsACopyOnOneDrive() {
+        twoFoldersToSub();
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt")), COPY));
+        assertEquals(COPY, took(Messages.Run.class).getLast().plan().op(),
+                "Control held at the release: a copy, though one drive would have moved it");
+    }
+
+    @Test
     void aDropLeavesAloneWhatWouldGoOverANameAndSaysSo() {
         twoFoldersToSub(new Row(path("sub").resolve("a.txt"), "a.txt", false, 5L, Instant.EPOCH, Kind.TEXT));
-        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"))));
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt")), MOVE));
         assertTrue(seen(Messages.Run.class).isEmpty(), "nothing to run");
         Status said = took(Status.class).getLast();
         assertTrue(said.alert());
         assertEquals("Nothing to move to sub: a.txt, a file of that name is already there", said.message());
-        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"), path("b.txt"))));
+        tell(Messages.DROPPED_TOPIC, new Messages.Dropped(Side.TO, List.of(path("a.txt"), path("b.txt")), MOVE));
         assertEquals(1, took(Messages.Run.class).getLast().plan().count(), "b.txt goes, a.txt is left alone");
     }
 

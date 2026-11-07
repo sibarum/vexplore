@@ -155,7 +155,9 @@ columns giving way past it, last column first. Every table whose one growing col
 
 *Fixed in vexelray-framework: the explorer hears `Modifiers` for the main window, holds it in its state, and while
 Shift or Control is held the rail's Which files row is what the key proposes (`Intents`, back from 0.1), headed
-"a range" or "a rule"; choosing one makes it the selection. A drop's copy or move by the key held is not done.*
+"a range" or "a rule"; choosing one makes it the selection. A drop between the two lists copies with Control held and
+moves with Shift (`DropEffect.byKeys`, 2026-11-07): the list shows it before the release, and `Dropped` carries the
+operation the drop became, so no topic of held keys races it.*
 
 The design's second principle reads a held modifier as intent: Shift held proposes where a range ends, Control held
 proposes the rule the picks are examples of. 0.1's `Intents` computed both. On 0.2 an application cannot hear which

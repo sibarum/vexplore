@@ -131,12 +131,13 @@ public final class Messages {
     }
 
     /**
-     * Rows of one list dropped on the other, by path, in the order shown: they go into the folder {@code onto} shows,
-     * moved within one drive and copied across two, as {@link Pair} said while they were carried.
+     * Rows of one list dropped on the other, by path, in the order shown: they go into the folder {@code onto} shows, by
+     * {@code op}. That is what {@link Pair} declared (a move within one drive, a copy across two) unless a key held at
+     * the release chose the other: the gesture carries it, so no topic of held keys races the drop.
      */
     public static final Topic<Dropped> DROPPED_TOPIC = Topic.edge(Dropped.class);
 
-    public record Dropped(Side onto, List<Path> held) {
+    public record Dropped(Side onto, List<Path> held, Plan.Op op) {
         public Dropped {
             held = List.copyOf(held);
         }

@@ -972,8 +972,8 @@ public final class Explorer {
 
     /**
      * What a drop between the two lists does: a move when both folders are on one drive, which costs nothing and
-     * leaves no copy behind, and a copy across two, which a move would turn into a copy and a delete. Held keys (0.1's
-     * Ctrl to copy, Shift to move) wait on a modifiers topic (framework-notes FN-9).
+     * leaves no copy behind, and a copy across two, which a move would turn into a copy and a delete. What a drop
+     * declares: Control or Shift held at the release makes it the other, and {@link Dropped} says which.
      */
     static Plan.Op drop(State s) {
         Optional<Path> from = s.pane(Side.FROM).folder().map(Path::getRoot);
@@ -1001,7 +1001,7 @@ public final class Explorer {
         for (Row r : s.pane(d.onto()).rows()) {
             taken.add(r.name());
         }
-        Plan.Op op = drop(s);
+        Plan.Op op = d.op();
         Plan plan = Plan.to(op, rows, into.get(), taken);
         String where = ListFolder.name(into.get());
         if (plan.count() == 0) {

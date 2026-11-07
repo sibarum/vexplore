@@ -391,7 +391,9 @@ final class View {
                 paths.add(r.path());
             }
         }
-        dropped.send(new Dropped(side, paths));
+        // What the drop became: the move or copy declared, or the other if a key held at the release chose it.
+        Plan.Op op = m.effect() == dev.vexelray.gui.core.drop.DropEffect.COPY ? Plan.Op.COPY : Plan.Op.MOVE;
+        dropped.send(new Dropped(side, paths, op));
     }
 
     /**
