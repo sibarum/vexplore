@@ -94,11 +94,11 @@ identical, or different. Only the source of one side is new.
 
 ## How Vexplore talks to git
 
-Recommended: **the `git` executable**, run as a process, the way Vexplore already starts Pix and VexelRay IDE.
+Recommended: **the `git` executable**, run as a process, the way Vexplore already starts Rasterware and VexelRay IDE.
 
 | Way | For | Against |
 | --- | --- | --- |
-| **`git` CLI** (`status --porcelain=v2 -z`, `log -z --name-status`, `show`, `diff`) | It is git: the user's config, hooks, `fsmonitor`, sparse checkouts and LFS all behave as they would at a prompt. Machine-readable formats are stable and documented. No native-image risk | A process per query. Not installed means no feature, which is the same rule as Pix: absent, and the rest of Vexplore unchanged |
+| **`git` CLI** (`status --porcelain=v2 -z`, `log -z --name-status`, `show`, `diff`) | It is git: the user's config, hooks, `fsmonitor`, sparse checkouts and LFS all behave as they would at a prompt. Machine-readable formats are stable and documented. No native-image risk | A process per query. Not installed means no feature, which is the same rule as Rasterware: absent, and the rest of Vexplore unchanged |
 | **JGit** | In process, no dependency on PATH | A second implementation that lags git on new formats, reflection-heavy so native-image is an unknown, and it ignores some of the user's config |
 | **Reading `.git` directly** | Fastest for status | Index format, packfiles, worktrees, submodules, and it would still be wrong in some corner |
 
@@ -120,7 +120,7 @@ git in its pseudoconsole, with Vexplore typing into it. That is the wrong way ro
 
 - Vexplore has to parse what git prints. Through a terminal, output arrives with VT escapes and line wrapping,
   stdout and stderr merged, and NUL-separated formats (`-z`) are not safe. Pipes give exact bytes.
-- The feature would then depend on MainFrame being installed and open. The suite's rule (Pix, VexelRay IDE) is that a
+- The feature would then depend on MainFrame being installed and open. The suite's rule (Rasterware, VexelRay IDE) is that a
   missing application removes an option, never a feature.
 - Closing the console must not kill an operation halfway through.
 

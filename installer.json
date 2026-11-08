@@ -15,19 +15,14 @@
     "binaries": [
       {
         "name": "vexplore",
-        "source": "vexplore/target/vexplore.exe",
-        "icon": "vexplore/src/main/rc/vexplore.ico",
+        "source": "vexplore-gui/target/vexplore.exe",
+        "icon": "vexplore-gui/src/main/rc/vexplore.ico",
         "addToPath": true,
         "shortcuts": { "desktop": true, "startMenu": true, "label": "Vexplore" }
       },
       {
-        "name": "vexplore-ffmpeg",
-        "source": "vexplore/target/vexplore-ffmpeg-windows-x86_64.zip",
-        "dir": "ffmpeg"
-      },
-      {
         "name": "vexplore-ffmpeg-record",
-        "source": "vexplore/target/vexplore-ffmpeg-record-windows-x86_64.zip",
+        "source": "vexplore-gui/target/vexplore-ffmpeg-record-windows-x86_64.zip",
         "dir": "ffmpeg-record"
       },
       { "name": "notices", "source": "THIRD-PARTY-NOTICES.txt" }

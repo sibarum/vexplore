@@ -1,0 +1,279 @@
+package dev.sibarum.vexplore;
+
+import dev.sibarum.vexplore.core.Messages;
+import dev.sibarum.vexplore.core.Messages.Go;
+import dev.sibarum.vexplore.core.Messages.Navigate;
+import dev.sibarum.vexplore.core.Relation;
+import dev.vexelray.framework.core.PickFile;
+import dev.vexelray.framework.core.Picked;
+import dev.vexelray.framework.shell.Dialogs;
+import dev.vexelray.framework.shell.Shell;
+import dev.vexelray.framework.shell.VexelApplication;
+import dev.vexelray.gui.core.Cuts;
+import dev.vexelray.gui.widget.Modal;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import sibarum.atchung.Sender;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+/**
+ * The whole application, built headless by the generated wiring (no window, no GPU) and driven through the same
+ * messages a user's gestures send.
+ *
+ * <p>{@code VexelApplication.tree} runs the wiring as far as the tree and starts the components, so the explorer and the
+ * jobs run on their own lanes here, exactly as in the window. The view runs in frames, and there is no loop to run
+ * them, so the test runs them while it waits ({@code VexelApplication.frame}): this thread is the GUI thread. No window
+ * opens, so the framework never says {@code WindowOpened} for the main one: no session is restored and no settings are
+ * written, and this test leaves the user's own settings alone.
+ *
+ * <p>The test listens on the bus as one more subscriber, which is how it sees what the explorer told the view. Every
+ * part answers in its own time, so the test waits for what it asked for, running frames, rather than sleeping.
+ */
+class ViewTest {
+
+    @TempDir
+    Path dir;
+
+    private Shell shell;
+    private VexploreAppWiring wiring;
+    /** Every status line the explorer sent, in order. */
+    private final List<Object> said = new CopyOnWriteArrayList<>();
+
+    @BeforeEach
+    void build() {
+        wiring = new VexploreAppWiring();
+        shell = VexelApplication.tree(wiring, new String[0]);
+        // This test's dialogs in place of the framework's, which would hold every question for a window that never
+        // comes. Taken back as late as WINDOW, so handing them over after the tree is built is in time.
+        shell.dialogs(new Refusing());
+        shell.bus().subscribe(Messages.STATUS_TOPIC, said::add);
+        cuts = Cuts.watch(shell.gui());
+    }
+
+    /**
+     * What changed on screen in one frame while a test ran, which every test here then fails on: nothing this
+     * application shows changes in one frame. The framework fades it all (a colour, an opacity, words, an image, a node
+     * arriving, leaving, hidden or shown) as long as the view keeps its nodes and changes them. A cut found here means
+     * a node was rebuilt where it should have been changed, or something stepped round the framework. Fix that; do not
+     * take this watch out. If the framework cannot do it, that is a framework note (docs/framework-notes.md).
+     */
+    private Cuts cuts;
+
+    /** Dialogs that fail the test on any question, since nothing should be asked, and cancel every file picker. */
+    private static final class Refusing implements Dialogs {
+
+        @Override
+        public void ask(Modal modal) {
+            throw new AssertionError("asked unexpectedly: " + modal.title());
+        }
+
+        @Override
+        public void pick(PickFile request, Sender<Picked> picked) {
+            picked.send(Picked.cancelled(request.id()));
+        }
+    }
+
+    @AfterEach
+    void dispose() {
+        List<Cuts.Cut> found = cuts.found();
+        cuts.close();
+        shell.disposer().close();
+        assertEquals(List.of(), found, "changed on screen in one frame; keep the node and change it (see cuts)");
+    }
+
+    /**
+     * Run frames until {@code test} holds. The view hears only in a frame, and this thread runs them, so it is the GUI
+     * thread here as the loop's is in the window: what the test reads of the view is read where the view writes it.
+     */
+    private void eventually(String what, BooleanSupplier test) throws InterruptedException {
+        long until = System.nanoTime() + 10_000_000_000L;
+        VexelApplication.frame(shell);
+        while (!test.getAsBoolean()) {
+            if (System.nanoTime() > until) {
+                throw new AssertionError("timed out waiting for " + what);
+            }
+            Thread.sleep(5);
+            VexelApplication.frame(shell);
+        }
+    }
+
+    private void go(Path path) {
+        shell.bus().publish(Messages.GO_TOPIC, new Go(path.toString()));
+    }
+
+    private Path shown() {
+        return wiring.ui().shown();
+    }
+
+    @Test
+    void itStartsWithNoFolderShown() {
+        assertNull(shown());
+    }
+
+    @Test
+    void aTypedFolderIsShownInTheBreadcrumb() throws Exception {
+        Path sub = Files.createDirectory(dir.resolve("sub")).toAbsolutePath().normalize();
+        go(sub);
+        eventually("the folder", () -> sub.equals(shown()));
+    }
+
+    @Test
+    void aTypedFileShowsTheFolderItIsIn() throws Exception {
+        Path file = Files.writeString(dir.resolve("a.txt"), "a");
+        go(file);
+        eventually("the folder", () -> dir.toAbsolutePath().normalize().equals(shown()));
+    }
+
+    @Test
+    void nothingAtATypedPathIsSaidOnTheStatusLine() throws Exception {
+        go(dir.resolve("gone"));
+        eventually("the status line", () -> !said.isEmpty());
+        assertNull(shown(), "nothing was shown");
+    }
+
+    @Test
+    void aShownFolderListsItsRows() throws Exception {
+        Path sub = Files.createDirectory(dir.resolve("sub")).toAbsolutePath().normalize();
+        Files.writeString(sub.resolve("a.txt"), "a");
+        Files.createDirectory(sub.resolve("inner"));
+        go(sub);
+        eventually("the rows", () -> wiring.ui().rows() == 2);
+    }
+
+    @Test
+    void goingUpShowsTheFolderThisOneIsIn() throws Exception {
+        Path sub = Files.createDirectory(dir.resolve("sub")).toAbsolutePath().normalize();
+        go(sub);
+        eventually("the folder", () -> sub.equals(shown()));
+        shell.bus().publish(Intent.INTENTS, new Intent(Intent.Command.UP));
+        eventually("the folder above", () -> sub.getParent().equals(shown()));
+    }
+
+    /**
+     * The rail through the window: a row chosen is suggested on, a chip widens the reach, and the rail and the marks
+     * that follow change nothing in one frame (the watch above).
+     */
+    @Test
+    void theRailSuggestsOnTheSelectionAndAChipWidensIt() throws Exception {
+        List<Messages.Suggested> suggested = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.SUGGESTED_TOPIC, suggested::add);
+        Path sub = Files.createDirectory(dir.resolve("clips")).toAbsolutePath().normalize();
+        for (String name : List.of("a.mp4", "b.mp4", "c.mp4")) {
+            Files.writeString(sub.resolve(name), name);
+        }
+        go(sub);
+        eventually("the rows", () -> wiring.ui().rows() == 3);
+        shell.bus().publish(Messages.CHOSEN_TOPIC, new Messages.Chosen(Messages.Side.FROM, java.util.Set.of(sub.resolve("a.mp4"))));
+        eventually("the rail", () -> !suggested.isEmpty() && !suggested.getLast().empty());
+        assertEquals(1, suggested.getLast().reach().size());
+        shell.bus().publish(Messages.PICKED_TOPIC, new Messages.Picked(Messages.Slot.SELECT, 1));
+        eventually("all three", () -> suggested.getLast().reach().size() == 3);
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
+
+    @Test
+    void twoFoldersOpensASecondListAndSwapsIt() throws Exception {
+        List<Messages.Pair> pairs = new CopyOnWriteArrayList<>();
+        List<Messages.Shown> shown = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.PAIR_TOPIC, pairs::add);
+        shell.bus().subscribe(Messages.SHOWN_TOPIC, shown::add);
+        Path sub = Files.createDirectory(dir.resolve("left")).toAbsolutePath().normalize();
+        Files.writeString(sub.resolve("a.txt"), "a");
+        go(sub);
+        eventually("the rows", () -> wiring.ui().rows() == 1);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        eventually("TO listed", () -> shown.stream().anyMatch(s -> s.side() == Messages.Side.TO));
+        eventually("two", () -> !pairs.isEmpty() && pairs.getLast().two());
+        shell.bus().publish(Messages.USE_TOPIC, new Messages.Use(Messages.Side.TO));
+        eventually("TO used", () -> pairs.getLast().used() == Messages.Side.TO);
+        shell.bus().publish(Messages.SWAP_TOPIC, new Messages.Swap());
+        eventually("swapped", () -> pairs.getLast().used() == Messages.Side.FROM);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        eventually("one", () -> !pairs.getLast().two());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
+
+    /**
+     * Two Folders' frame and the comparison through the window: the places go, the title names both folders, a pane's
+     * own Up goes in that pane, and each row's mark follows the other folder; none of it in one frame.
+     */
+    @Test
+    void twoFoldersComparesTheListsAndEachPaneGoesItsOwnWay() throws Exception {
+        List<Messages.Compared> compared = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.COMPARED_TOPIC, compared::add);
+        Path left = Files.createDirectory(dir.resolve("left")).toAbsolutePath().normalize();
+        Path right = Files.createDirectory(dir.resolve("right")).toAbsolutePath().normalize();
+        Files.writeString(left.resolve("a.txt"), "a");
+        Files.writeString(left.resolve("b.txt"), "b");
+        Files.writeString(right.resolve("a.txt"), "longer");
+        go(left);
+        eventually("the rows", () -> wiring.ui().rows() == 2);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        eventually("TO in left", () -> left.equals(wiring.ui().folder(Messages.Side.TO)));
+        shell.bus().publish(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Messages.Side.TO), right));
+        eventually("TO in right", () -> right.equals(wiring.ui().folder(Messages.Side.TO)));
+        eventually("compared", () -> !compared.isEmpty()
+                && compared.getLast().rows().containsKey(right.resolve("a.txt")));
+        Messages.Compared from = compared.stream().filter(c -> c.side() == Messages.Side.FROM).toList().getLast();
+        assertEquals(Relation.ONLY_HERE, from.rows().get(left.resolve("b.txt")));
+        assertEquals(Relation.Group.DIFFERENT, from.rows().get(left.resolve("a.txt")).group());
+        assertEquals(left, wiring.ui().folder(Messages.Side.FROM), "FROM stayed where it was");
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
+        eventually("the marks put down", () -> compared.getLast().rows().isEmpty());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
+
+    /**
+     * The dock's conflict through the window: a name in both folders with a newer copy is shown in the dock, Keep both
+     * pressed as the pointer would moves FROM's copy in under a free name, and none of it changes in one frame.
+     */
+    @Test
+    void aConflictIsShownInTheDockAndKeepBothMovesTheCopyIn() throws Exception {
+        List<Messages.Conflict> conflicts = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.CONFLICT_TOPIC, conflicts::add);
+        // A session read, as the window opening would ask for: nothing is carried out before one.
+        shell.bus().publish(Messages.RECALLED_TOPIC, new Messages.Recalled(Optional.empty(), List.of(), dir,
+                dir.resolve("trash"), List.of()));
+        Path left = Files.createDirectory(dir.resolve("left")).toAbsolutePath().normalize();
+        Path right = Files.createDirectory(dir.resolve("right")).toAbsolutePath().normalize();
+        Files.writeString(left.resolve("a.txt"), "mine");
+        Files.writeString(right.resolve("a.txt"), "theirs, older");
+        Files.setLastModifiedTime(right.resolve("a.txt"),
+                java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 86_400_000L));
+        go(left);
+        eventually("the rows", () -> wiring.ui().rows() == 1);
+        shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(true));
+        eventually("TO in left", () -> left.equals(wiring.ui().folder(Messages.Side.TO)));
+        shell.bus().publish(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Messages.Side.TO), right));
+        eventually("the conflict", () -> !conflicts.isEmpty() && conflicts.getLast().twins().isPresent());
+        assertEquals(Optional.of(Messages.Side.FROM), conflicts.getLast().newer());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+        shell.bus().publish(dev.vexelray.gui.widget.Button.PRESSED,
+                new dev.vexelray.gui.widget.Button.Pressed(wiring.ui().keepAddress(Messages.Resolve.Keep.BOTH)));
+        eventually("kept both", () -> Files.exists(right.resolve("a (2).txt")));
+        assertEquals("mine", Files.readString(right.resolve("a (2).txt")));
+        eventually("no conflict left", () -> conflicts.getLast().twins().isEmpty());
+        for (int i = 0; i < 30; i++) {
+            VexelApplication.frame(shell);
+        }
+    }
+}

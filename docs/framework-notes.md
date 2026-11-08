@@ -32,354 +32,244 @@ The markers are a filter, not decoration:
 
 ## Findings
 
-Written when each workaround was written. The fuller framework-side account, with what each would cost to fix and
-whether it blocks v1, is in `vexelray-framework/docs/TODO.md` under *Found by Vexplore*.
+## FN-1 · An application cannot bring its own faces into the text atlas 🔬
+
+The design system names Instrument Sans for text and IBM Plex Mono for paths, sizes and anything tabular. The text
+atlas is baked by `vexelray-text` at build time from its own sans and mono, and `Type` can only pick face 0 or face 1
+of it. So Vexplore draws in the atlas's faces, and the design's two are not in it at all. Nothing was worked around:
+the faces are simply not the design's.
 
-### FN-1 · There is no button component 🔬 — **fixed, in `vexelray-gui-widget`**
+**For the framework:** a way for an application to name fonts for its atlas (a pom setting the atlas build reads,
+as the icon bake reads `src/main/icons`), with the charset beside it. Or `vexelray-text` shipping these two as
+faces 2 and 3, if the suite is to share them.
+
+## FN-2 · A split's minimum holds against a drag, not against the window 🔬
 
-This was the template's own finding (FN-0) and it was right: every project writes the same four calls. Writing
-them a fifth time showed what the four calls leave out, which is the keyboard. A text node with a click handler
-cannot be pressed with Enter or Space, and a "disabled" one that only ignores clicks still takes Tab. `Button` now
-claims both keys at `ClaimScope.FOCUSED`, leaves the focus order when disabled, and has a toggle form for chips.
-`Breadcrumb`, `StatusBar` and `SplitPane` came out of the same pass.
+The Suggestion Rail is the sized pane of a `SplitPane` (25 rem), and the file list takes the rest, with
+`minFirst(20 rem)` so that a narrow window takes room from the rail, never from the list. `SplitPane` uses its
+minimums only to clamp a drag (`drag`); laying out, it gives the sized pane its size and the free pane `grow(1)`, so a
+narrow window shrinks the list to whatever is left. Measured: a 1207 px window at zoom 1.563 left the list 181 px
+beside a 625 px rail. At the handoff's 1440 px and zoom 1 it does not show.
+
+Since M2 the rail is a share of the room beside the tree, a third (ruled 2026-11-02), not 25 rem: a narrow or zoomed
+window narrows it with the list, and the list stays the widest region at any size. Its Select and Condition chips sit one to a
+line and it scrolls, so a narrow rail loses width, not a chip. The gap is the same, and the table inside the list has one of
+its own (FN-8).
 
-### FN-2 · The listener on a model can hear it out of order, and twice at once 🔬
+**For the framework:** the free pane's minimum held at layout (a `minWidth` on the free box from its `min*`), and
+the sized pane giving way down to its own minimum. Every application with a side panel will meet it.
+
 
-The template's advice is that `show(Doc)` runs on the committing thread, which is a worker. It is a worker of a
-*pool*. `State.commit` swaps the value with a compare-and-set and then delivers to listeners on the committing
-thread, so two handlers finishing together deliver as version 6 then 5, or at the same instant. Seen here as a
-rail with the wrong chips in it and, before the gate, landmarks that had vanished from a rebuilt panel. Fixed in
-`Model.onChange` with a lock and a version check that drops a late, older document; a test drives eight threads and
-asserts the listener finishes on the newest. The framework's template `Model` has the unguarded shape, and so does
-every application that copied it.
 
-Related: `State.commit` counts a function that returned the *same* value as a new version, so re-announcing an
-unchanged selection woke every listener. `Model.select` checks before it commits.
+## FN-3 · A hidden node keeps the keyboard 🔬 (fixed 2026-11-04)
+
+*Fixed in vexelray-gui (`InputDispatcher.handOnHiddenFocus`, held by `FocusHandOnTest`): a node hidden while it has
+the keyboard hands it to the next focusable node in Tab order, before the next frame's keys, and `Gui.blur()` lets
+go of it on purpose. `Ui.closePath` still focuses the list itself, since that is where it wants the keyboard. Kept
+below as found.*
+
+The path field takes the breadcrumb's place while Ctrl+L has it, and Esc hides it again. Hidden, it still had the
+keyboard (`ottermate tree` showed it `hidden focused`), so the next keys typed would have gone into a field nobody can
+see. `Gui` can move focus to a node but has no way to let it go, and hiding a node does not move it. So `Ui.closePath`
+hands the keyboard to the breadcrumb's nearest ancestor button; at a drive's root, which has none, the hidden field
+keeps it. Since M1 it hands it to the list instead, which is always there, so the root case is covered too; the gap
+is the same.
+
+**For the framework:** a node hidden while it has the keyboard gives it up, to the next focusable node in order, as
+a removed node presumably must; or `Gui.blur()`. Any application that swaps one control for another in place meets it.
+
+## FN-4 · Opening a file with the desktop is the framework's, and private 🔬 (fixed 2026-11-05)
+
+*Fixed in vexelray-framework: a part sends `Open(target)` and hears `Opened(target, problem)`, both in
+`dev.vexelray.framework.core`, answered on the job lane by the framework with no recipe or `Core` entry. `OpenFile`,
+`Start` and `Started` are gone, and `-core` no longer names `vexelray-os-api`. `HandOff` still calls the engine's
+opener itself, as its fallback when Rasterware is not installed.*
 
-### FN-3 · A wiring keeps its parts to itself, so a capture cannot reach the model 🔬
+M1 opens a file on Enter, as the desktop's file manager would. The build's isolation check rightly refuses an
+`os.name` test in `-core`, and the engine already has the seam, `NativePlatform.open`, with an opener per OS module.
+The framework uses it for the About window's links through `Links`, which is package-private in
+`vexelray-framework-shell`. So `OpenFile` calls `NativePlatform.current().open` itself, reaching past the framework
+to the engine's OS seam: it works, and it is the one place Vexplore names `vexelray-os-api`.
+
+Every application that opens anything (MainFrame's links, the IDE's "show in folder", Rasterware handing off) will
+write the same call and the same "could not open" wording. A framework job for it, `Open(target)` answered by
+`Opened(target, problem)`, would be the message-model shape of what `Links` already does.
+
+## FN-5 · Keys typed straight after a chord that moves the keyboard land where it was 🔬 (fixed 2026-11-04)
 
-`--capture` and a test both want to put the application in a known state and look at it. The generated
-`VexploreWiring` holds `model`, `ui` and the rest in private fields with no accessor. `Startup` reads four system
-properties (`vexplore.folder`, `.select`, `.scope`, `.act`) and applies them after the first listing — a stand-in
-that is honest about being one. It has a second use, restoring a session, which is the only reason it is not
-purely a test seam.
-
-### FN-4 · `settle` does not wait for work that left the frame loop 🔬
-
-Listing a folder is on `Gui.offload()` and rebuilding the rail is on a handler thread. A script that clicked a row,
-`settle`d and photographed got the rail from *before* the click, every time. `settle` says so honestly in its own
-javadoc ("exact about the frame loop and the clock and blind to application work in flight"), and the workaround
-is small once known: write one status slot **last** in `Ui.show`, give it a landmark, and `await` that landmark for
-the text that means "done". `Landmarks.ITEMS` and `Landmarks.SELECTED` are those. It works and it is a convention
-every application would have to reinvent; `Lanes` knows its queue depth, so `settle` could know too.
-
-### FN-5 · The layout has no wrapping row 🔬
-
-Chips want to flow: as many as fit, then a new line. `FlexLayout` has `Direction`, `Justify` and `AlignItems` and
-no wrap, so the rail counts chips two to a row. It works because the chips are the same size whatever they say,
-and it is exactly the kind of number that is right at one zoom and wrong at another.
-
-### FN-6 · The design system names colours the palette's ladders cannot reach 🔬💡
-
-The Vexplore design system (violet, about 258°) gives every surface its own token. `Look` reads the palette's
-anchors from those tokens and steps the ladder 0.03 from `bg-0`, so the framework's levels land within 0.01 of
-the matching tokens; `LookTest` pins each gap. Violet is both `accent` and `action`, because a chosen chip and the
-primary button are both the user's choice. Amber (`anchor`) is provenance only and is not in the palette at all.
-The tokens that sit between rungs (`bg-1` as the list, `chrome` darker than the list, `rail`, `card`,
-`line-strong`, the two row washes, amber) are `Role`s in `Look`, named after their tokens.
-
-What the palette cannot fix, because a widget names the role:
-
-- **List and tree bodies are `WELL`**, one rung *below* the page (`#08060c`), where the design wants `bg-1`
-  (`#15121d`) for the list. Out-of-scope rows are darker than designed.
-- **`Button` (`SECONDARY`) borders are `EDGE`** (rung 6). The design's `line-strong` is 3:1 against every surface,
-  about rung 13, so chip edges are fainter than designed.
-- **A chosen toggle fills with `HIGHLIGHT`**, the accent at 35% alpha. The design wants an opaque `accent-fill`
-  with a `text-bright` label ("interactive means opaque").
-- **A disabled button keeps a `LINE` border.** The design wants it to blend into its panel, with no border.
-- **A row has no edge marker**, so the anchor row's 3px amber `anchor-edge` is not drawn. It has the
-  `anchor-wash` fill only.
-
-Each wants a role the widget asks for by purpose (a control's edge, a chosen fill, a list body), so an
-application can point it at a token.
-
-### FN-7 · `Table` could not be styled, and marks did not exist 🔬 — **partly fixed**
-
-Fixed: `Table.headers(face, size, ink)`, `Table.onSort(...)`, and `ListView.marked(...)` with
-`looks(selected, marked)`. A mark is a fill that is not a selection, and without it the choice was to preview a
-suggestion by *selecting* it, which the design rules out. Still missing: a hairline between rows.
-
-### FN-8 · No resize cursor 🔬
-
-Known (`vexelray-gui/docs/plans/todo.md` §4.2). Two widgets now use `GRAB` for a divider: `Table`'s column grip and
-`SplitPane`.
-
-### FN-9 · The template ships what the docs retire 🔬
-
-`Capture.java` is in the generated project; `vexelray-gui/docs/reference/automation-cli.md` §2 calls per-application
-`--capture` "correct about the chrome and silently wrong about the content" and retires it. Vexplore has no
-marched viewport, so its capture is right, and it was the fastest way to see a layout — but `ottermate`'s `shot`,
-which is the replacement, worked at once and is what the scene ladder should use. The two documents disagree about
-which to reach for, and a new project follows the template.
-
-### FN-10 · Starting a project has no documented route that works today 🔬
-
-The framework README describes what a project looks like and never how to get one. `new vexel-desktop` lives in
-`mainframe`, and `mainframe-dist`'s jar on disk fails with `NoClassDefFoundError: Desktop$Apps`. The way that worked
-was a twenty-five-line Java program against `vexelray-framework-template`'s `Catalogue`, `Answers`, `Scaffold` and
-`Blueprint.Writing` — the same calls the acceptance test's `Support.generate` makes. It should be a `main` in the
-template module, or a script beside it.
-
-### FN-11 · The generated `.gitignore` ignores every PNG 🔬
-
-It means to ignore captures. A project with a `docs/` folder of screenshots (this one is built *from* some) loses
-them silently. `!docs/**/*.png` is appended here. Better for the template to ignore `capture*.png` and `target/`.
-
-## Milestone 2 (actions and modifier keys)
-
-### FN-12 · The processor earned its keep, and then there was no sanctioned way to say "give this a window later" 🔬💡
-
-Two compile errors, both right. A `@Provides` returning a record is "the smell rather than the exception", and a part
-taking `GuiApp` has to be `@MainThread` itself. The second is the design working: the folder dialog needs the window
-handle, and a part that took `GuiApp` would put `Ui` in the window's phase, after which a headless capture could not
-build the tree. What worked is the shape the framework README shows for a clipboard: a part in the tree's phase
-(`Chooser`) and a `@MainThread @Provides AutoCloseable` that binds it to the window when one exists and un-binds on
-close. It is the right shape and a little roundabout for something every dialog-using application will need; a
-`GuiApp`-phase `@Provides` that returns "a thing to call when the window exists" would say it directly.
-
-**Update, 2026-10-11: the dialog half is fixed upstream.** The folder dialog is the framework's `Dialogs`, which a
-recipe takes in any phase and which hold a question until there is a window, so `Chooser` and its binding are gone and
-`Actor` asks `dialogs.openFolder(...)`. The late binding is left only for `Textures`, which needs the device.
-
-### FN-13 · A held modifier cannot be driven from outside 🔬
-
-The design's centre is Shift and Control as intent signals, and `ottermate key` is press-and-release, so the
-behaviour is verified by unit tests of the pure engine (`IntentsTest`) and by captures with `-Dvexplore.hold=`. A
-`keydown <KEY>` / `keyup <KEY>` pair on the automation socket would let a scene hold Shift, click the second file and
-photograph the range the rail proposed. `Gui.modifiers()` itself worked first time and needed nothing.
-
-### FN-14 · `await` on a landmark is how a scene waits, and it only works when something changes text 🔬
-
-`await <landmark> <text>` is what made scenes deterministic, and `click <landmark>` (which takes a name, not only a
-ref) is what made them independent of layout. Both needed the application to give the thing a landmark and to make
-the state change visible as text: the card's primary button reads "Choose where to move", then "Move 9 files", so a
-scene can await the choice. That is a good discipline and an accident of this application; `await <landmark>` with no
-text (for "it exists") and a way to wait for the handler and offload lanes to drain (FN-4) would make it the
-default rather than a habit.
-
-### FN-15 · Everything else about building actions went to plan
-
-Worth recording what did not hurt: `Gui.offload()` for disk work landing back through the model, the model's
-single committer, `Gui.modifiers()`, `Gui.shortcut(Key.Z, ..., Modifier.CONTROL)`, and `Button` all did what their
-documentation said. `Plan` as a value the card draws and `Operations.execute` carries out meant the "state the effect
-first" rule fell out of the types: the card cannot describe something the action will not do, because it is the same
-object.
-
-## Milestone 4 (image previews)
-
-### FN-16 · There is no box that keeps its aspect ratio 🔬
-
-An image wants to be shown whole, at its own aspect, as large as the dock allows. `Length` has no aspect-ratio
-unit and a node cannot size one axis from the other, so the picture sits in a well that fills the dock, `Gui.onResize`
-reports the well's content box, and the picture is sized in `Length.percent` of it, recomputed on every resize.
-Percent was the right unit because it needs neither the density nor a pixel length, which `Length` deliberately
-lacks. It works and it is a dozen lines every image viewer, video surface and thumbnail grid will write again. A
-`Node.aspect(w, h)` (contain-fit inside whatever the flex gives it) would make it a declaration.
-
-### FN-17 · Two late-bound parts cannot each have their own window binding 🔬
-
-`Textures` needs the window for the same reason `Chooser` does (FN-12), so it got the same shape: a tree-phase part
-and a `@MainThread @Provides AutoCloseable` that binds it. The processor then refused the build, rightly, because two
-providers of `AutoCloseable` is an ambiguity. The fix was one `windowBinding` that binds both. Fine for two; it means
-every future late-bound part edits one shared method rather than declaring its own binding beside itself. This is
-FN-12's "give this a window later" provider again, with a second witness.
-
-**Update, 2026-10-11:** `windowBinding` binds only `Textures` now (and, since the viewer became a named `Window`, no
-longer the viewer either): the folder dialog is the framework's `Dialogs`. Pix's binding still holds two parts.
-
-**Update, 2026-10-11, later:** `windowBinding` is gone. `Textures` moved to `vexelray-codec`, whose `ImageStarter`
-provides it (a `@Default`) and binds it in a provider of its own type, `Textures.Binding`, so it takes no
-`AutoCloseable` slot. That is the shape this note asked for: a late-bound part declaring its own binding beside
-itself. Pix's binding now only switches its viewer on, and takes `Textures.Binding` to be ordered after it.
-
-### FN-18 · A scene cannot photograph an animation 🔬
-
-`settle` errors after 10 s while an animation runs, which its message says and which is right. What it leaves is no
-way to wait *a while* and then shoot: the workaround was an `await` on text that never appears, which waits out its
-30 s and fails. Seen and not pinned down: after a `settle` that timed out, the shot showed the GIF's first frame both
-times, while after an idle 30 s `await` the animation had stepped 300 times. Whether `settle` holds the clock while it
-waits is worth checking in `vexelray-gui-automation`; a `wait <ms>` verb would remove the need either way.
-
-### FN-19 · Pixels in, texture out, texture back: the image path worked as documented
-
-`imagelib-wrapper` decoded every format tried, across the native boundary, in the JVM and in tests. `GuiApp.texture`,
-`Node.image(image, ImageRegion.cell(...))` and `GuiApp.release` did exactly what their Javadoc said, and the one
-thing `release` asks of an application (stop naming the texture first) is what the dock does anyway when it leaves the
-image tier. An animation as one sheet and a moving region needed no per-frame upload, as promised.
-
-## Milestone 4 (the image viewer)
-
-### FN-20 · A selection pushed into a list comes back as if the user had made it 🔬
-
-`SelectionModel.set` is documented as the application's way in ("following a change somewhere else in the model")
-and it notifies `onChange` exactly as a click does. Vexplore's list forwards `onChange` to the model, and the model
-pushes its selection into the list, so every outside change made a round trip. It was harmless until something
-changed the selection faster than the trip: the viewer, stepping on a held arrow key, had each step undone by the
-list repeating the one before it (20 presses moved 6 to 10 places). The fix is a thread-local guard around the push.
-A `set` that does not announce, or an `onChange` that is told whether the user made the change, would make the
-loop impossible to write rather than easy to guard.
-
-### FN-21 · A checkerboard needs either a repeating sampler or a few thousand marks 🔬
-
-Every texture is sampled linear-clamp, so a small checker texture cannot tile with a UV region past 1. The
-checkerboard is therefore a `Sketch` of fills on a box behind the picture, rebuilt when the box changes size
-(about 7,000 squares for a full-window picture). It draws correctly and costs one picture value per resize. A
-repeat-addressed sampler as a texture option, or a pattern fill in the draw lane, would make it one quad.
-
-### FN-22 · A window opened by a click is not in `windows` until a frame later 🔬
-
-`click popout` then `windows` lists only the main window: the open is posted and happens at the top of the next
-iteration. `settle` between them is enough. A script has no way to say "await window viewer"; with one, opening a
-window would be as easy to script as awaiting a landmark.
-
-### FN-23 · A second window was cheap
-
-The viewer is `Popout`'s recipe applied by hand: its own `Gui` on the host's lanes, the application's `Appearance`,
-a `TitleBar` composed onto the `WindowSpec` with `commands`, and `GuiApp.window(key, spec)`, which made opening it
-twice raise the one that exists. Textures uploaded for the main window drew in the viewer unchanged, the krono
-clock animated nodes in either tree, and `GuiApp.release` already looked in every window before closing anything.
-
-**Update, 2026-10-11:** it is not by hand any more. The viewer is `windows.named(Viewer.DECLARED)`: the framework
-builds its tree and claims the window, with the mark, the bar's controls and its placement remembered under
-`"viewer"`, and its open and close work hangs off the window's `onOpened` and `onClosed`.
-
-## The viewer, redesigned
-
-### FN-24 · A control that is an icon over a word has to be built from parts 🔬
-
-The redesigned viewer makes every control the same square, an icon over a label, so nothing is icon-only. `Button` is
-one text node with no icon and no content of its own, and there is no UI icon set: `vexelray-icons` holds application
-marks, and the fonts have no star, rotate or cross (`×` and `‹ ›` are there). So `Tile` is `Popout.button`'s recipe
-again (a box, `onClick`, `onState` for hover, `focusable`, `cursor`, and Enter and Space claimed while focused), and
-`Icons` draws each icon as `Sketch` strokes on a 24-unit grid, redrawn when its box changes size. Every application
-with a toolbar will write both. A `Button` that takes an icon node (or any content), and a small stroke icon set in the
-draw lane, would make them declarations.
-
-### FN-25 · The renderer draws flat boxes, so a lit design has to be faked or wait 🔬
-
-The redesign is lit: radial glows, gradients, a blurred copy of the picture behind it, coloured shadows, glass with a
-specular highlight. The engine draws a rounded box with one solid fill, one uniform border, a drop shadow in the
-theme's colour at a fixed offset, and the `lit` bevel; `architecture.md` defers blur and bloom, and lists scale,
-rotation and tint as not built. The first pass is therefore flat by choice. What would be needed, cheapest first:
-gradient fills (a 1×N texture stretched over a box works today, at one upload per gradient), a shadow or glow colour
-per node, image tint and opacity, and a blurred sample of a texture (or a downscaled copy made on the CPU, which also
-works today). Rotation for the viewer's Rotate is the same gap.
-
-### FN-26 · Nothing can hide the cursor 🔬
-
-A viewer at rest hides its controls and the pointer. `CursorShape` has no `NONE`, and the native window maps only an
-arrow, a text beam and the resize cursors; the cursor is hidden only during a pointer-locked drag. The bar fades and
-the arrow stays. A `CursorShape.HIDDEN` on a node would cover it. Related: fading the bar on idle reads pointer moves
-off the input bus, since there is no per-node move hook, and the framework's own rule is that nothing appears on hover.
-This is a fade after *no* input, which brings the bar back on any input, so it is kept; worth a word in that rule.
-
-### FN-27 · Motion has no "reduce" switch 🔬
-
-The viewer's step now slides and fades its picture and glides its filmstrip, about a quarter of a second each. There
-is nowhere to ask whether the person wants less motion: no setting in the framework, and nothing read from the OS's
-own (Windows' "Show animations"). Each application that animates will invent its own flag. A `Gui.reducedMotion()`
-state, fed from the OS, that `KronoGui.ramp` and `animate` honour by jumping to the end, would cover every one.
-
-## The row menu
-
-### FN-28 · `ListView` had no context menu 🔬 — **fixed, in `vexelray-gui-widget`**
-
-`TreeView` and `Tabs` each give their rows a menu with the item in hand; `ListView`, and so `Table`, did not, and its
-rows are built and dropped as they scroll, so an application cannot attach one per row and keep it. `ListView` now has
-`onContextMenu(BiConsumer<T, MenuSink>)`, held by the list and asked by each row. A right click selects the row first,
-unless it is already part of the selection (then the menu is about all of it), and only on a list that has a menu,
-so a `Select`'s options are not chosen by one. A `Table` reaches it through `rows()`.
-
-Not a framework matter but worth recording: the design says nothing may cover the file list, and a context menu does,
-for as long as the user holds it open. It is the user's own request at the user's pointer, which is what the rule
-exists to protect, so it is kept.
-
-## The v0.2 port inventory
-
-Written 2026-10-27, before the port, so that what Vexplore needs is on the table while the API is still moving. VexelRay
-0.2 is the message model (`Documents/Spike/ROADMAP.md`): every part talks by messages, a widget says what happened on a
-topic, slow work is a `@Job`, and application code never runs on the main thread. Checked against the spike's `v0.2`
-branches as they stood: `vexelray-gui` at `3a3ddb9` (phase 3, steps 1 to 7) and `vexelray-framework` at `96af105`.
-Phases 4 (the processor's checks, `Outbox`) and 5 (the shell) are not built, so what they replace is the roadmap's
-plan, not code. **Vexplore is not on the roadmap's phase 8 list** (scheduler, calculator, text editor, mainframe); it
-should be, after the text editor, since it reaches more of the widget library than the others.
-
-Line numbers are `vexplore/src/main/java/dev/sibarum/vexplore/` at the commit that adds this section.
-
-### Removed outright
-
-| What | Call sites | What replaces it |
-| --- | --- | --- |
-| `Gui.offload()` | `Actor:348`, `Browser:122`, `Destinator:96`, `Opener:68, 77, 89, 111, 140`, `Previewer:138`, `Ui:261` | A `@Job` per kind of disk work: a request topic and a reply topic, the reply landing at the next tick. Each lambda becomes a request record and a reply record. `Model.listed` is already the reply half for a listing |
-| `Gui.offload()` passed as an `Executor` | `FolderPane:45`, `Ui:126` (`Routes.standard`), so `Routes:47, 54, 64, 93, 104` | `Routes` stops taking an `Executor`; opening a file becomes a request to the job that does it |
-| `TreeView.Source` | `Ui:320` (`roots`, `label`, `hasChildren`, `children`) | `new TreeView<>(gui, "places")`, which asks on `TreeView.CHILDREN_WANTED` and is answered on `TreeView.CHILDREN` with `Entry(item, label, icon, branch, acceptsChildren)`. `children` lists the disk, so the answer is a job's. `hasChildren`'s rule for hosts (not opened until connected) moves into `branch` |
-| `SelectionModel.onChange` | `FolderPane:66`, `Ui:394` | `Table.SELECTED` (state: the last selection in a frame), heard with `gui.mailbox(Table.SELECTED, table.address(), …)`. `chosen` is `Set<Object>`, so the `Entry` type is cast back |
-| `Button.onPress` | `Dock:126`, `RailView:190, 192, 366, 376, 378, 441, 456, 472, 546, 550` | `Button.PRESSED`, an edge carrying the button's address. Every button needs a name unique in its tree; `RailView:376–378` names one per mark, so the mark's name goes into the address |
-| `Button.onToggle` | `RailView:536, 639, 656`, `Ui:155` | `Button.TOGGLED`, an edge with `pressed`. `Button.show` still sets a chip without announcing it |
-| `Breadcrumb.onNavigate` | `FolderPane:48`, `Ui:133` | `Breadcrumb.NAVIGATED`, carrying the item |
-| `TextField.onSubmit` | `RailView:188, 314, 328, 491` | `TextField.SUBMITTED`, carrying the text. Three of the four fields are the rail's and are rebuilt, so their names have to stay stable across rebuilds |
-| `ListView.onActivate` (via `table.rows()`) | `FolderPane:69`, `Ui:400` | `ListView.ACTIVATED`, addressed to the table's rows |
-| `TreeView.onSelect` | `Ui:353` | `TreeView.SELECTED` (state). If a click should navigate but an arrow key should not, `TreeView.CLICKED` is the one |
-| `Table.onSort` | `Ui:402` | `Table.SORTED`, carrying column and direction |
-
-### Still there in the spike, owed to T7.2's walk
-
-The spike keeps these as the widget library's own and says a view may lose them when T7.2's API walk decides what a
-view can reach. Each has a message form already; moving to it now costs nothing later.
-
-| What | Call sites | The message form |
-| --- | --- | --- |
-| `Gui.shortcut(Key, Runnable, Modifier...)` | `Recipes:155–160` (the zoom keys) | `Gui.shortcut(chord, sender, message)`. The zoom itself is the GUI's own, so this may stay the library's |
-| `Gui.claim(node, chord, scope, Runnable)` | `Lens:85, 86` | `Gui.claim(node, chord, scope, sender, message)` |
-| `Gui.onClick` | `Lens:84`, `OpenMenu:79` | `Gui.hear(node, NodeEvent.CLICK, stage)` |
-| `Gui.onState` | `Lens:87`, `OpenMenu:80` | `Gui.hear(node, NodeEvent.STATE, stage)`, last per node in a frame |
-| `Gui.onResize` | `Lens:80` | `Gui.hear(node, NodeEvent.RESIZE, stage)`, heard a frame after the layout that made it (FN-16's picture would lag a frame on a resize) |
-| `Gui.onResizeUi` | `OpenMenu:78` | The same; the `Ui` and plain pairs are to be merged |
-| `MenuItem.of(…, Runnable)` | `OpenMenu:104, 106, 111, 115, 123, 125` | `Menu`'s `item(label, sender, message)` with `Gui.menu(node, menu)` |
-| `ListView.onContextMenu` | `Ui:399` (the row menu, FN-28) | None yet: the menu source is a function, owed with T7.2 |
-| `ListView.draggable`, `droppable` | `Drops:56, 57` | None yet. `droppable`'s receiver runs in the frame and asks `Actor` for a plan; the roadmap built no declared drop zone because no witness dropped onto anything but a library container. **Vexplore is that witness** |
-| `Gui.undo(History)` | `RailView:366` | Unchanged so far; the undo feedback goes with the shell in phase 5 |
-| `Gui.modifiers()` (a `State`) | `Recipes:119` | Unchanged in the spike. Held modifiers are input, so probably a state topic once phase 4 lands |
-
-### The shell, phase 5 (planned, not built)
-
-| What | Call sites | What the roadmap plans |
-| --- | --- | --- |
-| `Dialogs.openFolder(start, then, cancelled)` | `Actor:317, 325` | `PickFile` / `Picked` topics |
-| `Window.onOpened`, `onClosed` | `Viewer:81, 87` | Open, close and focus published as messages |
-
-### Vexplore's own threading, which phase 4 would refuse
-
-Phase 4 makes the processor refuse `volatile`, `Atomic*`, `java.util.concurrent` and functional-interface fields in a
-component. Today every one of these exists because a handler or an offload thread writes what the frame reads.
-
-- **`synchronized`:** `Destinator:52, 86`, `Dock:81`, `FolderPane:102`, `Hosts:56`, `Model:134` (FN-2's gate),
-  `Previewer:79, 113, 149, 174`, `RailView:97`, `Ui:546`.
-- **`volatile`:** `Destinator:32`, `FolderPane:40`, `Lens:60–68` (eight), `OpenMenu:55`, `Previewer:57, 58`,
-  `Ui:98, 100, 108, 111`, `Viewer:51`.
-- **`java.util.concurrent`:** `Actor:19, 46`, `Lens:24`, `Routes:10`.
-- **The model's listeners:** `Model.onChange` over `State.onCommit` (`Model:133`), heard at `Destinator:37`,
-  `FolderPane:79`, `Previewer:67`, `Recipes:115`, `Viewer:74`. In 0.2 `Model` is a component and the document is a
-  state topic, so FN-2's lock and version check go: one logic lane cannot deliver out of order. FN-20's thread-local
-  guard should go too, once a pushed selection is confirmed not to come back on `Table.SELECTED`.
-- **Not Vexplore's to port:** `remote/` (`RemoteFileSystem`, `RemoteProvider`, `Sftp`) keeps its locks and its reader
-  thread; it is I/O behind a job, the roadmap's "infrastructure, not an offence". `PictureViewer.Host`
-  (`Viewer:58`) is `vex-suite-common`'s, and moves when the suite does.
-
-### What can be done before the merge
-
-None of the message APIs exist on `develop`, so nothing above can be written against them yet. What survives the
-port, written now: each offload lambda turned into a function from a request record to a reply record, landed
-through `Model` the way `listed` is; and the tree's rows built as plain data from a `Place`, so the switch from
-`Source` to `CHILDREN` is small. Do not move Vexplore's poms to `0.2.0-SNAPSHOT` before the merge: the spike installs
-`vexelray-framework` and `vexelray-gui` at that version into the shared `~/.m2`.
+*Fixed in vexelray-gui, without the declaration proposed below: a chord that sends a message holds back the rest of
+that frame's input and delivers it at the start of the next, by when the view has heard the message and moved the
+keyboard (`InputDispatcher.holdRest`, held by `FocusHandOnTest`). Every application gets it with nothing to declare.
+Driven again with no `settle` between `key CTRL+L` and `type C:/Users/User/Documents`: the field got every
+character. Scripts no longer need that `settle`. Kept below as found.*
+
+Ctrl+L is declared as a chord that sends an `Intent`; the view hears it in the next frame and focuses the path
+field. Keystrokes that arrive before that frame go to whatever had the keyboard. Driven by ottermate with no
+`settle` between `key CTRL+L` and `type C:/Users/...`, the first three characters reached the list, the field got
+`Users/...`, and the explorer resolved it against the folder shown. With a `settle` between them the field gets
+every character. A person is rarely that fast, but a fast typist's Ctrl+L and first letter can share a frame.
+
+Nothing was worked around; scripts settle after a chord that moves focus. A chord that is declared as "focus this
+node" (rather than a message the view acts on a frame later) would let the dispatcher move the keyboard before the
+next key is routed, which is the only order that cannot lose a character.
+
+## FN-6 · A status bar's slots overrun each other 🔬
+
+`StatusBar`'s left and right rows never shrink or clip, so a long message on the right is drawn over the counts on
+the left (`0 itemsNothing at C:\...`). The application cannot bound a slot: `minWidth` reserves room but nothing
+caps it. Vexplore's messages name a folder rather than its whole path where the breadcrumb already says where it
+is; "Nothing at" still carries the typed path, since that is what was wrong. The bar could give its right side
+what is left after the left and clip there, as a breadcrumb folds its far end.
+
+## FN-7 · A chip flips itself before the model answers 🔬
+
+The rail's Select row is one-of-several: exactly one chip is picked, and which is the explorer's call (a pick that no
+longer applies falls back to the selection). `Button.toggle` is the library's chip, and a click flips its own pressed
+state and publishes `TOGGLED` before anything has decided. So a picked chip clicked again goes dark, though nothing
+changed, and a new chip lights beside the old one until the explorer's answer arrives. `RailPanel` puts a picked
+Select or Condition chip back at once, in the frame of the click, and the explorer re-sends the whole rail on every
+`Picked`, even one that changed nothing, so every chip is shown as the model has it. Each chip is also
+`undoable(false)`: as an undo step, Ctrl+Z would flip a chip with no model behind it.
+
+**For the framework:** a chip that asks rather than flips: a press published as `PRESSED` with the chip left as it
+is, for `show` to set. Or a chip group whose one-of-N is the widget's, as `Segment` is, but laid out in lines. Every
+filter bar whose model can refuse or redirect a pick meets it.
+
+## FN-8 · A table's growing column has no minimum of its own 🔬
+
+NAME is the list's `grow(1)` column, and TYPE, SIZE and MODIFIED are rem. `Table` floors every column at its own
+1.5 rem and gives the growing one what the fixed ones leave. So in a narrow list the name, which is what a row is for,
+is the column that goes, down to its icon. Measured: a 772 px window at zoom 1, with the tree and the rail beside it,
+left NAME 1.5 rem and every other column whole. At 1024 px and above it does not show. Nothing was worked around: no
+width given to the other three survives a narrow enough window, and the rail's share (FN-2) already gives the list two
+thirds of what the tree leaves.
+
+Two Folders (M6) meets it at every width: two lists share what one had, and at 1440 px with the places and the rail
+beside them each is about 390 px, so NAME is its icon in both. Taking the tree away for Orbit's places (M8) gave back
+50 px, not enough.
+
+**For the framework:** a minimum per column (`Column.of(..., Length.grow(1)).min(Length.rem(12))`), with the fixed
+columns giving way past it, last column first. Every table whose one growing column is its identity meets it.
+
+## FN-9 · Held Shift and Control have no topic 🔬 (fixed 2026-11-05)
+
+*Fixed in vexelray-framework: the explorer hears `Modifiers` for the main window, holds it in its state, and while
+Shift or Control is held the rail's Which files row is what the key proposes (`Intents`, back from 0.1), headed
+"a range" or "a rule"; choosing one makes it the selection. A drop between the two lists copies with Control held and
+moves with Shift (`DropEffect.byKeys`, 2026-11-07): the list shows it before the release, and `Dropped` carries the
+operation the drop became, so no topic of held keys races it.*
+
+The design's second principle reads a held modifier as intent: Shift held proposes where a range ends, Control held
+proposes the rule the picks are examples of. 0.1's `Intents` computed both. On 0.2 an application cannot hear which
+modifiers are held: `Seams.modifiers()` is the widget library's, and the roadmap's step 16 left the read models with
+"no topic for these yet", to be added when a witness asks. Vexplore is that witness, and asks here. Nothing was worked
+around: the rail suggests from the selection alone, and `Intents` stays in 0.1's history until a topic exists.
+
+**For the framework:** a state topic of the modifiers held, `Modifiers(Set<Modifier>)`, published on each change, so
+a step can hold the last one and suggest within the pause before the second click.
+
+## FN-10 · A field cannot be filled once and then left to the person 🔬
+
+Rename puts a field on the rail's card holding the file's name. The rail is sent again whenever the selection or a
+pick changes, and a view that writes the field's text from each one writes over what is being typed. The view
+cannot tell whether the field was just shown (a node has `visible(boolean)` and no way to read it back) and must
+hold no state of its own. So the explorer sends `Naming(name)` once, when Rename becomes the action, and the view
+fills the field from that alone. It is a fair shape, a one-off command rather than a value, but it took a message of
+its own for what a form toolkit calls an initial value.
+
+**For the framework:** `TextField.initial(String)`, applied when the field is shown and ignored while it is, or a way
+to read a node's visibility. Every form in a panel that is re-shown from a model meets it.
+
+## FN-11 · A list's row menu cannot grey or hide an action, as a tree's can 🔬
+
+The row menu (M4, slice 4) is Open and the rail's actions, declared once with `ListView.action`. Rename is for one
+file, so with several selected it should be greyed, as the rail drops its chip. A `TreeView.Entry` carries `hidden`
+and `greyed` for exactly this ("Rename on a header, Extract on what is not an archive"), and `MenuActions.offer`
+takes both sets, but `ListView` passes `Set.of()` for each, so every row's menu is the whole list whatever is
+selected. Vexplore lists Rename always, and the explorer says `Rename is not offered for these` when it is chosen
+with several: the person is told after choosing it rather than shown before.
+
+**For the framework:** what a tree's entry has, for a list: a function from the item (and the selection, since a
+right click on a selected row is about all of it) to the ids hidden and greyed, consulted as the menu opens. Any
+list whose menu holds an action for one item meets it.
+
+## FN-12 · A list row has one mark and no tag 🔬
+
+Fresh files (M5, slice 2) tag a row that landed lately with the word *new* in amber after its name, for twenty
+seconds. `ListView.marks` is the one fact a list holds about a row that is not a choice, and the rail's reach already
+uses it (a violet wash). There is no second set, and a row's face is built once, from its item, so it cannot redraw
+itself when something other than the item changes. Vexplore's `Tags` stands in: each name cell builds its tag hidden
+or shown and hands the node over, keyed by path, and a new set shows and hides the tags of the rows realized, pruned
+by `realizedItems()`, as ListView's own javadoc asks of anything that hangs state off a row. It is `marks` again,
+written outside the list.
+
+**For the framework:** more than one marked set, each with its look, or a per-row tag the list draws: told as data,
+the whole set each time, worn by a row realized later, as `marks` is. Two-folder comparison (M6) will want a third
+(*newer here*, *only here*), so the shape is a map from a mark's name to its set and its look, rather than a second
+field.
+
+**Met again in M6, slice 3 (2026-11-03).** The comparison marks each row with its relation to the other folder, and a
+row's relation changes when the *other* folder does, never its own. `Tags` grew into the shape above: `Tags<K>`, each
+row wearing at most one key, the name cell building a node per key (six marks, all hidden but one) and the set told
+whole. Two instances per list now, *new* and the relation, beside the rail's `marks`. An icon in a cell has no name a
+script can read, so each mark's `role` is its words (`newer here`); a per-row tag the list drew would name itself.
+
+## FN-14 · A button is one label, with nothing beside it 🔬 (fixed 2026-11-07)
+
+*Fixed in vexelray-gui: a `Button` is a row holding its words and a badge, `Button.badge(String)`, inside its press, its
+focus and its look, and accent while a chip is pressed. The rail's pills carry their counts in it. Nothing outside a
+button styles its text now; the overrides that did all set the default except the marks' smaller size, which is gone.*
+
+Orbit's rail (M8, slice 3) draws each *Which files* and *Only if* pill as its words with the count in a badge at its
+far end, the badge violet while the pill is picked. `Button` is a text node with the button's role: its label is all
+it holds, so a badge cannot sit inside it, and a badge laid beside it would not be part of what is pressed, lit or
+focused. Vexplore keeps the count after the words, `Just this file · 1`, as it did before Orbit.
+
+**For the framework:** a button with a trailing slot (`Button.trailing(Node)` or a `badge(String)`), inside its press,
+its focus and its pressed look. A chip with a count, a tab with a number, a menu item with a shortcut all meet it.
+
+## FN-15 · A button cannot open a menu 🔬 (fixed 2026-11-07)
+
+*Fixed in vexelray-gui: `Button.menu(Menu)` and `IconButton.menu(Menu)` drop a declared menu from the button on a
+left click, Enter or Space. Open with is one now, so its left click names the two programs; the left click that
+opened what suits the file is gone.*
+
+Orbit's preview strip (M8, slice 4) has *Open with*: a button whose menu names the program, Rasterware or the
+desktop's own. An application declares a menu only as a node's context menu (`Gui.menu`, opened by a right click);
+opening one from a left click is `Seams.openMenu`, which is the widget library's and the host's, and which a `@View`
+may not import (threading.md, T7.2). Vexplore's *Open with* opens the file with the program that suits it on a left
+click (Rasterware for a picture or a video, else the desktop's), and declares the two programs as its context menu, so
+a right click names one. A person who does not think to right-click never sees the choice.
+
+**For the framework:** a menu button, declared as a context menu is (`Gui.menuButton(node, menu)`, or
+`Button.menu(Menu)`): the menu opens under the button on a left click, Enter or Space, and closes as a context menu
+does. Every *Open with*, *Sort by* and overflow button meets it.
+
+## FN-16 · A source's sender cannot be a lambda in a test 🔬 (fixed 2026-11-07)
+
+*Fixed in atchung: `Sender.collecting(topic, list)` adds each send to the list at once, with no bus, tick or inbox.
+`CheckSameTest` and `WatchFolderTest` use it. A list rather than a `Consumer`, so a sender stays no callback (T7.2).*
+
+`CheckSame` (M6, slice 4) is a `@Source` that sends a count as it reads, through a `Sender<Checking>` it is built
+with. A test that wants to run it on a temporary folder and read the count cannot hand it `counted::add`: `Sender` is
+not a functional interface. The test builds a bus, a tick, an inbox subscribed before the run, and
+`Sender.outside(bus, topic, Cause.source(...))`, and runs the tick after it, the shape `WatchFolderTest` already
+wrote. Six lines to say "collect what it sends".
+
+**For the framework:** a test sender, `Sender.collecting(List<T>)` or `Sender.of(Consumer<T>)`, that delivers to the
+consumer at once with no bus. Every source and every job with a progress topic meets it in its test.
+
+## FN-17 · A table's sort is the widget's alone 🔬 (no gap, 2026-11-07)
+
+*Not a gap, and the note below was wrong: `Table` already says its order after every change, header clicks included
+(`Table.SORTED`, a column and a direction). Written before reading `Table`. What was missing was Vexplore's: the view
+now tells the explorer as `Ordered`, each list keeps its `Order`, the table sorts by `Order`'s own comparators, and
+`Intents` reasons over the rows as shown.*
+
+Shift held proposes where a range ends, "down to the end of this run", which is an order: the list's, as the person
+sees it. `Table` sorts on a header click and says nothing of it, so the explorer has only the listing's order, and
+`Intents` reasons in that. A person who has sorted by size and holds Shift is offered a run they cannot see. Nothing
+was worked around: the proposals are in the listing's order, and say so in `Intents`' javadoc.
+
+**For the framework:** the table says its order when it changes (`Table.SORTED`, the column's key and a direction),
+so a part that reasons about what is next to what reasons in the order shown.

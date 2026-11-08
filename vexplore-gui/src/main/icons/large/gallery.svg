@@ -1,0 +1,16 @@
+<svg color="#e9ecf2" width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<mask id="uclgallery_1m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+<rect width="64" height="64" fill="#000"/>
+<g transform="scale(4)">
+<rect x="2" y="2" width="5.25" height="5.25" rx="1.25" fill="#fff"/>
+<rect x="8.75" y="2" width="5.25" height="5.25" rx="1.25" fill="#fff"/>
+<rect x="2" y="8.75" width="5.25" height="5.25" rx="1.25" fill="#fff"/>
+<rect x="8.75" y="8.75" width="5.25" height="5.25" rx="1.25" fill="#fff"/>
+</g>
+</mask>
+</defs>
+<g mask="url(#uclgallery_1m)">
+<rect width="64" height="64" fill="currentColor"/>
+</g>
+</svg>

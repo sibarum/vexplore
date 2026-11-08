@@ -1,258 +1,43 @@
 # TODO
 
-What is known about and not done, ordered by what the design says matters most. Delete an entry when it is done
-rather than ticking it. Anything that is a *framework* difficulty is written down in
-[`vexelray-framework/docs/TODO.md`](../../vexelray-framework/docs/TODO.md) (and summarised in
-[framework-notes.md](framework-notes.md)); this file is Vexplore's own work.
+Work on **Vexplore** that is known about and not done. Distinct from
+[framework-notes.md](framework-notes.md), which is about the framework rather than about this application —
+if the fix belongs upstream, it goes there instead.
 
-[docs/design/README.md](design/README.md) holds the principles and they are the requirements; the mockups are one
-drawing of them. Where this list reprioritises the design, it says so.
+Keep an entry short enough that it does not need editing, and delete it when it is done rather than ticking it.
 
-## Left over from milestone 2
+## Next
 
-- [ ] **Watch a person use the folder dialog.** *Choose folder…* posts `FileDialog.pickFolder` to the GUI thread
-      through `Chooser` and waits on the answer. It compiles, the processor accepted the binding, and nothing has
-      ever opened it: a native dialog cannot be clicked from `ottermate`. Until somebody has, treat it as unverified.
-      Also unknown, and now worth checking by hand: whether the NFD library loader is happy in the native `.exe`
-      (2026-10-05: the exe builds and runs, and this dialog was never opened in it).
+The v0.2 rebuild starts from the template, and 0.1's features come back one slice at a time, in the order in
+[rebuild.md](rebuild.md). M0 to M5 are done.
 
-## The suite: being started by, and starting, the other apps
+- [ ] **M6 to M8** and packaging, as [rebuild.md](rebuild.md) lists them. M8 is the redesign: one of the three
+      directions on the *Vexplore Redesign* canvas, chosen first.
 
-Vexplore, mainframe and the text editor install separately and are meant to start each other, each as a **new
-process and a new window**. The framework side (finding a sibling, the helper) is in
-[`vexelray-framework/docs/TODO.md`](../../vexelray-framework/docs/TODO.md); this is what Vexplore itself owes.
+## Later
 
-- [ ] **Only a launch with no arguments may restore or write saved state.** The same rule as the text editor's. A
-      Vexplore started with a folder or file (`vexplore <path>`, which is how the editor's *Open in Vexplore* starts
-      it) should start clean and save nothing, or two windows overwrite each other's window placement and settings.
-      Vexplore keeps no session of its own yet, so what is left is upstream: window placement is the framework's
-      `WindowMemory` and shares `Settings` with everything else (*Settings and the session* in the framework TODO).
-      Marks, once they survive a restart (below), are session state and follow the same rule.
-- [ ] ***Open with* on a row.** The row menu (`Ui.rowMenu`) has Open, View, Open in VexelRay IDE, the staged actions and
-      Copy path / name. *Open with* would be Windows' own chooser (`rundll32 shell32.dll,OpenAs_RunDLL <file>`);
-      unbuilt, and unverified from a native exe. *Show in Explorer* (`explorer /select,<file>`) is the same kind of
-      call.
-- [ ] **Two running windows share one log directory.** The native exe writes `vexplore.log` and
-      `vexplore-probe.csv` under `~/.vexplore/logs`. Unchecked whether two processes at once overwrite or
-      interleave them; spawned windows make that normal, not rare.
-- [ ] **The native `.exe` has only been exercised on the paths its metadata was traced with.** Over the automation
-      socket it was shown to render, take a screenshot and respond to clicks (rows, suggestions, the hex preview).
-      Not exercised in the exe: the 02-move and 03-delete-and-mark scenes, the folder dialog, the screenshot-save
-      dialog and `--capture`. A missing FFM descriptor or reflection entry shows only when its path runs (the first
-      build died at startup on one). Run the scenes against the exe, and re-trace after a change that adds a new
-      kind of call. The metadata is in the app for now and belongs upstream (framework TODO, *native-image
-      metadata*).
-- [ ] **Rename by pattern.** One name at a time is built (`Plan.rename`, the card's name field). Several at once,
-      by pattern (prefix, counter, change extension), with the plan listing every `old -> new` before anything
-      runs: `Plan.Kind.RENAME` already carries the steps, so it is a pattern editor and not a new idea.
-- [ ] **Marks survive a restart.** They are in memory. `Settings` is the place, beside window memory. A mark holds
-      paths, so it should also notice that a path has gone.
-- [ ] **Undo outlives the session.** `Operations.Done` is in the document and gone on exit; the trash is not. A
-      journal file in `~/.vexplore/` would let the last day's operations be undone after a restart, and is also what
-      "recoverable by default" is honestly promising.
-- [ ] **A destination history.** Suggestions come from neighbouring folders that hold the kind. The design also
-      wants "the last folder similar files went to"; the journal above is where that is remembered.
-- [ ] **Executing needs a second look at cross-volume moves.** `moveTree` falls back to copy-then-delete when an
-      atomic move fails, which is right and has only been run on one volume. It also copies attributes but not
-      alternate streams or ACLs.
-- [ ] **Operations are not cancellable and report progress only as a count.** `Lanes.offload()` has no cancellation
-      token (framework TODO). A multi-gigabyte copy wants bytes done and a cancel beside it: `Progress` is a missing
-      widget (see [components.md](components.md)).
-- [ ] **The trash is never emptied.** Needs an age and a size limit, and a way to look inside it.
-- [ ] **Include subfolders** as a *Select* chip. It needs a recursive scan, which is the first thing that genuinely
-      wants cancellation.
-- [ ] **Modifier suggestions only know the list.** Shift reaches along the displayed order and Control along the
-      current folder. The design's "everything from this date cluster" across subfolders waits on the scan above.
-      Candidate sets are computed when the key goes down, which is fast enough at hundreds of rows and has not been
-      measured at fifty thousand; the design wants them *ready* before the key.
-- [ ] **A "finisher" for a single file with a modifier held.** The design says to offer the common moves for that
-      file. Today the Action chips are simply always there; the version that matters puts the likeliest destination
-      beside the file the moment a key goes down.
-- [ ] **A held modifier is not testable from outside.** `ottermate key` is press-and-release. A `keydown` / `keyup`
-      pair is in the framework TODO; until then the live behaviour is checked by unit tests (`IntentsTest`) and by
-      captures with `-Dvexplore.hold`.
-
-## The design's own promises, still open
-
-- [ ] **A file that landed five seconds ago is highlighted** (screen 02). Needs a `WatchService` on the shown folder,
-      a "fresh" mark in amber (`Look.ANCHOR_DIM` exists), and the *new* tag. Mark, don't select.
-- [ ] **Drag and drop as the fallback** (screen 02). **Between the two folders, built** (`Drops`, over
-      `ListView.draggable`/`droppable`): rows carried with a label, dropped on a folder row or on a list, moved or
-      copied by drive and key, undoable. Still open: a *Carrying* card at the top of the rail, likely destinations
-      listed with reasons (`Destinator` already computes them), the same numbers marked on the tree's folders, and
-      dropping onto the tree at all, which is a `TreeView` that takes a foreign payload. The rail already never
-      moves anything, so this is content, not layout.
-- [ ] **A drop is planned when it lands, not before** (`Actor.dropping`). The design's rule is that an action states
-      its effect before it runs; a drop target is asked every frame on the GUI thread and may not read a disk, so
-      what is already at the destination is found at the release and left alone, and the status line says so
-      afterwards ("· 2 left alone"). Saying it while the pointer is still moving needs the destination's names read
-      ahead, off the frame loop, as soon as the pointer enters a folder: a `Destinator` for drops.
-- [ ] **Dragging to and from other applications.** An OS file drag is `IDropTarget` in `vexelray-os`, deferred in the
-      framework (transfer.md §8). `Drops.FILES` would be offered beside a list of paths.
-- [ ] **Inline previews in rows** (screen 03): thumbnail, sparkline, waveform, first line, page count. Cheap
-      ones first: *first line* and *page count* need no decoding.
-- [ ] **Preview tiers 1 and 2.** Tier 4 (bytes) and tier 3 (text) are built and are the floor, and tier 1 has its
-      images (`imagelib-wrapper`: raster, animated, SVG). Next: CSV (a `Table`), JSON (a `TreeView`), archive listing
-      (a `TreeView`), then PDF. Executable signature info reads the PE header as bytes and runs nothing.
-- [ ] **The native executable still carries imagelib's DLL, unused.** It links imagelib's static library in (from
-      imagelib-wrapper-windows's static jar), and a `-Pnative-release` build decoded a PNG in the Preview Dock on
-      2026-11-08 without extracting the DLL. But `natives/.*` is still included as a resource, so the DLL rides along.
-- [x] **A transparent image sits on the well colour, not a checkerboard.** The viewer has five backdrops (dark,
-      light, checker, magenta, green). The dock stays on dark.
-- [ ] **A large decode runs to the end after the selection has moved on.** The Previewer is now latest-wins, so
-      arrowing through a folder decodes only where the worker comes free, not every file passed; but the one decode
-      already running still finishes. Abandoning it needs imagelib to offer a cancel, which it does not.
-- [x] **Pop out** the dock: for an image, the **viewer**, a window of its own (`Viewer`). Not `Popout`, which is a
-      panel against a window's edge; the dock is in a `SplitPane`, and what was wanted was a different view, not the
-      same panel moved.
-- [x] **Pictures go to Pix** when it is installed: Enter, double-click, and *View in Pix* in the dock and the row
-      menu start `pix <file>`. Without Pix the viewer above is kept. Its tree is `vex-suite-common`'s `PictureViewer`,
-      the same as Pix's, so the two cannot drift.
-- [ ] **Pix steps by name, the list by its sort.** A picture handed to Pix is stepped through in Pix's order, not the
-      order the list was sorted in. Saying the order needs a command-line argument both agree on.
-- [ ] **One Pix per picture.** Each hand-off starts a new Pix; a second picture could go to the Pix already open.
-- [ ] **The viewer forgets its backdrop and its size on close.** Both are per-run. A backdrop belongs in settings;
-      the window's place could go through `WindowMemory` as the main window's does.
-- [x] **The dock's picture is the control, not a Pop out button.** `Lens` draws a mat and an arrow around it,
-      never over it, that ease to the accent with the words for where it goes on hover or focus.
-- [ ] **Viewing the other tiers from the dock.** Only a picture is a control. Viewing text is the editor (VexelRay IDE), which
-      the dock already offers, so this may never be wanted.
-- [ ] **The viewer has no zoom or pan.** It fits the picture to the window and never enlarges a raster. 1:1 and a
-      drag to pan are the next thing an image viewer is asked for. The lit redesign (the *Vexplore Viewer, lit* row
-      of the design canvas) draws them as a Size menu (Fit, Fill, Width, Height, 1:1), Zoom in, Zoom out and Rotate,
-      each a `Tile` in the bar; rotation also needs the framework, which has no rotate (FN-25).
-- [ ] **The viewer's file actions.** The redesign has Favorite, Move to, Open with and Delete beside the picture.
-      Move and Delete are the `Actor`'s already (to the trash, with undo); Favorite is probably a Mark; Open with
-      does not exist anywhere yet (see *Open with on a row*). Left off the screen until they work, not shown disabled.
-- [ ] **The viewer's lighting pass. On hold (2026-10-08).** The redesign is lit: the picture's own colours glowing behind it, light
-      shafts, a vignette, a floor reflection, glass tiles with a specular highlight and a coloured glow when on. The
-      first pass is flat: solid fills, the framework's `lit` bevel and its drop shadow. Every one of the rest needs
-      something the renderer does not have (FN-25); decide whether that is generated textures here or effects
-      upstream before starting.
-- [ ] **The viewer cannot hide the cursor** when its bar fades, which the redesign's idle state wants (FN-26).
-- [ ] **Two Folders mode** (screen 05). **Two tables, built** (`FolderPane`, the top bar's *Two folders*): the
-      second folder has its own `Model` and `Browser`, takes the rail's place at the first's width, and trades rows
-      with the first by dragging. **A departure, asked for (2026-10-15):** the design keeps the rail beside both
-      panes; this swaps it out, so the two lists get equal room. Still open: a status per row, suggestions from the
-      comparison, and putting the rail back beside them once there is something for it to say about two folders;
-      the row menu, the dock and Shift/Control intent on the second folder; remembering the mode and the second
-      folder across a restart. **Open question from the design:** how "identical" is decided. Size and date are cheap; hashing is exact and slow for
-      a multi-gigabyte video. Proposal: size + date first, hash only on demand and only when they disagree in a way
-      that matters, with the row saying which it used.
-- [ ] **The tree follows the list.** Clicking a breadcrumb or opening a folder in the list changes the folder, and
-      the tree does not reveal it. `TreeView.revealPath(chain, then)` exists; it needs the tree's items to be the
-      same values as the chain's.
-- [ ] **Back / forward / up.** Alt+Left, Alt+Right, Alt+Up, Backspace. History belongs in the model.
-
-## Remote folders (SSH / SFTP)
-
-Browsing, previewing, opening, download, upload, rename, new folder and a delete into a trash on the server are
-built (README, *Remote folders*). What is not:
-
-- [ ] **Move to… and Archive between a server's own folders.** Both would work through `Files` today (a move on one
-      host is a `RENAME`), but step 4 has nowhere remote to offer: `Destinations.suggest` would list the server's
-      neighbours over the network, and the folder dialog only browses this disk. Upload offers only the remote
-      folder last shown.
-- [ ] **The server's trash is never emptied** (`.vexplore-trash` in the remote home), and if the files are on
-      another file system than home, `RENAME` fails and a delete falls back to copying through this computer and
-      then removing, which is slow and has only been reasoned about, not run.
-- [ ] **New folder is on the remote panel only.** `Actor.makeFolder` is not remote-specific; the local rail, empty,
-      has nowhere it has been decided to put the field.
-- [ ] **A transfer interrupted half-way leaves half a file.** An upload writes straight to its name; writing to
-      `name.part` and renaming at the end would make a broken one obvious and never mistaken for whole.
-- [ ] **Passwords and passphrases.** `BatchMode=yes` turns a prompt into a refusal, so a host that wants a
-      password, or a key with a passphrase and no agent, cannot be reached. A prompt would need ssh's
-      `SSH_ASKPASS` pointed at something that asks in a window, and has to keep the secret out of Vexplore.
-- [ ] **One request at a time per host.** `Sftp` is synchronized, so a large download and a preview on the same
-      host take turns, and a download is one 32 KiB round trip after another. Pipelining several READs is the
-      standard fix and roughly multiplies throughput on a slow link.
-- [ ] **A remote download cannot be cancelled** and reports progress as files, not bytes: the same gap as
-      *Operations are not cancellable* above, felt sooner over a network.
-- [ ] **An added host cannot be forgotten from the window.** New host keeps it under `remote.hosts` in
-      Vexplore's settings, and the only way out is editing that file. A *Forget* beside it (the tree's row menu is
-      the natural place) is the missing half. A host only the command line or the address field knew is still not
-      kept: only New host remembers.
-- [ ] **The tree's host rows open only once connected.** A host's chevron appears when it has connected (so that
-      drawing, or searching, the tree never connects to every host in the config). A click connects; a host that
-      refuses stays a leaf, with the reason on the rail.
-- [ ] **The cache of opened files is never emptied** (`~/.vexplore/remote`), like the trash.
-- [ ] **Remote folders are unexercised in the native `.exe`.** `ProcessBuilder` and a provider built directly need
-      no metadata, but nothing has been run there; nor has a real server been driven from the app, only Git's
-      `sftp-server` through `vexplore.sftp.server` and a real `ssh` to a host that does not exist.
-
-## Git, and browsing more than the disk
-
-From [ideas/git.md](ideas/git.md) and [ideas/providers.md](ideas/providers.md). Git status is in the file list:
-`dev.sibarum.suite.git` in `vex-suite-common` runs the `git` executable, `Browser` asks it after each listing, and
-the list's GIT column and the status line's branch show the answer. What is left:
-
-- [ ] **The Git column shows outside a repository too, blank.** The design says it should not be there at all, and
-      it takes its width from NAME, the only column that grows. `Table` cannot hide a column or change one's width
-      after it is built: a framework change, to go in the framework's TODO.
-- [ ] **The Git column does not sort.** `Order` shares each column's comparator with the suggestion engine and
-      sees only entries; the status sits beside them in the `Doc`. "Changed first" is the sort this column is for.
-- [ ] **Status is read when a folder is listed, and only then.** A `git add` at a prompt, or an edit in VexelRay IDE, shows
-      at the next navigation. The `WatchService` the *fresh file* item above needs is the same one; the watcher
-      should also look at `.git/index` and `HEAD`, which change without any file in the folder changing.
-- [ ] **The rail does not know about git yet.** *Select*: unstaged, staged, untracked, conflicted, changed in the
-      last commit, changed on this branch. *Condition*: tracked / untracked / not ignored (the design's
-      *gitignore*). The last two need `git diff --name-only` against a commit, beside `status`.
-- [ ] **Stage, unstage, and a Discard that can be undone.** Discard copies the working file to Vexplore's trash and
-      then restores, so Ctrl+Z puts it back. Through a plan, like every other action.
-- [ ] **A console showing what git ran.** `Git.Result` keeps the command, output and exit code for it. Waits on
-      the terminal emulator becoming a library (`mainframe/docs/terminal-library.md`).
-- [ ] **Git in the native `.exe` is unexercised.** It is a `ProcessBuilder`, which needs no metadata, but nothing
-      has been run there.
-- [ ] **VexelRay IDE opens at a line.** The references explorer and *Open diff in VexelRay IDE* both need `text-editor <file>:<line>`
-      (or `--line`), agreed between the two apps the way `pix <file>` was. The change is in the text editor.
-- [ ] **The Java references explorer** ([ideas/java-references.md](ideas/java-references.md)), and the provider
-      contract built by writing it: `Entry`, `Folders` and `Routes` moved from `Path` to a node only as far as it
-      needs. Then its filter chips, and the git filters that are a join of `SourceRef` with `status` and `diff`.
-
-## Details found while building
-
-- [ ] **Hovering writes to the tree over 100 times a second.** Moving the pointer around the window, and doing
-      nothing else, makes more than a hundred GUI mutations a second. Hover should cost a write when what is shown
-      changes (a row lit, a tooltip), not one per pointer event, and an idle window should make none. Pix had the
-      same fault and the fixes are in `vex-suite-common`'s `PictureViewer`: keep what each node was last written
-      and write it again only when it differs (`4110c71`, 400–600 a second down to the two that move), write
-      nothing that cannot be seen (`0c7fc12`, a faded bar's clock and seek bar), and send what changes together as
-      one batch, so a frame is one publish rather than several. Find the writers first: `@Trace` sites as in
-      `36b51cf` put each one on the probe's trace lane with the cause that ran it. Suspects are the rows' hover
-      state, `Lens`'s hover ease, and the rail, which rebuilds on every change (below).
-- [ ] **A menu from a button has no API.** The title bar's Open menu (`OpenMenu`) asks the installed
-      `MenuPresenter` directly with a `ClickEvent` made up at the button's bottom-left, because core opens menus
-      only on a right click. A `Gui.menu(node, items)` or a menu-button widget belongs upstream (framework TODO), and
-      would also own what this does not: a second click on the button closing the menu, and keyboard opening.
-- [ ] ***To compressed archive* from a move keeps the originals.** Step 4 offers it for a mixed bunch in Desktop,
-      Downloads or Documents, and pressing it switches the action to Archive, which writes a zip beside them and
-      leaves them where they were. A move means they should go: archive, then the originals to the trash, undone as
-      one. That is a new `Plan.Kind`. "Mixed" is currently *more than one kind*, which a pair of files meets.
-- [ ] **Step 4 guesses `Pictures` and `Videos` by name under the home folder.** A folder Windows has relocated (to
-      OneDrive, or another drive) is not where its name says; the known-folder API (`SHGetKnownFolderPath`) is.
-- [ ] **`Suggestions` offers "Videos over 1 GB · 2" by picking the largest round number below the selected file.**
-      Good for one file; for several selected files it uses the *smallest* one. Both are guesses; worth a look once
-      there is real use to look at.
-- [ ] **Row separators.** The mockups draw a hairline between rows; `ListView` has none. A framework change
-      (`ListView.divider(Role)`), not an app one.
-- [ ] **Type faces.** The design specifies Instrument Sans and IBM Plex Mono; the framework ships its own faces.
-      `Type.UI` and `Type.MONO` are indices, so this is a font-loading question, not a code one.
-- [ ] **Zoom range and minimum size.** `Vexplore.MIN_W_EM/MIN_H_EM` are the template's 24 × 16 and have not been
-      checked against this layout, whose rail alone is 25 rem.
-- [ ] **Tree marks the current folder.** The tree shows no active row (`#252a30` in the design).
-- [ ] **Folders are not pinned to the top once a column is chosen.** Explorer pins them.
-- [ ] **A hidden or system file** is shown like any other. A setting, and a mark, not a filter.
-- [ ] **The rail rebuilds its nodes on every change.** Fine at this size and it drops focus from a chip you just
-      pressed; a keyboard user pressing Space on a chip loses their place. Diff the chips instead of rebuilding.
-- [ ] **`Startup` reads system properties** so a capture can be put in a known state. It is a stand-in for a real
-      session-restore seam; the framework's generated wiring now lets a holder read back what it built, so this can
-      probably be replaced by that.
-
-## Tests that are missing
-
-- [ ] **`Ui`, `RailView` and `Actor` have no test.** Everything under `suggest/`, `files/`, `ops/` and the model is
-      tested without a window; the rest is verified by photographing it and by the three `ottermate` scenes.
-      `vexelray-gui-harness` can host a tree headlessly and is the place for "selecting a file fills the rail" as an
-      assertion instead of a screenshot.
-- [ ] **A scene that checks instead of photographs.** The scenes `await` the states they expect and fail on `err`;
-      they should also assert on what is on disk afterwards, which is what actually matters about a move.
+- [ ] Going up (Backspace, Alt+Up, a breadcrumb segment) selects nothing; an explorer selects the folder you came
+      from. `Navigate` would carry the row to select, as `Shown` already does.
+- [ ] Places on Linux are the Windows names under home; 0.1 read the XDG user directories (`ListPlaces`).
+- [ ] A list row's accessible name leaves out the file name (`row "FOLDER Today 22:16"`), so a script cannot
+      find a row by name. The name cell is an icon and text in a row box; find out what the table names a row from.
+- [ ] Automation coverage: `--automation=0` (or `-Dautomation=0`) opens a driving socket on a free port and prints it, and the landmarks in `Landmarks.java` are
+      already the names a script would use. One scripted run through the main path is worth more than several
+      unit tests of the view.
+- [ ] **Two Folders: NAME is cut to four or five letters in both lists** at 1440 px (FN-8). Slice 3 of M6 hid the
+      places in Two Folders, as Orbit's board does, which gave NAME about 40 px back; the rail's third of the width
+      and TYPE, SIZE and MODIFIED keep the rest. Waits on FN-8, or on the gallery, which has no columns.
+- [ ] **A pane's own Back is always enabled in Two Folders**, and does nothing for a pane with nowhere to go back to
+      (but uses it). `Pair.back` says only whether the list used has somewhere; one per side would need `Pair` to
+      grow.
+- [ ] In a window under about 1000 px wide at zoom 1, the list's NAME column shrinks to its icon while TYPE, SIZE and
+      MODIFIED stay whole (framework-notes FN-8).
+- [ ] `Picked` is a chip's place, resolved against the rail the explorer last sent. A listing that lands in the frame
+      between reading a chip and clicking it can make the place name another chip.
+- [ ] The rail's "today" is the day the folder was listed; a folder left open past midnight says "today" of the day
+      before until it is listed again (M5's watching relists).
+- [ ] The trash keeps an empty dated folder after a delete is undone, and is never emptied.
+- [ ] Stop is tested in `OperationsTest` but not driven live: a run of a few files ends before a click lands.
+- [ ] An undo refused because a run is going still moves the window's history, so the entry and the history disagree
+      until the next Ctrl+Y. A `Change.check()` that asks whether a run goes would refuse it in place.
+- [ ] *Choose folder…* is tested in `ExplorerTest` but not driven live: the system's picker is a real dialog.

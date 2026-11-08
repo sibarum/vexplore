@@ -1,0 +1,16 @@
+<svg color="#e9ecf2" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<mask id="ucslist_1m" maskUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">
+<rect width="16" height="16" fill="#000"/>
+<g>
+<circle cx="3" cy="4" r="1.1" fill="#fff"/>
+<circle cx="3" cy="8" r="1.1" fill="#fff"/>
+<circle cx="3" cy="12" r="1.1" fill="#fff"/>
+<path d="M6.25 4 H13.75 M6.25 8 H13.75 M6.25 12 H13.75" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+</mask>
+</defs>
+<g mask="url(#ucslist_1m)">
+<rect width="16" height="16" fill="currentColor"/>
+</g>
+</svg>

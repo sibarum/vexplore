@@ -1,0 +1,14 @@
+<svg color="#e9ecf2" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<mask id="ucsclock_1m" maskUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">
+<rect width="16" height="16" fill="#000"/>
+<g>
+<circle cx="8" cy="8" r="6.25" fill="#fff"/>
+<path d="M8 4.5 V8 L10.5 9.5" fill="none" stroke="#000" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</mask>
+</defs>
+<g mask="url(#ucsclock_1m)">
+<rect width="16" height="16" fill="currentColor"/>
+</g>
+</svg>
