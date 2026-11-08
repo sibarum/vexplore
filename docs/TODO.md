@@ -94,10 +94,9 @@ process and a new window**. The framework side (finding a sibling, the helper) i
 - [ ] **Preview tiers 1 and 2.** Tier 4 (bytes) and tier 3 (text) are built and are the floor, and tier 1 has its
       images (`imagelib-wrapper`: raster, animated, SVG). Next: CSV (a `Table`), JSON (a `TreeView`), archive listing
       (a `TreeView`), then PDF. Executable signature info reads the PE header as bytes and runs nothing.
-- [ ] **Images in the native executable are unverified.** The pom links imagelib's static library into the image
-      (`imagelib.static.dir`, staged by imagelib-wrapper's `native/build.sh`), and the JVM run, the tests and a
-      driven session all decode. Nobody has built `-Pnative` since, opened an image in it, and checked that the
-      DLL was not extracted. `natives/.*` is still included as a resource, so the DLL rides along unused.
+- [ ] **The native executable still carries imagelib's DLL, unused.** It links imagelib's static library in (from
+      imagelib-wrapper-windows's static jar), and a `-Pnative-release` build decoded a PNG in the Preview Dock on
+      2026-11-08 without extracting the DLL. But `natives/.*` is still included as a resource, so the DLL rides along.
 - [x] **A transparent image sits on the well colour, not a checkerboard.** The viewer has five backdrops (dark,
       light, checker, magenta, green). The dock stays on dark.
 - [ ] **A large decode runs to the end after the selection has moved on.** The Previewer is now latest-wins, so
