@@ -20,6 +20,9 @@
     <properties>
         <!-- The one module with an application to run: exec:exec from the parent runs it here. -->
         <app.run.skip>false</app.run.skip>
+        <!-- imagelib's static library and its link arguments, unpacked from Maven by imagelib-static (below). Only
+             the native image reads them; a JVM run extracts the DLL from the jar. -->
+        <imagelib.static.dir>${project.build.directory}/imagelib-static/windows-x86_64</imagelib.static.dir>
     </properties>
 
     <dependencies>
@@ -140,6 +143,39 @@
                             <buildArg>-H:NativeLinkerOption=/SUBSYSTEM:${native.subsystem}</buildArg>
                             <buildArg>-H:NativeLinkerOption=/ENTRY:mainCRTStartup</buildArg>
                             <buildArg>-H:NativeLinkerOption=${project.build.directory}/vexplore.res</buildArg>
+                            <!-- imagelib linked in rather than extracted: its loader finds the symbols in the
+                                 executable and skips the DLL. The exports keep the linker from dropping a library
+                                 nothing calls by name. They are imagelib-link.args (beside imagelib.lib) copied in:
+                                 the plugin passes these arguments in an args file of its own, and native-image does
+                                 not expand an @file named inside one. Copy it again when imagelib's header gains a
+                                 function or rustc reports other system libraries. -->
+                            <buildArg>-H:NativeLinkerOption=${imagelib.static.dir}/imagelib.lib</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_close</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_count</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_delay_ms</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_height</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_loops</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_next</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_open</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_pixels</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_rewind</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_anim_width</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_count</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_decode</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_delay_ms</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_free</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_height</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_last_error</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_pixels</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_probe</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_render_svg</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_svg_size</buildArg>
+                            <buildArg>-H:NativeLinkerOption=/EXPORT:img_width</buildArg>
+                            <buildArg>-H:NativeLinkerOption=kernel32.lib</buildArg>
+                            <buildArg>-H:NativeLinkerOption=ntdll.lib</buildArg>
+                            <buildArg>-H:NativeLinkerOption=userenv.lib</buildArg>
+                            <buildArg>-H:NativeLinkerOption=ws2_32.lib</buildArg>
+                            <buildArg>-H:NativeLinkerOption=dbghelp.lib</buildArg>
                         </buildArgs>
                     </configuration>
                 </plugin>
@@ -212,6 +248,22 @@
                                 <includeArtifactIds>ffmpeg-wrapper-record-windows</includeArtifactIds>
                                 <includes>natives/record/windows-x86_64/**</includes>
                                 <outputDirectory>${project.build.directory}/ffmpeg-wrapper-record</outputDirectory>
+                                <overWriteReleases>true</overWriteReleases>
+                                <overWriteSnapshots>true</overWriteSnapshots>
+                            </configuration>
+                        </execution>
+                        <!-- imagelib's static library and its link arguments, which the native image links in
+                             (imagelib.static.dir, read by build-native): imagelib-wrapper-windows's static jar, at the
+                             version the build resolved, unpacked into target/imagelib-static. From Maven, so no
+                             imagelib-wrapper checkout need sit beside this one. -->
+                        <execution>
+                            <id>imagelib-static</id>
+                            <phase>prepare-package</phase>
+                            <goals><goal>unpack-dependencies</goal></goals>
+                            <configuration>
+                                <includeArtifactIds>imagelib-wrapper-windows</includeArtifactIds>
+                                <classifier>static</classifier>
+                                <outputDirectory>${project.build.directory}/imagelib-static</outputDirectory>
                                 <overWriteReleases>true</overWriteReleases>
                                 <overWriteSnapshots>true</overWriteSnapshots>
                             </configuration>
