@@ -204,6 +204,8 @@ final class View {
         // Open with drops its menu on a left click, Enter or Space, and each line names the program.
         ui.openWith(dev.vexelray.gui.core.input.Menu.builder()
                 .item(FileFamily.IMAGES, "Rasterware", openWith, new OpenWith(With.RASTERWARE))
+                .item(FileFamily.SOURCE_CODE, "VexelRay IDE", openWith, new OpenWith(With.IDE))
+                .item(Icon.TERMINAL, "MainFrame, in its folder", openWith, new OpenWith(With.MAINFRAME))
                 .item(Icon.DISPLAY, "The desktop's own program", openWith, new OpenWith(With.DESKTOP))
                 .build());
     }

@@ -35,7 +35,7 @@ import dev.sibarum.vexplore.core.Messages.Menu;
 import dev.sibarum.vexplore.core.Messages.Navigate;
 import dev.sibarum.vexplore.core.Messages.Naming;
 import dev.sibarum.vexplore.core.Messages.OpenWith;
-import dev.sibarum.vexplore.core.Messages.OpenWith.With;
+import dev.sibarum.vexplore.core.Messages.App;
 import dev.sibarum.vexplore.core.Messages.Offer;
 import dev.sibarum.vexplore.core.Messages.Offers;
 import dev.sibarum.vexplore.core.Messages.Pair;
@@ -1102,7 +1102,10 @@ public final class Explorer {
         return dock(suggest(next, out), out);
     }
 
-    /** Enter or a double click on a row: a folder is gone into, and a file opened as the desktop would open it. */
+    /**
+     * Enter or a double click on a row: a folder is gone into, and a file opened by the program that suits it
+     * ({@link #suited}): Rasterware or VexelRay IDE, or as the desktop would open it.
+     */
     private static State activated(State s, Activated a, Out out) {
         State used = use(s, a.side(), out);
         Optional<Row> row = used.row(a.path());
@@ -1112,8 +1115,42 @@ public final class Explorer {
         if (row.get().folder()) {
             return remember(show(used, a.path(), Set.of(), out), out);
         }
-        out.send(Open.TOPIC, new Open(a.path().toString()));
+        App app = suited(row.get().kind());
+        if (app == App.DESKTOP) {
+            out.send(Open.TOPIC, new Open(a.path().toString()));
+        } else {
+            out.send(Messages.HANDING_TOPIC, new Handing(a.path(), false, app));
+        }
         return used;
+    }
+
+    /**
+     * The program a file of {@code kind} opens in: a picture or a video in Rasterware, a text or a source file in
+     * VexelRay IDE, and anything else in the desktop's own. Where the suite's program is not installed, the hand-off
+     * falls to the desktop's and says so.
+     */
+    static App suited(Kind kind) {
+        if (kind == Kind.IMAGE || kind == Kind.VIDEO) {
+            return App.RASTERWARE;
+        }
+        if (kind == Kind.TEXT || kind == Kind.CODE) {
+            return App.IDE;
+        }
+        return App.DESKTOP;
+    }
+
+    /**
+     * Hand {@code path} to {@code app}, unless it is Rasterware and a file that is neither a picture nor a video,
+     * which Rasterware could not show: that is said instead. A folder it takes, and shows the first file in it that
+     * it recognises.
+     */
+    private static State handTo(State s, Path path, boolean folder, Kind kind, App app, Out out) {
+        if (app == App.RASTERWARE && !folder && kind != Kind.IMAGE && kind != Kind.VIDEO) {
+            refuse(out, "Rasterware opens pictures, videos and folders of them");
+            return s;
+        }
+        out.send(Messages.HANDING_TOPIC, new Handing(path, folder, app));
+        return s;
     }
 
     // ------------------------------------------------------------------ Two Folders
@@ -1206,7 +1243,8 @@ public final class Explorer {
     // ------------------------------------------------------------------ the row menu
 
     /**
-     * A row menu's choice, about the selection. Open is Enter's, on the one row selected. One of the rail's actions is
+     * A row menu's choice, about the selection. Open is Enter's, on the one row selected, and an Open in line hands
+     * that row, a file or a folder, to the program it names. One of the rail's actions is
      * picked on the rail, as its chip would pick it, and not carried out: the card states its effect and its button
      * carries it out, as every other way in does. Chosen when it is already picked, it stays picked, where a chip
      * pressed again would let it go. One the rail does not offer for this selection (Rename, with several) is said.
@@ -1219,6 +1257,15 @@ public final class Explorer {
                 return s;
             }
             return activated(s, new Activated(s.used(), s.selected().iterator().next()), out);
+        }
+        Optional<App> in = openIn(m.action());
+        if (in.isPresent()) {
+            if (s.selected().size() != 1) {
+                refuse(out, "Open in " + in.get().title() + " is for one item at a time");
+                return s;
+            }
+            Optional<Row> row = s.row(s.selected().iterator().next());
+            return row.isEmpty() ? s : handTo(s, row.get().path(), row.get().folder(), row.get().kind(), in.get(), out);
         }
         for (Act a : Act.values()) {
             if (!a.name().equals(m.action())) {
@@ -1621,10 +1668,24 @@ public final class Explorer {
         return s;
     }
 
+    /** The program a row menu's Open in line names, or none for any other line. */
+    private static Optional<App> openIn(String action) {
+        if (Menu.IN_RASTERWARE.equals(action)) {
+            return Optional.of(App.RASTERWARE);
+        }
+        if (Menu.IN_IDE.equals(action)) {
+            return Optional.of(App.IDE);
+        }
+        if (Menu.IN_MAINFRAME.equals(action)) {
+            return Optional.of(App.MAINFRAME);
+        }
+        return Optional.empty();
+    }
+
     /**
-     * The strip's Open with: the file it previews, handed on. Vexplore has no viewer of its own, so a picture or a
-     * video suits Rasterware, and anything else the desktop's own program; the button's menu names either. With no
-     * file in the strip (the selection moved on under the pointer) nothing is.
+     * The strip's Open with: the file it previews, handed on. Vexplore has no viewer of its own, so a left click is
+     * the program that suits the file ({@link #suited}), and the button's menu names one. With no file in the strip
+     * (the selection moved on under the pointer) nothing is.
      */
     private static State openWith(State s, OpenWith o, Out out) {
         if (s.work().dock().path().isEmpty()) {
@@ -1632,27 +1693,22 @@ public final class Explorer {
         }
         Path file = s.work().dock().path().get();
         Kind kind = s.row(file).map(Row::kind).orElse(Kind.ofExtension(Kind.extension(ListFolder.name(file))));
-        boolean rasterware = o.with() == With.RASTERWARE
-                || (o.with() == With.SUITED && (kind == Kind.IMAGE || kind == Kind.VIDEO));
-        out.send(Messages.HANDING_TOPIC, new Handing(file, rasterware));
-        return s;
+        return handTo(s, file, false, kind, o.with().named().orElse(suited(kind)), out);
     }
 
     /**
-     * What a hand-off came to, and what opened it: the desktop's opener standing in for Rasterware is said, since
-     * Rasterware was asked.
+     * What a hand-off came to, and what opened it: the desktop's opener standing in for a suite program is said, since
+     * that program was asked.
      */
     private static State handedOff(State s, HandedOff h, Out out) {
-        String name = ListFolder.name(h.file());
+        String name = ListFolder.name(h.path());
         if (h.problem() != null) {
             refuse(out, "Can't open " + name + ": " + h.problem());
-        } else if (HandedOff.RASTERWARE.equals(h.to())) {
-            out.send(Messages.STATUS_TOPIC, new Status("Opened " + name + " in Rasterware", false));
-        } else if (h.rasterware()) {
-            out.send(Messages.STATUS_TOPIC, new Status("Rasterware isn't installed, so " + name
-                    + " opened in the desktop's own program", false));
+        } else if (h.to() == h.asked()) {
+            out.send(Messages.STATUS_TOPIC, new Status("Opened " + name + " in " + h.asked().title(), false));
         } else {
-            out.send(Messages.STATUS_TOPIC, new Status("Opened " + name + " in the desktop's own program", false));
+            out.send(Messages.STATUS_TOPIC, new Status(h.asked().title() + " isn't installed, so " + name
+                    + " opened in " + h.to().title(), false));
         }
         return s;
     }

@@ -185,7 +185,8 @@ public final class Messages {
     }
 
     /**
-     * A row menu's choice, about the selection, which the right click has already made: {@link #OPEN}, or the
+     * A row menu's choice, about the selection, which the right click has already made: {@link #OPEN}, one of the
+     * Open in lines ({@link #IN_RASTERWARE}, {@link #IN_IDE}, {@link #IN_MAINFRAME}), or the
      * {@linkplain Suggestions.Act#name() name} of one of the rail's actions, which the menu picks on the rail rather
      * than carrying out, so the card states its effect first as every other way in does.
      */
@@ -193,6 +194,9 @@ public final class Messages {
 
     public record Menu(Side side, String action) {
         public static final String OPEN = "open";
+        public static final String IN_RASTERWARE = "open-in-rasterware";
+        public static final String IN_IDE = "open-in-ide";
+        public static final String IN_MAINFRAME = "open-in-mainframe";
     }
 
     /** The card's button: carry out what the card states. */
@@ -582,31 +586,62 @@ public final class Messages {
 
     public record OpenWith(With with) {
 
-        /** Which program: the one that suits the file (Rasterware for a picture or a video), or the one named. */
+        /**
+         * Which program: the one that suits the file (Rasterware for a picture or a video, VexelRay IDE for text or
+         * source, else the desktop's own), or the one named.
+         */
         public enum With {
-            SUITED, RASTERWARE, DESKTOP
+            SUITED(null), RASTERWARE(App.RASTERWARE), IDE(App.IDE), MAINFRAME(App.MAINFRAME), DESKTOP(App.DESKTOP);
+
+            private final App app;
+
+            With(App app) {
+                this.app = app;
+            }
+
+            /** The program named, or none for {@link #SUITED}, whose program the file decides. */
+            public Optional<App> named() {
+                return Optional.ofNullable(app);
+            }
+        }
+    }
+
+    /** A program Vexplore hands a file or a folder to: one of the suite's, or the desktop's own opener. */
+    public enum App {
+        RASTERWARE("Rasterware"), IDE("VexelRay IDE"), MAINFRAME("MainFrame"), DESKTOP("the desktop's own program");
+
+        private final String title;
+
+        App(String title) {
+            this.title = title;
+        }
+
+        /** What the person calls it, as the status line says it. */
+        public String title() {
+            return title;
         }
     }
 
     /**
-     * Hand a file to Rasterware where it is installed, else to the desktop's opener, or, not {@code rasterware}, to the
-     * desktop's opener only ({@code -gui}'s {@code HandOff}). Its own reply, not the framework's {@code Opened}: two jobs answering
-     * one record would share one topic, and the explorer could not tell which had opened it.
+     * Hand {@code path} to {@code app} ({@code -gui}'s {@code HandOff}): Rasterware or VexelRay IDE on the file or the
+     * folder, MainFrame in the folder (a file's, with its name on the input line), or the desktop's opener. A file
+     * whose suite program is not installed goes to the desktop's opener instead; a folder does not, since the desktop
+     * would only show it again. Its own reply, not the framework's {@code Opened}: two jobs answering one record would
+     * share one topic, and the explorer could not tell which had opened it.
      */
     public static final Topic<Handing> HANDING_TOPIC = Topic.edge(Handing.class);
 
-    public record Handing(Path file, boolean rasterware) {
+    public record Handing(Path path, boolean folder, App app) {
     }
 
     /**
-     * What a hand-off came to: {@code to} is what opened it, {@link #RASTERWARE} or {@link #DESKTOP}; {@code rasterware}
-     * whether Rasterware was asked; and {@code problem} is why nothing did, or null.
+     * What a hand-off came to: {@code asked} is the program asked for, {@code to} the one that opened it (the
+     * desktop's opener standing in for a suite program not installed), and {@code problem} is why nothing did, or
+     * null.
      */
     public static final Topic<HandedOff> HANDED_OFF_TOPIC = Topic.edge(HandedOff.class);
 
-    public record HandedOff(Path file, boolean rasterware, String to, String problem) {
-        public static final String RASTERWARE = "Rasterware";
-        public static final String DESKTOP = "desktop";
+    public record HandedOff(Path path, App asked, App to, String problem) {
     }
 
     /** A folder nearby that already holds files of a kind: a place a move or a copy probably wants. */

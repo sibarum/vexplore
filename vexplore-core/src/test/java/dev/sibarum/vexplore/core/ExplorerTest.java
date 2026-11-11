@@ -1,5 +1,6 @@
 package dev.sibarum.vexplore.core;
 
+import dev.sibarum.vexplore.core.Messages.App;
 import dev.sibarum.vexplore.core.Messages.Activated;
 import dev.sibarum.vexplore.core.Messages.Chosen;
 import dev.sibarum.vexplore.core.Messages.Find;
@@ -268,9 +269,57 @@ class ExplorerTest {
         tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("sub")));
         assertTrue(asks(path("sub")));
         sent.clear();
-        showing(dir, folder("sub"), file("a.txt", 10));
+        showing(dir, folder("sub"), file("a.txt", 10), picture("a.png"), document("a.pdf"));
         tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("a.txt")));
-        assertEquals(List.of(new Open(path("a.txt").toString())), took(Open.class));
+        assertEquals(List.of(new Messages.Handing(path("a.txt"), false, App.IDE)), took(Messages.Handing.class),
+                "a text opens in the IDE");
+        tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("a.png")));
+        assertEquals(List.of(new Messages.Handing(path("a.png"), false, App.RASTERWARE)),
+                took(Messages.Handing.class), "a picture in Rasterware");
+        tell(Messages.ACTIVATED_TOPIC, new Activated(Side.FROM, path("a.pdf")));
+        assertEquals(List.of(new Open(path("a.pdf").toString())), took(Open.class), "the rest as the desktop would");
+        assertTrue(seen(Messages.Handing.class).isEmpty());
+    }
+
+    private Row document(String name) {
+        return new Row(path(name), name, false, 10L, Instant.EPOCH, Kind.DOCUMENT);
+    }
+
+    @Test
+    void theMenusOpenInHandsTheOneSelectedFileOrFolderToItsProgram() {
+        showing(dir, folder("sub"), file("a.txt", 10), picture("a.png"), file("b.txt", 20));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("sub"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_RASTERWARE));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_IDE));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_MAINFRAME));
+        assertEquals(List.of(new Messages.Handing(path("sub"), true, App.RASTERWARE),
+                new Messages.Handing(path("sub"), true, App.IDE),
+                new Messages.Handing(path("sub"), true, App.MAINFRAME)), took(Messages.Handing.class),
+                "a folder goes to each, as a folder");
+        assertTrue(seen(Shown.class).isEmpty(), "and is not gone into");
+
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_MAINFRAME));
+        assertEquals(List.of(new Messages.Handing(path("a.txt"), false, App.MAINFRAME)),
+                took(Messages.Handing.class));
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_RASTERWARE));
+        assertTrue(seen(Messages.Handing.class).isEmpty(), "Rasterware could not show a text");
+        assertEquals("Rasterware opens pictures, videos and folders of them",
+                took(Status.class).getFirst().message());
+
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.png"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_IDE));
+        assertEquals(List.of(new Messages.Handing(path("a.png"), false, App.IDE)), took(Messages.Handing.class),
+                "the IDE is asked for whatever it is given");
+
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
+        sent.clear();
+        tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.IN_IDE));
+        assertTrue(seen(Messages.Handing.class).isEmpty(), "never several at once");
+        assertEquals("Open in VexelRay IDE is for one item at a time", took(Status.class).getFirst().message());
     }
 
     @Test
@@ -289,11 +338,11 @@ class ExplorerTest {
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
         sent.clear();
         tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.OPEN));
-        assertEquals(List.of(new Open(path("a.txt").toString())), took(Open.class));
+        assertEquals(List.of(new Messages.Handing(path("a.txt"), false, App.IDE)), took(Messages.Handing.class));
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"), path("b.txt"))));
         sent.clear();
         tell(Messages.MENU_TOPIC, new Messages.Menu(Side.FROM, Messages.Menu.OPEN));
-        assertTrue(seen(Open.class).isEmpty(), "never several programs at once");
+        assertTrue(seen(Messages.Handing.class).isEmpty(), "never several programs at once");
         assertTrue(took(Status.class).getFirst().alert());
     }
 
@@ -759,8 +808,8 @@ class ExplorerTest {
         assertTrue(seen(Messages.Handing.class).isEmpty(), "nothing in the strip");
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.png"))));
         openWith(Messages.OpenWith.With.SUITED);
-        assertEquals(List.of(new Messages.Handing(path("a.png"), true)), took(Messages.Handing.class),
-                "a picture suits Rasterware");
+        assertEquals(List.of(new Messages.Handing(path("a.png"), false, App.RASTERWARE)),
+                took(Messages.Handing.class), "a picture suits Rasterware");
     }
 
     @Test
@@ -768,29 +817,37 @@ class ExplorerTest {
         showing(dir, picture("a.png"), file("notes.txt", 20));
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("notes.txt"))));
         openWith(Messages.OpenWith.With.SUITED);
-        assertEquals(List.of(new Messages.Handing(path("notes.txt"), false)), took(Messages.Handing.class),
-                "a text suits the desktop's own program");
+        assertEquals(List.of(new Messages.Handing(path("notes.txt"), false, App.IDE)), took(Messages.Handing.class),
+                "a text suits the IDE");
+        openWith(Messages.OpenWith.With.MAINFRAME);
+        assertEquals(List.of(new Messages.Handing(path("notes.txt"), false, App.MAINFRAME)),
+                took(Messages.Handing.class));
         openWith(Messages.OpenWith.With.RASTERWARE);
-        assertEquals(List.of(new Messages.Handing(path("notes.txt"), true)), took(Messages.Handing.class));
+        assertTrue(seen(Messages.Handing.class).isEmpty(), "Rasterware could not show a text");
+        assertTrue(took(Status.class).getFirst().alert());
         tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.png"))));
         openWith(Messages.OpenWith.With.DESKTOP);
-        assertEquals(List.of(new Messages.Handing(path("a.png"), false)), took(Messages.Handing.class));
+        assertEquals(List.of(new Messages.Handing(path("a.png"), false, App.DESKTOP)), took(Messages.Handing.class));
     }
 
     @Test
     void aHandOffSaysWhatOpenedIt() {
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), true, Messages.HandedOff.RASTERWARE,
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), App.RASTERWARE, App.RASTERWARE,
                 null));
         assertEquals("Opened a.png in Rasterware", took(Status.class).getFirst().message());
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), true, Messages.HandedOff.DESKTOP, null));
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), App.RASTERWARE, App.DESKTOP, null));
         Status desktop = took(Status.class).getFirst();
         assertEquals("Rasterware isn't installed, so a.png opened in the desktop's own program", desktop.message());
         assertFalse(desktop.alert());
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), false, Messages.HandedOff.DESKTOP, null));
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), App.DESKTOP, App.DESKTOP, null));
         assertEquals("Opened a.png in the desktop's own program", took(Status.class).getFirst().message());
-        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("a.png"), true, Messages.HandedOff.RASTERWARE,
-                "gone"));
-        assertTrue(took(Status.class).getFirst().alert());
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("sub"), App.MAINFRAME, App.MAINFRAME, null));
+        assertEquals("Opened sub in MainFrame", took(Status.class).getFirst().message());
+        tell(Messages.HANDED_OFF_TOPIC, new Messages.HandedOff(path("sub"), App.IDE, App.IDE,
+                "VexelRay IDE isn't installed"));
+        Status missing = took(Status.class).getFirst();
+        assertEquals("Can't open sub: VexelRay IDE isn't installed", missing.message());
+        assertTrue(missing.alert());
     }
 
     // ------------------------------------------------------------------ the folder watched

@@ -77,8 +77,12 @@ final class FolderList {
         table.node().width(Length.FILL).height(Length.FILL);
         gui.landmark(landmark, table.node());
         table.rows().looks(Role.SELECTION, Look.TARGETED);
-        // The row menu: Open, then the rail's actions, which a choice picks on the rail rather than carries out.
+        // The row menu: Open, Open in each of the suite's programs, then the rail's actions, which a choice picks on
+        // the rail rather than carries out.
         table.rows().action(MenuAction.of(Menu.OPEN, "Open"));
+        table.rows().action(MenuAction.of(Menu.IN_RASTERWARE, "Open in Rasterware"));
+        table.rows().action(MenuAction.of(Menu.IN_IDE, "Open in VexelRay IDE"));
+        table.rows().action(MenuAction.of(Menu.IN_MAINFRAME, "Open in MainFrame"));
         for (Act a : Act.values()) {
             table.rows().action(MenuAction.of(a.name(), a.chip()));
         }
