@@ -273,3 +273,27 @@ was worked around: the proposals are in the listing's order, and say so in `Inte
 
 **For the framework:** the table says its order when it changes (`Table.SORTED`, the column's key and a direction),
 so a part that reasons about what is next to what reasons in the order shown.
+
+## FN-18 · An icon's first drawing reshapes it, so its panel cannot fade out a frame after it was built 🔬 (fixed 2026-11-11)
+
+*Fixed in vexelray-gui: `Reconciler` no longer counts an SDG or a field written where there was none as a reshape
+(`firstIcon`), tested by `BreadcrumbTest.aPathHiddenTheFrameAfterItWasBuiltStillFades`, which failed before it.
+`ViewTest` passes with nothing changed in Vexplore's views.*
+
+vexelray-gui e31edd8f ("A node fades out only as it was last drawn") sends a node at once, not faded, when it or
+anything in it was reshaped in the drain that hides or removes it, and `Cuts` reports that. `IconView` draws its icon
+from `Seams.onResize`, once layout has given it a size, so its first `sdg` write lands in the drain *after* the one
+that built it, and `PropKey.SDG` counts as a reshape. Any panel with an icon in it, hidden or removed in the very next
+frame, therefore goes at once: the top bar's pill (`where`, whose breadcrumb has chevrons) as Two Folders opens right
+after a folder is listed, and the dock's conflict panel (a breadcrumb's overflow button and separators) as Keep both
+is chosen right after it appears. One idle frame in between and both fade, so `ViewTest`'s three Two Folders and
+conflict tests fail on 2026-11-11's clean install of the stack, and nothing in Vexplore's own writes is the cause
+(measured: no write to `where`'s subtree in that frame).
+
+Nothing was worked around. A view cannot keep a panel shown a frame longer without holding state, and stepping the
+tests round it would hide the finding rather than fix it.
+
+**For the framework:** an `IconView`'s drawing written because its size became known is the framework's own state, as
+`OVERHANG` and `UNCLIP` are, and should not count as a reshape; or `reshapedIn` could ignore a node that has not yet
+been drawn with the look it is leaving with. A test in `EnterExitTest` would build a breadcrumb, run one frame, and
+hide its parent.

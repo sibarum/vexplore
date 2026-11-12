@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -351,7 +352,7 @@ final class Ui {
     /**
      * Whether there are two lists and which is used: TO shown or hidden, each header in the accent while its list is
      * used, the view switch lit for the mode, Back for whether there is a folder to go back to, the place filled, and
-     * the breadcrumb and the field holding the used list's folder.
+     * and the breadcrumb holding the used list's folder. The field is given its folder as it opens ({@link #editPath}).
      */
     void pair(Pair p) {
         to.node().visible(p.two());
@@ -368,15 +369,23 @@ final class Ui {
         to.side(p.two(), p.used() == Side.TO);
         one.on(!p.two());
         two.on(p.two());
-        back.enabled(p.back());
         sidebar.at(p.at());
+        // Two Folders hides Back, Up and the path, and a node hidden in the edit that changes it cannot fade out as it
+        // was drawn. Every write between two frames is one edit, so they are left as they were for as long as they are
+        // hidden, and written as they are shown again.
+        if (p.two()) {
+            return;
+        }
+        back.enabled(p.back());
         if (p.at().isPresent()) {
             List<Path> chain = new ArrayList<>();
             for (Path f = p.at().get(); f != null; f = f.getParent()) {
                 chain.addFirst(f);
             }
-            crumbs.path(chain);
-            path.text(p.at().get().toString());
+            // Breadcrumb.path builds every segment anew, so only when the chain has changed.
+            if (!chain.equals(crumbs.path())) {
+                crumbs.path(chain);
+            }
         }
     }
 
@@ -546,8 +555,13 @@ final class Ui {
     /**
      * Ctrl+L: the field in the breadcrumb's place, the keyboard in it and its text selected, so typing replaces it. In
      * Two Folders the pill comes back in the title's place while the field is open, for the list used.
+     *
+     * <p>Its words are the used list's folder, written here as it is shown rather than with every {@link #pair}, which
+     * leaves the pill alone while Two Folders hides it: written there, the field would hold one folder's path in the
+     * other's place.
      */
-    void editPath() {
+    void editPath(Optional<Path> at) {
+        at.ifPresent(f -> path.text(f.toString()));
         title.visible(false);
         where.visible(true);
         crumbs.node().visible(false);

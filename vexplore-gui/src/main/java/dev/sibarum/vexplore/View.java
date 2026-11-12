@@ -449,8 +449,7 @@ final class View {
         } else if (ui.swap(m.button())) {
             swap.send(new Swap());
         } else if (ui.choose(m.button())) {
-            Path shown = ui.shown();
-            pickFile.send(PickFile.folder(PICK_FOLDER, shown == null ? "" : shown.toString()));
+            pickFile.send(PickFile.folder(PICK_FOLDER, pair.at().map(Path::toString).orElse("")));
         } else if (ui.paneBack(m.button()) != null) {
             back.send(new Back(Optional.of(ui.paneBack(m.button()))));
         } else if (ui.paneUp(m.button()) != null) {
@@ -541,7 +540,7 @@ final class View {
     // ------------------------------------------------------------------ what the person did, by chord
 
     void editPath() {
-        ui.editPath();
+        ui.editPath(pair.at());
     }
 
     void closePath() {
@@ -553,7 +552,8 @@ final class View {
      * nothing happens.
      */
     void up() {
-        Path shown = ui.shown();
+        // The explorer's folder, not the breadcrumb's: in Two Folders the breadcrumb is hidden and left as it was.
+        Path shown = pair.at().orElse(null);
         if (shown != null && shown.getParent() != null) {
             navigate.send(new Navigate(shown.getParent()));
         }
