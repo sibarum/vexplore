@@ -297,3 +297,15 @@ tests round it would hide the finding rather than fix it.
 `OVERHANG` and `UNCLIP` are, and should not count as a reshape; or `reshapedIn` could ignore a node that has not yet
 been drawn with the look it is leaving with. A test in `EnterExitTest` would build a breadcrumb, run one frame, and
 hide its parent.
+
+## FN-19 · A table's header strip is always `Role.CHROME`, whatever panel the table sits on 🔬
+
+`Table` paints its header row in `Role.CHROME` and offers no way to name another paint (`headers` takes the face,
+size and ink only, and the row itself is private). In Orbit's dark look this happens not to show: the list's panel
+(`Look.LIST`, 0x15131c) is within 0.01 of rung 1 of the ladder, so the header melts into it. The light look, added
+2026-11-13, puts the panels near-white above a faint violet ground, while the ladder steps *down* from that ground, so
+rung 1 is a grey band (L 0.94) across the top of a white list. It reads as a header, and nothing was worked around,
+but it is a difference between the two looks that the application did not choose.
+
+**For the framework:** `Table.headers(face, size, ink)` could take a `Paint` for the strip as well, as `ListView`'s
+`looks` takes the selection's, so a table on a panel of the application's own can say what its header is drawn on.

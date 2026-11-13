@@ -18,7 +18,6 @@ import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Plan;
 import dev.sibarum.vexplore.core.Relation;
 import dev.sibarum.vexplore.core.Suggestions.Act;
-import dev.vexelray.canvas.Color;
 import dev.vexelray.gui.core.Gui;
 import dev.vexelray.gui.core.IconSource;
 import dev.vexelray.gui.core.Node;
@@ -118,12 +117,10 @@ final class Ui {
     private final DockPanel dock;
     private final StatusBar status;
     private final Motion motion;
-    private final Color danger;
 
     Ui(Gui gui, Motion motion, TitleBar titleBar) {
         this.gui = gui;
         this.motion = motion;
-        this.danger = gui.theme().color(Role.DANGER);
 
         // Back and Up, round, as Orbit draws them: Back to the folder shown before, Up to the one above.
         back = round(gui, Icon.ARROW_LEFT, "Back", Landmarks.BACK).enabled(false);
@@ -227,7 +224,7 @@ final class Ui {
         gui.landmark(Landmarks.STATUS_MESSAGE, status.slot(Landmarks.STATUS_MESSAGE));
 
         gui.root().direction(Direction.COLUMN)
-                .background(gui.theme().color(Role.PAGE))
+                .background(Role.PAGE)
                 .children(titleBar.node(), top, ground, status.node());
     }
 
@@ -597,7 +594,7 @@ final class Ui {
     void status(String message, boolean alert) {
         status.text(Landmarks.STATUS_MESSAGE, message);
         if (alert) {
-            motion.cues.play(status.node(), Cue.ring(danger, 2));
+            motion.cues.play(status.node(), Cue.ring(Role.DANGER, 2));
         }
     }
 }

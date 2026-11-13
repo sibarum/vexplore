@@ -79,7 +79,7 @@ final class Sidebar {
     /** A place's row: its icon and its name. */
     private static Node row(Nodes g, Place p) {
         Node glyph = g.icon(icon(p)).size(Length.rem(1.125f)).node().hitInert(true);
-        Node name = g.text(p.label()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
+        Node name = g.text(p.label()).font(Type.UI).textSize(Type.BODY).textColor(Role.INK)
                 .wordWrap(false).height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
         return g.row().width(Length.FILL).height(Length.FILL).scroll(false, false).alignItems(AlignItems.CENTER)
                 .gap(Length.rem(0.75f)).padding(Length.ZERO, Length.rem(0.875f)).corner(Length.dp(21))

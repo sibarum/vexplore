@@ -82,9 +82,9 @@ final class Columns {
             row.append(mark);
         }
         Node glyph = g.icon(family(r)).size(ICON).node().hitInert(true);
-        Node name = g.text(r.name()).font(Type.UI).textSize(Type.BODY).textColor(g.theme().color(Role.INK))
+        Node name = g.text(r.name()).font(Type.UI).textSize(Type.BODY).textColor(Role.INK)
                 .wordWrap(false).height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
-        Node tag = g.text(NEW).font(Type.MONO).textSize(Type.SMALL).textColor(g.theme().color(Look.ANCHOR))
+        Node tag = g.text(NEW).font(Type.MONO).textSize(Type.SMALL).textColor(Look.ANCHOR)
                 .wordWrap(false).hitInert(true).visible(fresh.has(r.path(), NEW));
         fresh.built(r.path(), NEW, tag);
         row.append(glyph);
@@ -147,14 +147,14 @@ final class Columns {
      */
     private static Node type(Nodes g, Row r) {
         Node badge = g.text(r.typeLabel()).font(Type.MONO).textSize(Type.SMALL)
-                .textColor(g.theme().color(Look.family(family(r)))).wordWrap(false)
+                .textColor(Look.family(family(r))).wordWrap(false)
                 .padding(Length.dp(2), Length.dp(6)).corner(Length.dp(6)).background(Look.CHROME);
         return g.row().width(Length.FILL).height(Length.FILL).scroll(false, false).clip(true)
                 .alignItems(AlignItems.CENTER).padding(Length.ZERO, PAD).children(badge);
     }
 
     private static Node cell(Nodes g, String text, int face, Length size, Role ink, HAlign align) {
-        return g.text(text).font(face).textSize(size).textColor(g.theme().color(ink)).wordWrap(false)
+        return g.text(text).font(face).textSize(size).textColor(ink).wordWrap(false)
                 .height(Length.FILL).padding(Length.ZERO, PAD).align(align, VAlign.MIDDLE);
     }
 }

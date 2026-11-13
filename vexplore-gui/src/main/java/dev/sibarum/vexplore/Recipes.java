@@ -40,13 +40,15 @@ import dev.vexelray.gui.widget.TitleBar;
 final class Recipes {
 
     /**
-     * The look, and the smallest window this UI is still coherent in. Built from nothing the framework makes, so it
-     * exists in the first phase and the framework applies it the moment it creates the {@code Gui}: "the theme is
-     * applied before the first widget" is structural rather than a comment somebody has to keep obeying.
+     * The looks, dark first until the person chooses (the app menu's Theme offers Light and Dark, and the framework
+     * keeps the choice), and the smallest window this UI is still coherent in. Built from nothing the framework makes,
+     * so it exists in the first phase and the framework applies it the moment it creates the {@code Gui}: "the theme
+     * is applied before the first widget" is structural rather than a comment somebody has to keep obeying.
      */
     @Provides
     Appearance look() {
-        return Appearance.of(Look.THEME, Length.rem(Vexplore.MIN_W_EM), Length.rem(Vexplore.MIN_H_EM));
+        return Appearance.of(Look.DARK, Length.rem(Vexplore.MIN_W_EM), Length.rem(Vexplore.MIN_H_EM))
+                .themes(Look.LIGHT, Look.DARK);
     }
 
     /**
