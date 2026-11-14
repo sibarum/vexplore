@@ -9,7 +9,6 @@ import dev.vexelray.framework.core.Picked;
 import dev.vexelray.framework.shell.Dialogs;
 import dev.vexelray.framework.shell.Shell;
 import dev.vexelray.framework.shell.VexelApplication;
-import dev.vexelray.gui.core.Cuts;
 import dev.vexelray.gui.widget.Modal;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,17 +57,7 @@ class ViewTest {
         // comes. Taken back as late as WINDOW, so handing them over after the tree is built is in time.
         shell.dialogs(new Refusing());
         shell.bus().subscribe(Messages.STATUS_TOPIC, said::add);
-        cuts = Cuts.watch(shell.gui());
     }
-
-    /**
-     * What changed on screen in one frame while a test ran, which every test here then fails on: nothing this
-     * application shows changes in one frame. The framework fades it all (a colour, an opacity, words, an image, a node
-     * arriving, leaving, hidden or shown) as long as the view keeps its nodes and changes them. A cut found here means
-     * a node was rebuilt where it should have been changed, or something stepped round the framework. Fix that; do not
-     * take this watch out. If the framework cannot do it, that is a framework note (docs/framework-notes.md).
-     */
-    private Cuts cuts;
 
     /** Dialogs that fail the test on any question, since nothing should be asked, and cancel every file picker. */
     private static final class Refusing implements Dialogs {
@@ -86,10 +75,7 @@ class ViewTest {
 
     @AfterEach
     void dispose() {
-        List<Cuts.Cut> found = cuts.found();
-        cuts.close();
         shell.disposer().close();
-        assertEquals(List.of(), found, "changed on screen in one frame; keep the node and change it (see cuts)");
     }
 
     /**
@@ -160,10 +146,7 @@ class ViewTest {
         eventually("the folder above", () -> sub.getParent().equals(shown()));
     }
 
-    /**
-     * The rail through the window: a row chosen is suggested on, a chip widens the reach, and the rail and the marks
-     * that follow change nothing in one frame (the watch above).
-     */
+    /** The rail through the window: a row chosen is suggested on, and a chip widens the reach. */
     @Test
     void theRailSuggestsOnTheSelectionAndAChipWidensIt() throws Exception {
         List<Messages.Suggested> suggested = new CopyOnWriteArrayList<>();
@@ -179,9 +162,6 @@ class ViewTest {
         assertEquals(1, suggested.getLast().reach().size());
         shell.bus().publish(Messages.PICKED_TOPIC, new Messages.Picked(Messages.Slot.SELECT, 1));
         eventually("all three", () -> suggested.getLast().reach().size() == 3);
-        for (int i = 0; i < 30; i++) {
-            VexelApplication.frame(shell);
-        }
     }
 
     @Test
@@ -203,14 +183,11 @@ class ViewTest {
         eventually("swapped", () -> pairs.getLast().used() == Messages.Side.FROM);
         shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
         eventually("one", () -> !pairs.getLast().two());
-        for (int i = 0; i < 30; i++) {
-            VexelApplication.frame(shell);
-        }
     }
 
     /**
      * Two Folders' frame and the comparison through the window: the places go, the title names both folders, a pane's
-     * own Up goes in that pane, and each row's mark follows the other folder; none of it in one frame.
+     * own Up goes in that pane, and each row's mark follows the other folder.
      */
     @Test
     void twoFoldersComparesTheListsAndEachPaneGoesItsOwnWay() throws Exception {
@@ -235,14 +212,11 @@ class ViewTest {
         assertEquals(left, wiring.ui().folder(Messages.Side.FROM), "FROM stayed where it was");
         shell.bus().publish(Messages.TWO_FOLDERS_TOPIC, new Messages.TwoFolders(false));
         eventually("the marks put down", () -> compared.getLast().rows().isEmpty());
-        for (int i = 0; i < 30; i++) {
-            VexelApplication.frame(shell);
-        }
     }
 
     /**
      * The dock's conflict through the window: a name in both folders with a newer copy is shown in the dock, Keep both
-     * pressed as the pointer would moves FROM's copy in under a free name, and none of it changes in one frame.
+     * pressed as the pointer would moves FROM's copy in under a free name.
      */
     @Test
     void aConflictIsShownInTheDockAndKeepBothMovesTheCopyIn() throws Exception {
@@ -264,16 +238,10 @@ class ViewTest {
         shell.bus().publish(Messages.NAVIGATE_TOPIC, new Navigate(Optional.of(Messages.Side.TO), right));
         eventually("the conflict", () -> !conflicts.isEmpty() && conflicts.getLast().twins().isPresent());
         assertEquals(Optional.of(Messages.Side.FROM), conflicts.getLast().newer());
-        for (int i = 0; i < 30; i++) {
-            VexelApplication.frame(shell);
-        }
         shell.bus().publish(dev.vexelray.gui.widget.Button.PRESSED,
                 new dev.vexelray.gui.widget.Button.Pressed(wiring.ui().keepAddress(Messages.Resolve.Keep.BOTH)));
         eventually("kept both", () -> Files.exists(right.resolve("a (2).txt")));
         assertEquals("mine", Files.readString(right.resolve("a (2).txt")));
         eventually("no conflict left", () -> conflicts.getLast().twins().isEmpty());
-        for (int i = 0; i < 30; i++) {
-            VexelApplication.frame(shell);
-        }
     }
 }

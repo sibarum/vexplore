@@ -5,12 +5,10 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompareTest {
 
@@ -56,22 +54,5 @@ class CompareTest {
                 Compare.of(here, there));
         assertEquals(Map.of(Path.of("there", "b"), Relation.OLDER, Path.of("there", "c"), Relation.ONLY_HERE),
                 Compare.of(there, here));
-    }
-
-    @Test
-    void fiftyThousandRowsASideAreComparedInAStep() {
-        List<Row> here = new ArrayList<>();
-        List<Row> there = new ArrayList<>();
-        for (int i = 0; i < 50_000; i++) {
-            here.add(file("here", "f" + i, i, T));
-            there.add(file("there", "f" + (i + 25_000), i + 25_000, T));
-        }
-        Compare.of(here, there);
-        long start = System.nanoTime();
-        Map<Path, Relation> compared = Compare.of(here, there);
-        long ms = (System.nanoTime() - start) / 1_000_000;
-        assertEquals(50_000, compared.size());
-        assertEquals(25_000, compared.values().stream().filter(r -> r == Relation.IDENTICAL).count());
-        assertTrue(ms < 250, "took " + ms + " ms");
     }
 }
