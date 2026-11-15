@@ -27,5 +27,24 @@
       },
       { "name": "notices", "source": "THIRD-PARTY-NOTICES.txt" }
     ]
+  },
+
+  "linux": {
+    "binaries": [
+      {
+        "name": "vexplore",
+        "appId": "dev.sibarum.vexplore",
+        "source": "vexplore-gui/target-linux/vexplore",
+        "icon": "vexplore-gui/src/main/rc/vexplore.ico",
+        "addToPath": true,
+        "shortcuts": { "desktop": true, "startMenu": true, "label": "Vexplore" }
+      },
+      {
+        "name": "vexplore-ffmpeg-record",
+        "source": "vexplore-gui/target-linux/vexplore-ffmpeg-record-linux-x86_64.tar.gz",
+        "dir": "ffmpeg-record"
+      },
+      { "name": "notices", "source": "THIRD-PARTY-NOTICES.txt" }
+    ]
   }
 }
