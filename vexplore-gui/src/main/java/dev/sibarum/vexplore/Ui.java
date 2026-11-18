@@ -196,7 +196,7 @@ final class Ui {
         // The rail is there whenever the list is, empty or not: one that appeared with its first suggestion would move
         // every row. It is a share of the room beside the places rather than the handoff's 25 rem, which a split's
         // minimum cannot protect the list from in a narrow window (framework-notes FN-2).
-        rail = new RailPanel(gui);
+        rail = new RailPanel(gui, motion);
         // The dock under the list, the sized pane of their split so a taller window gives the list the room. The rail
         // stays beside both.
         dock = new DockPanel(gui);

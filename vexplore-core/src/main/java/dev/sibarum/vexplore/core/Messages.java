@@ -345,11 +345,18 @@ public final class Messages {
      * The rail's card: the effect first ({@code Move 9 files · 6.5 GB}), then the first few names. {@code go} is the
      * button's words, or empty when there is nothing it can do yet; {@code running} is how far a run has got
      * ({@code Deleting · 3 of 9}), or empty when none goes, and while one does the button is its Stop. {@code naming}:
-     * the card holds a field for a new name, for a rename, whose Enter carries it out.
+     * the card holds a field for a new name, for a rename, whose Enter carries it out. {@code progress} is the bar
+     * under the running words, 0 to 1, or NaN while the size is still being counted; it means nothing while
+     * {@code running} is empty.
      */
-    public record Card(String headline, String detail, String go, String running, boolean naming) {
+    public record Card(String headline, String detail, String go, String running, boolean naming, float progress) {
 
         public static final Card NONE = new Card("", "", "", "", false);
+
+        /** A card with nothing running. */
+        public Card(String headline, String detail, String go, String running, boolean naming) {
+            this(headline, detail, go, running, naming, 0f);
+        }
     }
 
     /**
@@ -363,11 +370,11 @@ public final class Messages {
     public record Suggested(String basis, List<Chip> select, List<Chip> condition, List<Chip> action,
                             Set<Row> reach, Card card, boolean placing, List<Chip> places, String proposing) {
 
-        /** The same rail, its card saying how far a run has got. */
-        public Suggested running(String words) {
+        /** The same rail, its card saying how far a run has got, in words and as a fraction (NaN: not known yet). */
+        public Suggested running(String words, float progress) {
             return new Suggested(basis, select, condition, action, reach,
-                    new Card(card.headline(), card.detail(), card.go(), words, card.naming()), placing, places,
-                    proposing);
+                    new Card(card.headline(), card.detail(), card.go(), words, card.naming(), progress), placing,
+                    places, proposing);
         }
 
         /**
@@ -700,10 +707,13 @@ public final class Messages {
     public record Run(long run, Plan plan, Path trash) {
     }
 
-    /** How far run {@code run} has got: {@code done} of {@code total} steps. The latest is all that matters. */
+    /**
+     * How far run {@code run} has got: {@code done} of {@code total} steps, and {@code bytes} of {@code size} carried,
+     * a {@code size} below 0 while it is still being counted. The latest is all that matters.
+     */
     public static final Topic<Progress> PROGRESS_TOPIC = Topic.state(Progress.class);
 
-    public record Progress(long run, int done, int total) {
+    public record Progress(long run, int done, int total, long bytes, long size) {
     }
 
     /** What run {@code run} did, stopped or not. */

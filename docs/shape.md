@@ -273,7 +273,7 @@ The explorer and its parts:
 | Request → reply | Part | Does |
 | --- | --- | --- |
 | `Planning(long ticket, Act act, List<Row> targets, Path destination)` → `Planned(long ticket, Plan plan)` | `PlanAction`, a job | reads the destination's names for collisions; delete and rename need none and are planned in the step |
-| `Run(long run, Plan plan)` → `Ran(long run, Done done)`, sending `Progress(long run, int done, int total)`; stopped by `Stop` | `RunAction`, a source | carries out a plan, forward or back |
+| `Run(long run, Plan plan)` → `Ran(long run, Done done)`, sending `Progress(long run, int done, int total, long bytes, long size)`; stopped by `Stop` | `RunAction`, a source | carries out a plan, forward or back |
 | `Destining(long ticket, Path folder, Kind kind)` → `Destinations(long ticket, List<Dest> places)` | `SuggestDestinations`, a job (slice 2) | 0.1's `Destinations`: nearby folders that already hold that kind |
 
 ### The trash

@@ -537,12 +537,18 @@ class ExplorerTest {
     void theCardsButtonCarriesOutItsPlanAndTheRunIsRecorded() {
         deleteOfAPicked();
         tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        assertTrue(Float.isNaN(seen(Suggested.class).getLast().card().progress()), "its size is not counted yet");
         Messages.Run run = took(Messages.Run.class).getFirst();
         assertEquals(Plan.Op.DELETE, run.plan().op());
         assertEquals(List.of(new Plan.Step(path("a.txt"), null)), run.plan().steps(), "the run picks the trash's place");
         assertEquals(dir.resolve("trash"), run.trash());
 
-        tell(Messages.PROGRESS_TOPIC, new Messages.Progress(run.run(), 1, 1));
+        tell(Messages.PROGRESS_TOPIC, new Messages.Progress(run.run(), 0, 1, 4L, 10L));
+        Messages.Card card = took(Suggested.class).getLast().card();
+        assertEquals("Deleting · 0 of 1", card.running());
+        assertEquals(0.4f, card.progress(), 1e-6f, "the bar is the bytes, not the steps");
+
+        tell(Messages.PROGRESS_TOPIC, new Messages.Progress(run.run(), 1, 1, 10L, 10L));
         assertEquals("Deleting · 1 of 1", took(Suggested.class).getLast().card().running());
 
         tell(Messages.RAN_TOPIC, new Messages.Ran(run.run(), deletedA()));

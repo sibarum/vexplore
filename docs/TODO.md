@@ -18,6 +18,10 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 
 - [ ] Going up (Backspace, Alt+Up, a breadcrumb segment) selects nothing; an explorer selects the folder you came
       from. `Navigate` would carry the row to select, as `Shown` already does.
+- [ ] Two Folders' check (`CheckSame`) fills its bar by pairs read, not bytes, so two large copies move it in
+      halves. `Checking` would carry bytes as `Progress` does.
+- [ ] A Stop waits for the step under way, so a large file copying or zipping finishes first. `Operations`
+      could read the interrupt between chunks and take the half-written file away.
 - [ ] Places on Linux are the Windows names under home; 0.1 read the XDG user directories (`ListPlaces`).
 - [ ] A list row's accessible name leaves out the file name (`row "FOLDER Today 22:16"`), so a script cannot
       find a row by name. The name cell is an icon and text in a row box; find out what the table names a row from.

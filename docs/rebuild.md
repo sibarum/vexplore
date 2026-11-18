@@ -146,7 +146,7 @@ taken to the framework rather than worked around for long.
 | **Held Shift / Ctrl as intent** (the design's second principle) | `Seams.modifiers()` is the widget library's; the roadmap gives an application a state topic once a witness asks | Asked at M2 (framework-notes FN-9); the topic landed 2026-11-05, and the rail proposes from it again |
 | **A drop onto a tree row** | `TreeView` takes only its own items; no declared drop zone (roadmap: "Vexplore is that witness") | drops between lists only (M6) |
 | **Chips that wrap** | no wrap in `FlexLayout`; `Node.wrap` planned and paused | two chips to a row, counted, as 0.1 did |
-| **Progress** | no widget | a count in the rail's notice line, from `RunAction` |
+| **Progress** | `Progress` landed (vexelray-gui, 2026-11) | done 2026-11-18: a bar on the rail's card and on each Two Folders offer, in bytes carried, a sweep while `Operations` counts them |
 | **Greying a row menu's action per row** | trees have it, lists do not | an action that would do nothing says so on the card |
 | **Video, animated images, the suite's viewer** | the codec's players wait on the frame contract's step 5; `PictureViewer` and `Filmstrip` are out of vex-suite-common's build | nothing to wait for: the dock shows a thumbnail (a video's first frame) and Rasterware plays and views (ruled above) |
 | **A marked tree row** (destination counts, screen 02) | the tree has ticks, not fills | the counts on the rail only |

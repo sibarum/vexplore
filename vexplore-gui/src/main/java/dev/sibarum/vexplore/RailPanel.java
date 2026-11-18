@@ -21,6 +21,7 @@ import dev.vexelray.gui.icons.Icon;
 import dev.vexelray.gui.icons.IconView;
 import dev.vexelray.gui.widget.Button;
 import dev.vexelray.gui.widget.IconButton;
+import dev.vexelray.gui.widget.Progress;
 import dev.vexelray.gui.widget.TextField;
 
 import java.util.ArrayList;
@@ -104,6 +105,7 @@ final class RailPanel {
     private final IconButton go;
     private final Node run;
     private final Button stop;
+    private final Progress progress;
     private final TextField name;
 
     /** Where each action's chip was in what the explorer last sent, by {@link Act}'s order; -1 for not offered. */
@@ -117,9 +119,15 @@ final class RailPanel {
     private boolean comparing;
     /** Whether the selection's rail has nothing to say, as the explorer last said. */
     private boolean nothing = true;
+    /** Whether the card's bar, and each offer's by {@link Offer.Kind}'s order, shows a run: as last shown. */
+    private boolean cardGoing;
+    private final boolean[] offerGoing = new boolean[Offer.Kind.values().length];
 
-    RailPanel(Gui gui) {
+    private final Motion motion;
+
+    RailPanel(Gui gui, Motion motion) {
         this.gui = gui;
+        this.motion = motion;
 
         // The basis as Orbit's chip: an amber dot with a clock in it, and the words, on a dark amber ground.
         Node dot = dot(gui);
@@ -176,13 +184,14 @@ final class RailPanel {
         gui.landmark(Landmarks.RAIL_STOP, stop.node());
         Node top = gui.row().width(Length.FILL).gap(Length.rem(0.75f)).alignItems(AlignItems.CENTER)
                 .scroll(false, false).children(words, run, stop.node());
+        progress = bar(Landmarks.RAIL_PROGRESS);
         // A rename's new name, typed here and carried out by Enter: the card is where what would happen is said.
         name = new TextField(gui, "").name(Landmarks.RAIL_NAME);
         name.node().width(Length.FILL).font(Type.UI).textSize(Type.RAIL_TEXT);
         gui.landmark(Landmarks.RAIL_NAME, name.node());
         card = gui.column().width(Length.FILL).padding(Length.rem(0.9f), Length.rem(1f)).gap(Length.rem(0.5f))
                 .background(Role.RAISED).corner(Length.dp(20))
-                .children(top, detail, name.node());
+                .children(top, progress.node(), detail, name.node());
 
         comparison = comparison();
 
@@ -237,7 +246,37 @@ final class RailPanel {
         run.background(ready ? Role.ACTION : Role.TRACK);
         run.visible(running.isEmpty());
         stop.node().visible(!running.isEmpty());
+        gauge(progress, s.card(), cardGoing);
+        cardGoing = !running.isEmpty();
         name.node().visible(running.isEmpty() && s.card().naming());
+    }
+
+    /**
+     * A card's bar: how far the run has got, gliding to each value, and running while it does. Kept, never rebuilt:
+     * hidden while nothing runs.
+     */
+    private Progress bar(String landmark) {
+        Progress p = new Progress(gui).transition(motion.change);
+        p.node().width(Length.FILL).visible(false);
+        gui.landmark(landmark, p.node());
+        return p;
+    }
+
+    /**
+     * Show on {@code p} how far {@code card}'s run has got, or hide it when none goes. A bar shown again starts where
+     * its new run is, not by gliding back from where the last one ended. {@code was}: whether it was showing a run.
+     */
+    private void gauge(Progress p, Card card, boolean was) {
+        boolean going = !card.running().isEmpty();
+        if (going && !was) {
+            p.transition(null).show(card.progress()).transition(motion.change);
+        }
+        if (going) {
+            p.state(Progress.State.RUNNING).show(card.progress());
+        } else {
+            p.state(Progress.State.IDLE);
+        }
+        p.node().visible(going);
     }
 
     /**
@@ -262,8 +301,10 @@ final class RailPanel {
             }
             OfferCard c = offerCards.get(i);
             c.node.visible(offer != null);
+            Card card = offer == null ? Card.NONE : offer.card();
+            gauge(c.progress, card, offerGoing[i]);
+            offerGoing[i] = !card.running().isEmpty();
             if (offer != null) {
-                Card card = offer.card();
                 boolean going = !card.running().isEmpty();
                 c.headline.text(card.headline());
                 c.detail.text(card.detail());
@@ -293,7 +334,7 @@ final class RailPanel {
     }
 
     /** One offer's card: its words, how far it has got, and its own button. */
-    private record OfferCard(Node node, Node headline, Node detail, Node tag, Button button) {
+    private record OfferCard(Node node, Node headline, Node detail, Node tag, Progress progress, Button button) {
     }
 
     /**
@@ -335,14 +376,15 @@ final class RailPanel {
                     .wordWrap(false);
             Button button = new Button(gui, "").kind(Button.Kind.PRIMARY).undoable(false).name(landmark + ".go");
             gui.landmark(landmark + ".go", button.node());
+            Progress bar = bar(landmark + ".progress");
             Node card = gui.column().width(Length.FILL).padding(Length.rem(0.9f), Length.rem(1f))
                     .gap(Length.rem(0.5f)).background(Role.RAISED).corner(Length.dp(18))
                     .children(headline, detail, gui.row().width(Length.FILL).alignItems(AlignItems.CENTER)
                             .gap(Length.rem(0.75f)).scroll(false, false)
-                            .children(tag, gui.row().width(Length.grow(1f)), button.node()));
+                            .children(tag, gui.row().width(Length.grow(1f)), button.node()), bar.node());
             card.visible(false);
             gui.landmark(landmark, card);
-            offerCards.add(new OfferCard(card, headline, detail, tag, button));
+            offerCards.add(new OfferCard(card, headline, detail, tag, bar, button));
             column.append(card);
         }
         column.visible(false);

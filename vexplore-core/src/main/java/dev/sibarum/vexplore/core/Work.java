@@ -107,16 +107,33 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
      * @param going the card's word while it runs ({@code Deleting})
      * @param done  how many steps are finished
      * @param total how many there are
+     * @param bytes how many bytes are carried
+     * @param size  how many there are to carry; below 0 while they are still being counted
      */
-    record Running(long run, long entry, Way way, String words, String going, int done, int total) {
+    record Running(long run, long entry, Way way, String words, String going, int done, int total, long bytes,
+                   long size) {
 
-        Running at(int value) {
-            return new Running(run, entry, way, words, going, value, total);
+        Running at(Messages.Progress p) {
+            return new Running(run, entry, way, words, going, p.done(), total, p.bytes(), p.size());
         }
 
         /** {@code Deleting · 3 of 9}. */
         String said() {
             return going + " · " + done + " of " + total;
+        }
+
+        /**
+         * The bar: the bytes carried, as a fraction of the size; NaN while the size is counted; by steps when there are
+         * no bytes to count (empty files and folders).
+         */
+        float fraction() {
+            if (size < 0L) {
+                return Float.NaN;
+            }
+            if (size == 0L) {
+                return total == 0 ? 1f : (float) done / total;
+            }
+            return (float) Math.min(1.0, (double) bytes / size);
         }
     }
 
@@ -139,8 +156,8 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
         return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock, watched, comparing);
     }
 
-    Work at(int done) {
-        return new Work(trash, runs, running.map(r -> r.at(done)), entries, journal, aim, marks, dock, watched,
+    Work at(Messages.Progress p) {
+        return new Work(trash, runs, running.map(r -> r.at(p)), entries, journal, aim, marks, dock, watched,
                 comparing);
     }
 

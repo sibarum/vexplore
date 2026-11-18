@@ -16,8 +16,9 @@ import sibarum.atchung.Sender;
  * {@link Operations#execute} reads that between steps, so a stopped run still answers with what it did, and that can
  * be undone.
  *
- * <p>It sends a count after each step ({@link Progress}, a state topic, so a fast run costs the view one count per
- * frame), and answers with what was done ({@link Ran}).
+ * <p>It says how far it has got ({@link Progress}, a state topic, so a fast run costs the view one count per frame):
+ * the size once {@link Operations} has counted it, the bytes as they are carried, and the steps as each ends. It
+ * answers with what was done ({@link Ran}).
  */
 @Source(stop = Stop.class)
 public final class RunAction {
@@ -31,6 +32,6 @@ public final class RunAction {
     public Ran run(Run r) {
         int total = r.plan().count();
         return new Ran(r.run(), Operations.execute(r.plan(), r.trash(),
-                n -> progress.send(new Progress(r.run(), n, total))));
+                (n, bytes, size) -> progress.send(new Progress(r.run(), n, total, bytes, size))));
     }
 }

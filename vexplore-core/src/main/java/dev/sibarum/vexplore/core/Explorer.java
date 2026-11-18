@@ -804,6 +804,7 @@ public final class Explorer {
                 by[Relation.Group.PROBABLY_IDENTICAL.ordinal()]);
         Work.Comparing c = s.work().comparing();
         String running = s.work().running().map(Running::said).orElse("");
+        float ran = s.work().running().map(Running::fraction).orElse(0f);
         List<Offer> offers = new ArrayList<>();
         List<Row> only = onlyHere(s, relations);
         Plan move = only.isEmpty() ? null : moving(s, only);
@@ -813,7 +814,8 @@ public final class Explorer {
             long bytes = moved.stream().mapToLong(Row::size).sum();
             boolean going = c.offer().equals(Optional.of(Offer.Kind.MOVE_ONLY_HERE));
             offers.add(new Offer(Offer.Kind.MOVE_ONLY_HERE, new Card(words + sized(bytes), named(moved),
-                    words.substring(0, words.indexOf(" only in ")), going ? running : "", false), Set.copyOf(moved)));
+                    words.substring(0, words.indexOf(" only in ")), going ? running : "", false, going ? ran : 0f),
+                    Set.copyOf(moved)));
         }
         List<Twins> twins = twins(s, relations);
         if (!twins.isEmpty()) {
@@ -838,8 +840,10 @@ public final class Explorer {
             boolean mine = c.offer().equals(Optional.of(Offer.Kind.REMOVE_IDENTICAL));
             String how = !mine ? "" : c.checking().map(k -> "Checking · " + k.done() + " of " + k.total())
                     .orElse(running);
+            float far = !mine ? 0f : c.checking().map(k -> k.total() == 0 ? 1f : (float) k.done() / k.total())
+                    .orElse(ran);
             offers.add(new Offer(Offer.Kind.REMOVE_IDENTICAL, new Card(removeWords(s, copies.size()) + sized(bytes),
-                    detail, go, how, false), Set.copyOf(copies)));
+                    detail, go, how, false, far), Set.copyOf(copies)));
         }
         out.send(Messages.OFFERS_TOPIC, new Offers(tally, offers));
     }
@@ -1446,7 +1450,7 @@ public final class Explorer {
             rail = placed(rail, s.work().aim());
         }
         Suggested worded = rail;
-        return s.work().running().map(r -> worded.running(r.said())).orElse(worded);
+        return s.work().running().map(r -> worded.running(r.said(), r.fraction())).orElse(worded);
     }
 
     /**
@@ -1561,19 +1565,19 @@ public final class Explorer {
             refuse(out, "Nothing can be done before the session is read");
             return s;
         }
-        Running r = new Running(s.work().runs() + 1, entry, way, words, way.going(plan), 0, plan.count());
+        Running r = new Running(s.work().runs() + 1, entry, way, words, way.going(plan), 0, plan.count(), 0L, -1L);
         out.send(Messages.RUN_TOPIC, new Run(r.run(), plan, s.work().trash().get()));
         State next = s.withWork(s.work().starting(r));
         out.send(Messages.SUGGESTED_TOPIC, said(next));
         return next;
     }
 
-    /** How far the run has got: the card's count. */
+    /** How far the run has got: the card's count and its bar. */
     private static State progress(State s, Progress p, Out out) {
         if (!s.work().runs(p.run())) {
             return s;
         }
-        State next = s.withWork(s.work().at(p.done()));
+        State next = s.withWork(s.work().at(p));
         out.send(Messages.SUGGESTED_TOPIC, said(next));
         if (next.work().comparing().offer().isPresent()) {
             offers(next, out);

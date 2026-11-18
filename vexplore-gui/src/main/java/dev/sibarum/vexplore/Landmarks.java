@@ -86,6 +86,12 @@ final class Landmarks {
     /** The card's tag: {@code nothing has changed yet}, or how far a run has got ({@code Deleting · 3 of 9}). */
     static final String RAIL_TAG = "rail.tag";
 
+    /**
+     * The card's bar, shown while a run goes: its bytes carried, or a sweep while they are counted. Each Two Folders
+     * offer has its own, {@link #RAIL_OFFER}{@code .move.progress} and {@code .remove.progress}.
+     */
+    static final String RAIL_PROGRESS = "rail.progress";
+
     /** The card's button, which carries out what it states, and the Stop in its place while that runs. */
     static final String RAIL_GO = "rail.go";
     static final String RAIL_STOP = "rail.stop";
