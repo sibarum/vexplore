@@ -104,9 +104,8 @@ final class RailPanel {
     private final Node tag;
     private final IconButton go;
     private final Node run;
-    private final Button stop;
-    private final Progress progress;
     private final TextField name;
+    private final QueuePanel queue;
 
     /** Where each action's chip was in what the explorer last sent, by {@link Act}'s order; -1 for not offered. */
     private final int[] offered = new int[Act.values().length];
@@ -119,8 +118,7 @@ final class RailPanel {
     private boolean comparing;
     /** Whether the selection's rail has nothing to say, as the explorer last said. */
     private boolean nothing = true;
-    /** Whether the card's bar, and each offer's by {@link Offer.Kind}'s order, shows a run: as last shown. */
-    private boolean cardGoing;
+    /** Whether each offer's bar, by {@link Offer.Kind}'s order, shows a run: as last shown. */
     private final boolean[] offerGoing = new boolean[Offer.Kind.values().length];
 
     private final Motion motion;
@@ -173,25 +171,23 @@ final class RailPanel {
         Node words = gui.column().width(Length.grow(1f)).gap(Length.rem(0.2f)).scroll(false, false).clip(true)
                 .children(headline, tag);
         // The one filled button on the screen, round as Orbit draws it: what happens if the person does nothing but
-        // agree, its words its name. While a run goes, its Stop stands beside the words instead.
+        // agree, its words its name. While a run goes it is still there: what it carries out waits behind the run.
         go = new IconButton(gui, Icon.ARROW_RIGHT, "").name(Landmarks.RAIL_GO).size(RUN, Length.dp(18));
         go.node().corner(Length.dp(22));
         go.ink(Role.ON_ACTION);
         // The button paints its own fill under the pointer only, so the violet disc is behind it, greyed with it.
         run = gui.box().size(RUN, RUN).corner(Length.dp(22)).background(Role.ACTION).children(go.node());
         gui.landmark(Landmarks.RAIL_GO, go.node());
-        stop = new Button(gui, "Stop").name(Landmarks.RAIL_STOP);
-        gui.landmark(Landmarks.RAIL_STOP, stop.node());
         Node top = gui.row().width(Length.FILL).gap(Length.rem(0.75f)).alignItems(AlignItems.CENTER)
-                .scroll(false, false).children(words, run, stop.node());
-        progress = bar(Landmarks.RAIL_PROGRESS);
+                .scroll(false, false).children(words, run);
         // A rename's new name, typed here and carried out by Enter: the card is where what would happen is said.
         name = new TextField(gui, "").name(Landmarks.RAIL_NAME);
         name.node().width(Length.FILL).font(Type.UI).textSize(Type.RAIL_TEXT);
         gui.landmark(Landmarks.RAIL_NAME, name.node());
         card = gui.column().width(Length.FILL).padding(Length.rem(0.9f), Length.rem(1f)).gap(Length.rem(0.5f))
                 .background(Role.RAISED).corner(Length.dp(20))
-                .children(top, progress.node(), detail, name.node());
+                .children(top, detail, name.node());
+        queue = new QueuePanel(gui, motion);
 
         comparison = comparison();
 
@@ -204,7 +200,7 @@ final class RailPanel {
         node = gui.column().width(Length.FILL).height(Length.FILL)
                 .padding(Length.rem(1.25f)).gap(Length.rem(1.1f))
                 .background(Look.RAIL).corner(Look.PANEL_CORNER).scroll(false, false).clip(true)
-                .children(column, card);
+                .children(column, card, queue.node());
         gui.landmark(Landmarks.RAIL, node);
         show(Suggested.NONE);
     }
@@ -224,8 +220,7 @@ final class RailPanel {
         for (Node n : sections) {
             n.visible(!none);
         }
-        String running = s.card().running();
-        card.visible(!none || !running.isEmpty());
+        card.visible(!none);
         basisChip.visible(!none);
         basis.text(none ? "" : "based on " + s.basis());
         selectTitle.text(s.proposing().isEmpty() ? WHICH : WHICH + " · " + s.proposing());
@@ -239,16 +234,12 @@ final class RailPanel {
         lit(2, acting);
         headline.text(s.card().headline());
         detail.text(s.card().detail());
-        tag.text(running.isEmpty() ? UNCHANGED : running);
+        tag.text(UNCHANGED);
         go.label(s.card().go());
-        boolean ready = running.isEmpty() && !s.card().go().isEmpty();
+        boolean ready = !s.card().go().isEmpty();
         go.enabled(ready);
         run.background(ready ? Role.ACTION : Role.TRACK);
-        run.visible(running.isEmpty());
-        stop.node().visible(!running.isEmpty());
-        gauge(progress, s.card(), cardGoing);
-        cardGoing = !running.isEmpty();
-        name.node().visible(running.isEmpty() && s.card().naming());
+        name.node().visible(s.card().naming());
     }
 
     /**
@@ -421,9 +412,9 @@ final class RailPanel {
         return choose.address().equals(address);
     }
 
-    /** Whether {@code address} is the card's Stop. */
-    boolean stop(String address) {
-        return stop.address().equals(address);
+    /** The queue under the card. */
+    QueuePanel queue() {
+        return queue;
     }
 
     /**

@@ -31,12 +31,14 @@ import java.util.Set;
  * @param dock    the preview asked for the dock
  * @param watched   the folder each list's watch was asked for, and what landed in it lately
  * @param comparing in Two Folders, the pairs of copies read and what they were found to be, and the offer in hand
+ * @param waiting   what is carried out after the run in flight, in order, and whether it is held
  */
 record Work(Optional<Path> trash, long runs, Optional<Running> running, long entries, Map<Long, Entry> journal,
-            Aim aim, List<Mark> marks, Dock dock, Map<Side, Watched> watched, Comparing comparing) {
+            Aim aim, List<Mark> marks, Dock dock, Map<Side, Watched> watched, Comparing comparing,
+            Waiting waiting) {
 
     static final Work NONE = new Work(Optional.empty(), 0L, Optional.empty(), 0L, Map.of(), Aim.NONE, List.of(),
-            Dock.NONE, Map.of(), Comparing.NONE);
+            Dock.NONE, Map.of(), Comparing.NONE, Waiting.NONE);
 
     Work {
         journal = Map.copyOf(journal);
@@ -109,12 +111,18 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
      * @param total how many there are
      * @param bytes how many bytes are carried
      * @param size  how many there are to carry; below 0 while they are still being counted
+     * @param plan  what it does, which the lists show done until they are listed again
+     * @param rows  the rows it was made from; none for an undo or a redo
      */
     record Running(long run, long entry, Way way, String words, String going, int done, int total, long bytes,
-                   long size) {
+                   long size, Plan plan, List<Messages.Row> rows) {
+
+        Running {
+            rows = List.copyOf(rows);
+        }
 
         Running at(Messages.Progress p) {
-            return new Running(run, entry, way, words, going, p.done(), total, p.bytes(), p.size());
+            return new Running(run, entry, way, words, going, p.done(), total, p.bytes(), p.size(), plan, rows);
         }
 
         /** {@code Deleting · 3 of 9}. */
@@ -148,17 +156,19 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withTrash(Path value) {
-        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock, watched, comparing);
+        return new Work(Optional.of(value), runs, running, entries, journal, aim, marks, dock, watched,
+                comparing, waiting);
     }
 
     /** Run {@code r} starts; its number is the next. */
     Work starting(Running r) {
-        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock, watched, comparing);
+        return new Work(trash, r.run(), Optional.of(r), entries, journal, aim, marks, dock, watched,
+                comparing, waiting);
     }
 
     Work at(Messages.Progress p) {
         return new Work(trash, runs, running.map(r -> r.at(p)), entries, journal, aim, marks, dock, watched,
-                comparing);
+                comparing, waiting);
     }
 
     /** The run is over, and entry {@code number} is now {@code entry}. */
@@ -166,24 +176,24 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
         Map<Long, Entry> next = new HashMap<>(journal);
         next.put(number, entry);
         return new Work(trash, runs, Optional.empty(), Math.max(entries, number), next, aim, marks, dock, watched,
-                comparing);
+                comparing, waiting);
     }
 
     /** The run is over, and nothing is recorded: it did nothing. */
     Work idle() {
-        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock, watched, comparing);
+        return new Work(trash, runs, Optional.empty(), entries, journal, aim, marks, dock, watched, comparing, waiting);
     }
 
     Work withAim(Aim value) {
-        return new Work(trash, runs, running, entries, journal, value, marks, dock, watched, comparing);
+        return new Work(trash, runs, running, entries, journal, value, marks, dock, watched, comparing, waiting);
     }
 
     Work withMarks(List<Mark> value) {
-        return new Work(trash, runs, running, entries, journal, aim, value, dock, watched, comparing);
+        return new Work(trash, runs, running, entries, journal, aim, value, dock, watched, comparing, waiting);
     }
 
     Work withDock(Dock value) {
-        return new Work(trash, runs, running, entries, journal, aim, marks, value, watched, comparing);
+        return new Work(trash, runs, running, entries, journal, aim, marks, value, watched, comparing, waiting);
     }
 
     /**
@@ -203,7 +213,7 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     Work withWatched(Side side, Watched value) {
         Map<Side, Watched> next = new HashMap<>(watched);
         next.put(side, value);
-        return new Work(trash, runs, running, entries, journal, aim, marks, dock, next, comparing);
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, next, comparing, waiting);
     }
 
     /**
@@ -220,13 +230,13 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     }
 
     Work withComparing(Comparing value) {
-        return new Work(trash, runs, running, entries, journal, aim, marks, dock, watched, value);
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, watched, value, waiting);
     }
 
     /** Check {@code run} starts: its number is the next, counted with the runs. */
     Work checking(Checking c, Kind offer) {
         return new Work(trash, c.run(), running, entries, journal, aim, marks, dock, watched,
-                comparing.checking(c, offer));
+                comparing.checking(c, offer), waiting);
     }
 
     /**
@@ -270,5 +280,61 @@ record Work(Optional<Path> trash, long runs, Optional<Running> running, long ent
     /** Whether run {@code run} is the one in flight. */
     boolean runs(long run) {
         return running.isPresent() && running.get().run() == run;
+    }
+
+    /** Whether anything is under way, a run or Two Folders' check, which whatever is carried out next waits behind. */
+    boolean busy() {
+        return running.isPresent() || comparing.checking().isPresent();
+    }
+
+    Work withWaiting(Waiting value) {
+        return new Work(trash, runs, running, entries, journal, aim, marks, dock, watched, comparing, value);
+    }
+
+    /**
+     * What is carried out once the run in flight is over, in order (docs/shape.md, M9).
+     *
+     * @param numbered the count of items ever queued, the last one's number
+     * @param items    what waits, first to run first
+     * @param held     whether nothing waiting starts until it is let go
+     */
+    record Waiting(long numbered, List<Queued> items, boolean held) {
+
+        static final Waiting NONE = new Waiting(0L, List.of(), false);
+
+        Waiting {
+            items = List.copyOf(items);
+        }
+
+        /** {@code plan} put at the end, numbered the next. */
+        Waiting adding(String words, Plan plan, List<Messages.Row> rows) {
+            List<Queued> next = new java.util.ArrayList<>(items);
+            next.add(new Queued(numbered + 1, words, plan, rows));
+            return new Waiting(numbered + 1, next, held);
+        }
+
+        /** Without item {@code number}; the same if it is not waiting. */
+        Waiting without(long number) {
+            return new Waiting(numbered, items.stream().filter(q -> q.number() != number).toList(), held);
+        }
+
+        Waiting holding(boolean value) {
+            return new Waiting(numbered, items, value);
+        }
+
+        boolean has(long number) {
+            return items.stream().anyMatch(q -> q.number() == number);
+        }
+    }
+
+    /**
+     * One item waiting: what it is called ({@code Move 3 files to Archive}), the plan as the card stated it, and the rows
+     * it was made from, which say what a file that is only going to be there will look like.
+     */
+    record Queued(long number, String words, Plan plan, List<Messages.Row> rows) {
+
+        Queued {
+            rows = List.copyOf(rows);
+        }
     }
 }

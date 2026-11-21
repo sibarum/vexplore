@@ -40,6 +40,10 @@ final class Columns {
     /** The space either side of a cell's words. */
     private static final Length PAD = Length.dp(10);
 
+    /** A delete's bar: three quarters of a line of words tall, in the middle of a row. */
+    private static final Length BAR_HEIGHT = Length.rem(0.75f);
+    private static final Length BAR_TOP = Length.rem((ROW_REM - 0.75f) / 2f);
+
     private Columns() {
     }
 
@@ -47,15 +51,23 @@ final class Columns {
      * The columns, in {@link Order.By}'s order after {@code LISTED}, each sorted by that order's comparator: the
      * explorer orders rows by the same ones when it hears which the person clicked ({@link #order}).
      */
-    static List<Table.Column<Row>> of(Tags<String> fresh, Tags<Relation> compared) {
+    static List<Table.Column<Row>> of(Tags<String> fresh, Tags<Relation> compared, Fated fated) {
         return List.of(
-                Table.Column.of("NAME", Length.grow(1), (g, r) -> name(g, r, fresh, compared),
+                Table.Column.of("NAME", Length.grow(1), (g, r) -> name(g, r, fresh, compared, fated),
                         Order.By.NAME.comparator()),
-                Table.Column.of("TYPE", Length.rem(5f), Columns::type, Order.By.TYPE.comparator()),
-                Table.Column.of("SIZE", Length.rem(6.5f), (g, r) -> cell(g, r.folder() ? "" : Bytes.format(r.size()),
-                        Type.UI, Type.BODY, Role.INK, HAlign.RIGHT), Order.By.SIZE.comparator()),
-                Table.Column.of("MODIFIED", Length.rem(9.5f), (g, r) -> cell(g, modified(r), Type.UI, Type.BODY,
-                        Role.DIM, HAlign.LEFT), Order.By.MODIFIED.comparator()));
+                Table.Column.of("TYPE", Length.rem(5f), (g, r) -> fades(fated, r, type(g, r)),
+                        Order.By.TYPE.comparator()),
+                Table.Column.of("SIZE", Length.rem(6.5f), (g, r) -> fades(fated, r, cell(g,
+                        r.folder() ? "" : Bytes.format(r.size()), Type.UI, Type.BODY, Role.INK, HAlign.RIGHT)),
+                        Order.By.SIZE.comparator()),
+                Table.Column.of("MODIFIED", Length.rem(9.5f), (g, r) -> fades(fated, r, cell(g, modified(r), Type.UI,
+                        Type.BODY, Role.DIM, HAlign.LEFT)), Order.By.MODIFIED.comparator()));
+    }
+
+    /** {@code node}, fading with its row while the queue moves it away or has yet to bring it. */
+    private static Node fades(Fated fated, Row r, Node node) {
+        fated.fades(r.path(), node);
+        return node;
     }
 
     /** What the table at column {@code column}, running {@code direction}, orders by: as {@link #of} lays them out. */
@@ -72,7 +84,7 @@ final class Columns {
      * as text, never a fill ({@code Look.ANCHOR}). In Two Folders, the comparison's mark before the icon. Each built
      * hidden or shown as its {@link Tags} says, and handed to it.
      */
-    private static Node name(Nodes g, Row r, Tags<String> fresh, Tags<Relation> compared) {
+    private static Node name(Nodes g, Row r, Tags<String> fresh, Tags<Relation> compared, Fated fated) {
         // Not a scroller, as the table's own cells are not: a name wider than its column is clipped, not scrolled.
         Node row = g.row().width(Length.FILL).height(Length.FILL).scroll(false, false)
                 .alignItems(AlignItems.CENTER).gap(Type.TIGHT).padding(Length.ZERO, PAD);
@@ -81,15 +93,34 @@ final class Columns {
             compared.built(r.path(), m.getKey(), mark);
             row.append(mark);
         }
+        Fated.Parts parts = fated.start(r.path());
         Node glyph = g.icon(family(r)).size(ICON).node().hitInert(true);
-        Node name = g.text(r.name()).font(Type.UI).textSize(Type.BODY).textColor(Role.INK)
+        parts.fade.add(glyph);
+        // The name upright, and again in italic for a row the queue renames: one shown, so a rename fades in.
+        parts.upright = g.text(r.name()).font(Type.UI).textSize(Type.BODY).textColor(Role.INK)
                 .wordWrap(false).height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
+        parts.italic = g.text(r.name()).font(Type.UI).textSize(Type.BODY).textColor(Role.INK).italic()
+                .wordWrap(false).height(Length.FILL).align(HAlign.LEFT, VAlign.MIDDLE);
+        // A delete's bar, across the name and no further: a censor's, in the palette's rose, the name faint under it.
+        parts.bar = g.box().floatAt(Length.ZERO, BAR_TOP).width(Length.FILL).height(BAR_HEIGHT)
+                .corner(Length.dp(3)).background(Role.DANGER).opacity(Fated.BAR).hitInert(true);
+        Node names = g.row().height(Length.FILL).alignItems(AlignItems.CENTER).scroll(false, false)
+                .children(parts.upright, parts.italic, parts.bar);
+        parts.fade.add(names);
         Node tag = g.text(NEW).font(Type.MONO).textSize(Type.SMALL).textColor(Look.ANCHOR)
                 .wordWrap(false).hitInert(true).visible(fresh.has(r.path(), NEW));
         fresh.built(r.path(), NEW, tag);
+        // What the queue will do, and the number of its line in the queue, as the queue writes it.
+        parts.note = g.text("").font(Type.MONO).textSize(Type.SMALL).textColor(Role.DIM).wordWrap(false)
+                .hitInert(true);
+        parts.number = g.text("").font(Type.MONO).textSize(Type.SMALL).textColor(Role.ACCENT).wordWrap(false)
+                .padding(Length.dp(1), Length.dp(5)).corner(Length.dp(5)).background(Look.CHROME).hitInert(true);
+        Fated.wear(parts, fated.fate(r.path()));
         row.append(glyph);
-        row.append(name);
+        row.append(names);
         row.append(tag);
+        row.append(parts.note);
+        row.append(parts.number);
         return row;
     }
 

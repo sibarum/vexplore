@@ -41,7 +41,18 @@ The v0.2 rebuild starts from the template, and 0.1's features come back one slic
 - [ ] The rail's "today" is the day the folder was listed; a folder left open past midnight says "today" of the day
       before until it is listed again (M5's watching relists).
 - [ ] The trash keeps an empty dated folder after a delete is undone, and is never emptied.
-- [ ] Stop is tested in `OperationsTest` but not driven live: a run of a few files ends before a click lands.
+- [ ] Stop is tested in `OperationsTest` but not driven live: a run of a few files ends before a click lands. Nor is a
+      Stop holding the queue (M9), tested in `ExplorerTest` only.
 - [ ] An undo refused because a run is going still moves the window's history, so the entry and the history disagree
       until the next Ctrl+Y. A `Change.check()` that asks whether a run goes would refuse it in place.
 - [ ] *Choose folder…* is tested in `ExplorerTest` but not driven live: the system's picker is a real dialog.
+- [ ] **Ctrl+Z does not take a waiting item off the queue** (M9): its × does. The window's history holds journal entries
+      only; an entry per item waiting, dropped when it starts, would need the history to drop an entry.
+- [ ] **A ghost cannot be acted on** (M9): a file only queued to arrive cannot itself be moved, copied or renamed in the
+      queue. `Projection` would apply an item's steps on the ghosts as on the rows there.
+- [ ] **The queue does not watch the disk** (M9): an item whose files changed or went since it was queued is not
+      flagged before it runs; it meets the change as any run does, step by step. `WatchFolder`'s stirs could mark it.
+- [ ] A plan with files left alone because the queue takes them keeps the whole plan's `bytes` (`Projection.claim`).
+      The run counts its own size, so only a card could say the wrong total.
+- [ ] Seen once under `ottermate`: a second Ctrl+L, a file's path typed and Enter, left the earlier file selected.
+      Ctrl+A before typing did not show it again. Not looked into.

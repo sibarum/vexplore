@@ -154,12 +154,14 @@ import java.util.Set;
         Ran.class, Undo.class, Redo.class, Destinations.class, Destine.class, Planned.class,
         Rename.class, RecallMark.class, ForgetMark.class, Previewed.class, OpenWith.class, HandedOff.class,
         Menu.class, Stirred.class, Unwatched.class, Freshness.class, Use.class, TwoFolders.class, Swap.class,
-        Back.class, Dropped.class, Accept.class, Checking.class, Checked.class, Resolve.class})
+        Back.class, Dropped.class, Accept.class, Checking.class, Checked.class, Resolve.class,
+        Messages.Unqueue.class, Messages.Hold.class})
 @Publishes({Shown.class, Summary.class, Status.class, Find.class, Listing.class, Open.class, Recall.class,
         Remember.class, Suggested.class, Run.class, Recorded.class,
         Destining.class, Planning.class, Naming.class, Marks.class,
         Previewing.class, Docked.class, Handing.class, Watch.class, Unwatch.class, Pair.class,
-        Fresh.class, Compared.class, Offers.class, Check.class, StopCheck.class, Conflict.class})
+        Fresh.class, Compared.class, Offers.class, Check.class, StopCheck.class, Conflict.class,
+        Messages.Queue.class})
 public final class Explorer {
 
     /** How many of each message the inbox holds before a sender is refused. A person sends one at a time. */
@@ -299,17 +301,9 @@ public final class Explorer {
         }
 
         /**
-         * The list on {@code side} asked for again after a run: what is selected is kept, so the rows still there
-         * stay selected in the explorer as they do in the list. The pick is put down: what it picked has been done.
-         */
-        State relisting(Side side) {
-            return askingAnew().withPane(side, pane(side).relisting(tickets + 1));
-        }
-
-        /**
-         * The list on {@code side} asked for again because its folder changed on the disk: the selection and the
-         * rail's pick are kept, since the person did nothing. A download writing beside a pick half made never
-         * undoes it.
+         * The list on {@code side} asked for again because its folder changed on the disk, or a run landed: the
+         * selection and the rail's pick are kept, since neither is about it. A download writing beside a pick half made
+         * never undoes it, and nor does a run from the queue, which the pick it was made from already let go of.
          */
         State stirring(Side side) {
             return withTickets(tickets + 1).withPane(side, pane(side).relisting(tickets + 1));
@@ -383,6 +377,8 @@ public final class Explorer {
         Step<State, Checking> checking = b.step("checking", Explorer::checking);
         Step<State, Checked> checked = b.step("checked", Explorer::checked);
         Step<State, Resolve> resolve = b.step("resolve", Explorer::resolve);
+        Step<State, Messages.Unqueue> unqueue = b.step("unqueue", Explorer::unqueue);
+        Step<State, Messages.Hold> hold = b.step("hold", Explorer::hold);
 
         b.on(WindowOpened.TOPIC, begin)
                 .on(Messages.RECALLED_TOPIC, recalled)
@@ -422,7 +418,9 @@ public final class Explorer {
                 .on(Messages.ACCEPT_TOPIC, accept)
                 .on(Messages.CHECKING_TOPIC, checking)
                 .on(Messages.CHECKED_TOPIC, checked)
-                .on(Messages.RESOLVE_TOPIC, resolve);
+                .on(Messages.RESOLVE_TOPIC, resolve)
+                .on(Messages.UNQUEUE_TOPIC, unqueue)
+                .on(Messages.HOLD_TOPIC, hold);
         ledger = b.build(inbox, "explorer", CAPACITY);
     }
 
@@ -585,7 +583,7 @@ public final class Explorer {
         if (l.problem() != null) {
             refuse(out, "Can't open " + ListFolder.name(l.folder()) + ": " + l.problem());
         }
-        out.send(Messages.SHOWN_TOPIC, new Shown(side, l.folder(), l.rows(), s.pane(side).select()));
+        shown(s, side, l.folder(), l.rows(), s.pane(side).select(), out);
         State next = watch(s.withPane(side, s.pane(side).withRows(l)), side, l, out);
         summary(next, out);
         compare(next, out);
@@ -952,7 +950,9 @@ public final class Explorer {
         }
         out.send(Messages.STATUS_TOPIC, new Status(words.toString(), k.problem() != null));
         compare(next, out);
-        return next;
+        State after = advance(next, out);
+        changed(after, out);
+        return after;
     }
 
     /** The status line's counts: the list used, and in Two Folders the other one's rows. */
@@ -1001,12 +1001,9 @@ public final class Explorer {
         for (Path p : d.held()) {
             s.pane(from).row(p).ifPresent(rows::add);
         }
-        Set<String> taken = new HashSet<>();
-        for (Row r : s.pane(d.onto()).rows()) {
-            taken.add(r.name());
-        }
+        Set<String> taken = names(s, into, s.pane(d.onto()).rows());
         Plan.Op op = d.op();
-        Plan plan = Plan.to(op, rows, into.get(), taken);
+        Plan plan = Projection.claim(Plan.to(op, rows, into.get(), taken), Projection.claimed(items(s)));
         String where = ListFolder.name(into.get());
         if (plan.count() == 0) {
             Plan.Skip first = plan.skipped().isEmpty() ? null : plan.skipped().getFirst();
@@ -1018,7 +1015,7 @@ public final class Explorer {
         String words = (op == Plan.Op.MOVE ? "Move " : "Copy ") + plan.count() + files
                 + " to " + where + (plan.skipped().isEmpty() ? "" : ", " + plan.skipped().size() + " left alone ("
                 + plan.skipped().getFirst().reason() + ")");
-        return start(s, plan, Way.DO, 0L, words, out);
+        return carryOut(s, plan, rows, words, out);
     }
 
     /**
@@ -1222,7 +1219,7 @@ public final class Explorer {
         State next = s.swapped();
         for (Side side : Side.values()) {
             Pane p = next.pane(side);
-            p.folder().ifPresent(f -> out.send(Messages.SHOWN_TOPIC, new Shown(side, f, p.rows(), p.selected())));
+            p.folder().ifPresent(f -> shown(next, side, f, p.rows(), p.selected(), out));
             Watched watched = next.work().watched(side);
             watched.folder().ifPresent(f -> out.send(Messages.WATCH_TOPIC, new Watch(side, f)));
             out.send(Messages.FRESH_TOPIC, new Fresh(side, watched.fresh()));
@@ -1354,7 +1351,7 @@ public final class Explorer {
     private static State choose(State s, Set<Path> paths, Out out) {
         State next = s.withSelected(paths);
         Pane p = next.pane();
-        p.folder().ifPresent(f -> out.send(Messages.SHOWN_TOPIC, new Shown(next.used(), f, p.rows(), paths)));
+        p.folder().ifPresent(f -> shown(next, next.used(), f, p.rows(), paths, out));
         summary(next, out);
         return dock(suggest(next, true, out), out);
     }
@@ -1396,7 +1393,8 @@ public final class Explorer {
             out.send(Messages.DESTINING_TOPIC, new Destining(a.asked(), folder, kind));
         }
         if (a.destination().isPresent()) {
-            Planning want = new Planning(a.nextPlan(), op, s.rail().targets(), a.destination().get());
+            Planning want = new Planning(a.nextPlan(), op, s.rail().targets(), a.destination().get(),
+                    Projection.delta(items(s), a.destination().get()));
             if (!a.asks(want)) {
                 a = a.planning(want);
                 out.send(Messages.PLANNING_TOPIC, want);
@@ -1426,7 +1424,8 @@ public final class Explorer {
         if (a.sent().isEmpty() || a.sent().get().ticket() != p.ticket()) {
             return s;
         }
-        State next = s.withWork(s.work().withAim(a.planned(p.plan())));
+        Plan plan = Projection.claim(p.plan(), Projection.claimed(items(s)));
+        State next = s.withWork(s.work().withAim(a.planned(plan)));
         out.send(Messages.SUGGESTED_TOPIC, said(next));
         return next;
     }
@@ -1449,8 +1448,7 @@ public final class Explorer {
         if (op != null && !rail.empty()) {
             rail = placed(rail, s.work().aim());
         }
-        Suggested worded = rail;
-        return s.work().running().map(r -> worded.running(r.said(), r.fraction())).orElse(worded);
+        return rail;
     }
 
     /**
@@ -1493,8 +1491,8 @@ public final class Explorer {
     // ------------------------------------------------------------------ carrying it out, and taking it back
 
     /**
-     * The card's button: carry out the plan the card states. One run at a time; a second is refused on the status
-     * line rather than queued, because a queued run would act on a selection the person has since moved past.
+     * The card's button: carry out the plan the card states, now, or after what is under way (docs/shape.md, M9). The
+     * plan is fixed as the card stated it, so what it reaches is what the person saw, whatever they select after.
      */
     private static State carry(State s, Carry c, Out out) {
         if (s.rail().applied().act() == Act.MARK && !s.rail().targets().isEmpty()) {
@@ -1509,7 +1507,117 @@ public final class Explorer {
             return s;
         }
         String words = said(s).card().go();
-        return start(s, plan, Way.DO, 0L, words, out);
+        return carryOut(s, plan, s.rail().targets(), words, out);
+    }
+
+    /**
+     * Something the person asked to be carried out: run now when nothing is under way and the queue is empty and let
+     * go, else put at the end of the queue and said so. {@code rows} are the rows it was made from. Either way the
+     * rail's pick is put down: what it picked is in hand, and the rail is free for the next thing.
+     */
+    private static State carryOut(State s, Plan plan, List<Row> rows, String words, Out out) {
+        Plan mine = Projection.claim(plan, Projection.claimed(items(s)));
+        if (mine.count() == 0) {
+            Plan.Skip first = mine.skipped().getLast();
+            refuse(out, "Nothing to do: " + ListFolder.name(first.path()) + ", " + first.reason());
+            return s;
+        }
+        int claimed = plan.count() - mine.count();
+        // The card's words counted what it could see; the item is called by what it will do.
+        String said = claimed == 0 ? words : words.replaceFirst("\\b" + plan.count() + " files?\\b",
+                mine.count() + (mine.count() == 1 ? " file" : " files"));
+        String alone = claimed == 0 ? "" : ", " + claimed + " left alone (" + mine.skipped().getLast().reason() + ")";
+        Work.Waiting w = s.work().waiting();
+        State put = s.withPick(Pick.NONE);
+        State next;
+        if (!s.work().busy() && w.items().isEmpty() && !w.held()) {
+            next = start(put, mine, Way.DO, 0L, said, rows, out);
+            if (next == put) {
+                return s;
+            }
+        } else {
+            int ahead = w.items().size() + (s.work().busy() ? 1 : 0);
+            next = put.withWork(put.work().withWaiting(w.adding(said, mine, rows)));
+            out.send(Messages.STATUS_TOPIC, new Status("Queued: " + said + alone + (ahead == 0 ? ""
+                    : ", after " + ahead + (ahead == 1 ? " other" : " others")), false));
+        }
+        changed(next, out);
+        return suggest(next, true, out);
+    }
+
+    /**
+     * Show {@code folder}, whose rows on the disk are {@code rows}, in the list on {@code side}, as it will be once the
+     * queue is done: the rows the queue changes fated, and the ghosts it brings after them.
+     */
+    private static void shown(State s, Side side, Path folder, List<Row> rows, Set<Path> select, Out out) {
+        Projection.Folder after = Projection.of(items(s), folder, rows);
+        out.send(Messages.SHOWN_TOPIC, new Shown(side, folder, after.rows(), select, after.fates()));
+    }
+
+    /**
+     * The queue changed: the rail says so, and each list shows its folder after it again. Not after a run lands, whose
+     * listing again is what shows it, the lists never showing what it did undone in between.
+     */
+    private static void changed(State s, Out out) {
+        queue(s, out);
+        for (Side side : Side.values()) {
+            Pane p = s.pane(side);
+            if (side == Side.FROM || s.to().isPresent()) {
+                p.folder().ifPresent(f -> shown(s, side, f, p.rows(), Set.of(), out));
+            }
+        }
+    }
+
+    /** The rail's queue: the run in flight and its count, and what waits. */
+    private static void queue(State s, Out out) {
+        Optional<Messages.Line> running = s.work().running()
+                .map(r -> new Messages.Line(r.run(), r.words(), r.said(), r.fraction()));
+        List<Messages.Line> waiting = new ArrayList<>();
+        for (Work.Queued q : s.work().waiting().items()) {
+            waiting.add(new Messages.Line(q.number(), q.words(), "", 0f));
+        }
+        out.send(Messages.QUEUE_TOPIC, new Messages.Queue(running, waiting, s.work().waiting().held()));
+    }
+
+    /**
+     * The first item waiting, started, if nothing is under way and the queue is let go. Its plan is run as it was
+     * stated: what changed on the disk since is met as any run meets it, step by step, overwriting nothing.
+     */
+    private static State advance(State s, Out out) {
+        Work.Waiting w = s.work().waiting();
+        if (s.work().busy() || w.held() || w.items().isEmpty()) {
+            return s;
+        }
+        Work.Queued first = w.items().getFirst();
+        State next = s.withWork(s.work().withWaiting(w.without(first.number())));
+        State started = start(next, first.plan(), Way.DO, 0L, first.words(), first.rows(), out);
+        // Refused (no session read yet): it stays first, and the queue is held, rather than lost.
+        return started == next ? s.withWork(s.work().withWaiting(w.holding(true))) : started;
+    }
+
+    /** The queue's Hold, or Run all: what waits is held, or let go, the first starting at once if nothing is under way. */
+    private static State hold(State s, Messages.Hold h, Out out) {
+        Work.Waiting w = s.work().waiting();
+        if (w.held() == h.on()) {
+            queue(s, out); // the toggle flips itself (FN-7): say again what it is
+            return s;
+        }
+        State next = advance(s.withWork(s.work().withWaiting(w.holding(h.on()))), out);
+        changed(next, out);
+        return next;
+    }
+
+    /** An item's ×: taken off the queue, unless it has already started. */
+    private static State unqueue(State s, Messages.Unqueue u, Out out) {
+        Work.Waiting w = s.work().waiting();
+        if (!w.has(u.number())) {
+            return s;
+        }
+        String words = w.items().stream().filter(q -> q.number() == u.number()).findFirst().orElseThrow().words();
+        State next = s.withWork(s.work().withWaiting(w.without(u.number())));
+        out.send(Messages.STATUS_TOPIC, new Status("Taken off the queue: " + words, false));
+        changed(next, out);
+        return suggest(next, true, out);
     }
 
     /**
@@ -1526,14 +1634,29 @@ public final class Explorer {
             refuse(out, "Can't rename " + row.name() + ": " + plan.skipped().getFirst().reason());
             return s;
         }
-        return start(s, plan, Way.DO, 0L, "Rename " + row.name() + " to " + r.name().strip(), out);
+        return carryOut(s, plan, List.of(row), "Rename " + row.name() + " to " + r.name().strip(), out);
     }
 
-    /** The names in the folder shown: what a new name, or an archive's, must not be. */
+    /** The names in the folder shown: what a new name, or an archive's, must not be, once the queue is done. */
     private static Set<String> names(State s) {
-        Set<String> out = new HashSet<>();
-        for (Row r : s.rows()) {
-            out.add(r.name());
+        return names(s, s.folder(), s.rows());
+    }
+
+    /** The names {@code folder}, whose rows are {@code rows}, will hold once the queue is done. */
+    private static Set<String> names(State s, Optional<Path> folder, List<Row> rows) {
+        Set<String> now = new HashSet<>();
+        for (Row r : rows) {
+            now.add(r.name());
+        }
+        return folder.isEmpty() ? now : Projection.names(items(s), folder.get(), now);
+    }
+
+    /** What the projection works from: the run in flight, numbered 0, and each item waiting, in order. */
+    private static List<Projection.Item> items(State s) {
+        List<Projection.Item> out = new ArrayList<>();
+        s.work().running().ifPresent(r -> out.add(new Projection.Item(0L, r.plan(), r.rows())));
+        for (Work.Queued q : s.work().waiting().items()) {
+            out.add(new Projection.Item(q.number(), q.plan(), q.rows()));
         }
         return out;
     }
@@ -1557,7 +1680,12 @@ public final class Explorer {
     }
 
     private static State start(State s, Plan plan, Way way, long entry, String words, Out out) {
-        if (s.work().running().isPresent() || s.work().comparing().checking().isPresent()) {
+        return start(s, plan, way, entry, words, List.of(), out);
+    }
+
+    /** Run {@code plan} now, unless something is under way; {@code rows} are the rows it was made from, if any. */
+    private static State start(State s, Plan plan, Way way, long entry, String words, List<Row> rows, Out out) {
+        if (s.work().busy()) {
             refuse(out, "Something is already being done: wait for it, or press Stop");
             return s;
         }
@@ -1565,10 +1693,11 @@ public final class Explorer {
             refuse(out, "Nothing can be done before the session is read");
             return s;
         }
-        Running r = new Running(s.work().runs() + 1, entry, way, words, way.going(plan), 0, plan.count(), 0L, -1L);
+        Running r = new Running(s.work().runs() + 1, entry, way, words, way.going(plan), 0, plan.count(), 0L, -1L,
+                plan, rows);
         out.send(Messages.RUN_TOPIC, new Run(r.run(), plan, s.work().trash().get()));
         State next = s.withWork(s.work().starting(r));
-        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        queue(next, out);
         return next;
     }
 
@@ -1578,7 +1707,7 @@ public final class Explorer {
             return s;
         }
         State next = s.withWork(s.work().at(p));
-        out.send(Messages.SUGGESTED_TOPIC, said(next));
+        queue(next, out);
         if (next.work().comparing().offer().isPresent()) {
             offers(next, out);
         }
@@ -1623,10 +1752,16 @@ public final class Explorer {
         for (Side side : Side.values()) {
             Optional<Path> folder = again.pane(side).folder();
             if (folder.isPresent() && (side == Side.FROM || again.to().isPresent())) {
-                again = again.relisting(side);
+                again = again.stirring(side);
                 out.send(Messages.LISTING_TOPIC, new Listing(again.pane(side).asked(), folder.get()));
             }
         }
+        // What waits goes next, unless the run was stopped, which holds it: a Stop means "not now", not "skip one".
+        if (d.stopped() && !again.work().waiting().items().isEmpty()) {
+            again = again.withWork(again.work().withWaiting(again.work().waiting().holding(true)));
+        }
+        again = advance(again, out);
+        queue(again, out);
         return again;
     }
 

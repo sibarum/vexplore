@@ -83,18 +83,29 @@ final class Landmarks {
     /** The card's headline: the effect, first ({@code Move 9 files · 6.5 GB}). */
     static final String RAIL_CARD = "rail.card";
 
-    /** The card's tag: {@code nothing has changed yet}, or how far a run has got ({@code Deleting · 3 of 9}). */
+    /** The card's tag: {@code nothing has changed yet}. */
     static final String RAIL_TAG = "rail.tag";
 
-    /**
-     * The card's bar, shown while a run goes: its bytes carried, or a sweep while they are counted. Each Two Folders
-     * offer has its own, {@link #RAIL_OFFER}{@code .move.progress} and {@code .remove.progress}.
-     */
-    static final String RAIL_PROGRESS = "rail.progress";
-
-    /** The card's button, which carries out what it states, and the Stop in its place while that runs. */
+    /** The card's button, which carries out what it states, or queues it behind what runs. */
     static final String RAIL_GO = "rail.go";
+
+    /**
+     * The queue under the card (docs/shape.md, M9). The run in flight: its bar, its bytes carried or a sweep while they
+     * are counted, and its Stop, kept under their old names; its words and how far it has got. Each Two Folders offer
+     * has its own bar, {@link #RAIL_OFFER}{@code .move.progress} and {@code .remove.progress}.
+     */
+    static final String QUEUE = "queue";
+    static final String RAIL_PROGRESS = "rail.progress";
     static final String RAIL_STOP = "rail.stop";
+    static final String QUEUE_RUNNING = "queue.running";
+    static final String QUEUE_TAG = "queue.tag";
+    /** How many wait, and whether held. */
+    static final String QUEUE_COUNT = "queue.count";
+    /** The toggle that holds what waits, and Run all, shown while it is held. */
+    static final String QUEUE_HOLD = "queue.hold";
+    static final String QUEUE_RUN_ALL = "queue.run-all";
+    /** Each line waiting, {@code queue.line.0} first, and its ×, {@code queue.line.0.remove}. */
+    static final String QUEUE_LINE = "queue.line";
 
     /** The card's field for a rename's new name: Enter carries it out. */
     static final String RAIL_NAME = "rail.name";

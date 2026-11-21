@@ -1097,3 +1097,105 @@ Slice 5, the heading and the list, built 2026-11-03:
 - **The seven family colours are `Look`'s** (`Look.family`), beside the tokens as ruled: folder, text, video, table,
   PDF, data, program, with a picture and a sound as video and a mail as text. In the list they colour the TYPE column,
   now Orbit's extension badge on the ground; the gallery's tiles will take them in slice 6.
+
+## The queue, and the folder after it (M9)
+
+Proposed and ruled 2026-11-20 ("I accept your proposals"). A run no longer refuses the next: what is carried out while
+something runs waits behind it, and each list shows its folder as it will be once everything waiting is done.
+
+### The model
+
+- **A queue is a list of plans.** `Work` gains `queue`, each `Queued(number, words, plan, rows)`: the plan as the card
+  stated it, and the rows it was made from, which a ghost needs (a step holds only paths). When a run lands, the next
+  starts through the same `RunAction`, so there is still one run at a time, with its count and its Stop. Each becomes
+  its own journal entry when it runs, so undo stays per action.
+- **What waits.** The card's button, a rename and a drop between the lists wait when anything runs or is
+  checked. An undo, a redo, Two Folders' offers and a conflict settled are still refused while anything runs: an undo
+  out of turn, or an offer about a comparison the queue will change, is not what anyone meant.
+- **Stop holds the queue.** A run that was stopped leaves the rest waiting, held; *Run all* lets it go again. Hold is
+  also a toggle of its own, so a batch can be put together, looked at, and then run.
+- **Plans are checked against the future, not the disk.** A name that something waiting will bring into the
+  destination is taken; one it will take away is free. A row something waiting will move, delete or rename is left
+  alone, *it is queued to …*. `Projection` is the pure function that knows this, and `Planning` carries what it says
+  of the destination to `PlanAction`.
+- **The disk may change in the meantime.** Nothing new can go wrong: `Operations` still overwrites nothing and says
+  each step that failed and why.
+
+### The folder after the queue
+
+`Shown` gains `fates`: each row's fate, by path, and `rows` gains the ghosts, the rows that something waiting will
+bring. The explorer works both out in a step (`Projection.of`), whenever a list is shown or the queue changes. A ghost
+is never selected or acted on; the explorer knows no row by its path.
+
+| Fate | Is | Looks like |
+| --- | --- | --- |
+| `ARRIVING` | a ghost: moved, copied or archived into this folder | faded, its note *← Downloads* |
+| `LEAVING` | moved out of this folder | faded, its note *→ Archive* |
+| `DELETING` | into the trash | a bar across its name, its note *into the trash* |
+| `RENAMED` | stands in for the row under its old name | its new name in italic, its note *was notes.txt* |
+| `COPYING`, `ARCHIVING` | stays, and something is made of it | its note, *copy → Backup* |
+
+Each fate carries the number of the item that decides it, shown before the note, so a ghost points to its line in the
+queue. The framework fades what changes, so a ghost fades in when it is queued and out when its run lands and the
+listing brings the real row.
+
+### The rail
+
+The card is what the selection would do, always; it no longer shows the run. Under it, the queue: the run in flight with
+its bar and Stop, then each item waiting with an × that takes it off, *Hold* and *Run all*. Its nodes are built once,
+as many lines as it shows (five), with *and n more* after them.
+
+### The messages
+
+| Record | Topic | Says |
+| --- | --- | --- |
+| `Shown(side, folder, rows, select, fates)` | state | gains `fates`, and `rows` the ghosts |
+| `Fate(Kind kind, String note, int queued)` | in `Shown` | a row's fate, and the number of the item behind it |
+| `Queue(Optional<Line> running, List<Line> waiting, boolean held)` | state, explorer to view | the rail's queue |
+| `Line(long number, String words, String going, float progress)` | in `Queue` | one item |
+| `Unqueue(long number)` | edge, view to explorer | an item's ×: it is taken off, and nothing it would have done is done |
+| `Hold(boolean on)` | edge, view to explorer | the toggle; `false` is *Run all* |
+| `Planning` | job request | gains `arriving` and `leaving`: the names the queue brings into and takes out of the destination |
+
+### Slices
+
+1. The queue in `Work`, waiting instead of refusing, the rail's queue with its ×, the next run started when one lands.
+2. Plans checked against the queue.
+3. `Shown.fates`, and the looks of rows that are there: leaving, deleting, renamed, copying.
+4. Ghosts.
+5. Hold and *Run all*, and Stop holding.
+
+### Not in M9
+
+- **Ctrl+Z does not take a waiting item off.** The window's history holds journal entries, and an item waiting is not
+  one; its × is how. A history entry per item waiting is the way, once the history can drop an entry.
+- **A ghost cannot be acted on**, so a move of something only queued to arrive cannot itself be queued.
+- **A queue does not outlive the window.** A held queue of deletes coming back after a restart is not wanted.
+
+## What M9 built differently
+
+All five slices, built 2026-11-20:
+
+- **Slice 5 went in with slice 1.** A Stop holding the queue needs *Run all* to let it go, so Hold and *Run all* came
+  with the queue itself, and slices 2 to 4 were built on a queue that could already be held.
+- **The queue's heading is always there**, saying *empty* when nothing runs or waits, so a batch can be held before
+  its first item. Its Stop and bar kept their landmarks (`rail.stop`, `rail.progress`); the card's tag only ever says
+  *nothing has changed yet* now.
+- **Carrying out puts the rail's pick down at once**, whether it starts or waits, so the rail is free for the next
+  thing; and a run landing lists its folders again keeping the pick (`stirring`), since the pick in hand is no longer
+  the one that run came from. The old relist that put the pick down is gone.
+- **The run in flight is projected too**, as item 0 (*now* on the row), so a row's fate does not vanish when its item
+  starts. `Running` carries its plan and rows for that. An undo or a redo is projected without ghosts: it has no rows
+  to draw them from.
+- **A run landing does not show the lists again**; the listing it asks for does, so a deleted row never comes back
+  unbarred between the run's answer and the folder's.
+- **A renamed row is built with two names**, upright and italic, one shown: the row under its new path is a new row and
+  is built italic, but when the real file lands with the same path the cell may be kept, and a shown/hidden pair fades
+  where a slope changed in place might not.
+- **The delete bar is the palette's rose at 72 %, not black.** A black bar on Orbit's near-black list is not there to
+  see, and rose is the palette's one colour for what destroys.
+- **A conflict settled in the dock is refused while anything runs**, as the offers are, rather than queued: it is a
+  decision about two copies as they are now.
+- **An item that cannot start** (no session read yet) stays first and holds the queue, rather than being lost.
+- **Ghosts come after the rows there**, in the order queued, not sorted in; the table's own sort, when one is chosen,
+  places them as it places any row. A ghost can be selected in the list (FN-20) and is a selection of nothing.

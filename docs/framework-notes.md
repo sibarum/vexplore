@@ -309,3 +309,17 @@ but it is a difference between the two looks that the application did not choose
 
 **For the framework:** `Table.headers(face, size, ink)` could take a `Paint` for the strip as well, as `ListView`'s
 `looks` takes the selection's, so a table on a panel of the application's own can say what its header is drawn on.
+
+## FN-20 · A list row cannot be shown but not chosen 🔬
+
+M9 shows a folder as the queue will leave it, and the rows the queue will bring are ghosts: in the list, faded, with
+a note, but not on the disk, so nothing can be done to them yet. `ListView` (and `Table` over it) makes every item it
+holds selectable, focusable by the keyboard, draggable when the list is, and openable by Enter. There is no way to say
+"this item is shown, not chosen". The workaround is the explorer's: a selection is resolved against the rows it
+listed, so a ghost selected is a selection of nothing, and a ghost dragged or opened names a path that is not there,
+which the explorer ignores or the disk refuses. It works, but a ghost still takes the selection highlight and the
+keyboard's lead, which says it can be acted on when it cannot.
+
+**For the framework:** an item predicate on `ListView`, `inert(item -> ...)`, that the selection, the lead, the drag
+and activation all skip, as a disabled node skips the pointer. Any list showing a preview, a placeholder or a row
+still loading wants it.

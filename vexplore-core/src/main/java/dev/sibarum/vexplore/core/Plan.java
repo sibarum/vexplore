@@ -101,6 +101,14 @@ public record Plan(Op op, List<Step> steps, List<Skip> skipped, long bytes) {
             return swaps;
         }
 
+        /**
+         * Whether each step's {@code from} is gone once the step is done: a move, a delete and a rename take it away,
+         * a copy and an archive leave it. The same ops as {@link #swaps}, for the same reason.
+         */
+        public boolean leaves() {
+            return swaps;
+        }
+
         /** The card's word while it runs: {@code Deleting}. */
         public String going() {
             return going;

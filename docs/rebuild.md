@@ -128,6 +128,11 @@ replace them (M0 put `Look` on the tokens), and what it asks of the framework. G
 and a wrapping grid of cards are each to be checked against the widget library before the sketch. A wrap is already
 missing (*Chips that wrap*, below), and every gap found goes in framework-notes as usual.
 
+**M9. The queue.** *Done 2026-11-20, in five slices ([shape.md](shape.md)).* A run started while
+another goes waits behind it, and each list shows its folder as it will be once everything waiting is done: ghosts
+where files will arrive, faded rows where they will leave, a bar across what will be deleted, a renamed row's new
+name in italic.
+
 **Last. Packaging.** The native builds, the ffmpeg-record zip, `installer.json`'s `appId`, the scenes in
 `docs/scenes` rewritten against the new landmarks.
 

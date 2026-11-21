@@ -31,6 +31,48 @@ reasons and the full method.
 
 ## Milestones
 
+## M9 · the queue · 2026-11-20
+
+One new finding (FN-20), not architectural, and FN-7 met again. The queue went where the stack said: a plan was
+already a value fixed before it ran, so a queue is a list of them in `Work`, and the folder after the queue is a pure
+function (`Projection`) the explorer runs in a step. No new lane, job or part: three messages (`Queue`, `Unqueue`,
+`Hold`), one field on `Shown`, one on `Planning`.
+
+### The shapes
+
+| | The promise | What happened | How it looked |
+| --- | --- | --- | --- |
+| FN-20 | a list shows what it is given | every item is selectable, focusable and draggable; a ghost cannot be shown and not chosen | a ghost takes the highlight, and the explorer resolves it to nothing |
+| FN-7 (again) | a toggle shows the model | Hold flips itself before the explorer answers | the explorer re-sends the queue when a Hold changes nothing |
+
+### What would stop each
+
+1. **FN-20:** an `inert(item -> ...)` predicate on `ListView` that the selection, the lead, the drag and activation
+   skip.
+2. **FN-7:** as written there: a toggle that waits for the model, or says what it would become without becoming it.
+
+### My own mistakes
+
+- **I edited Java with `perl` one-liners and broke the build twice.** A `\x{d7}` written as one Latin-1 byte made the
+  isolate plugin fail with *Input length = 1*, which names no file; and a CRLF file made one pattern ending in `\n`
+  match nothing, silently. The rule: after a scripted edit, check the file is UTF-8 and that the edit landed, and use
+  the Edit tool for anything that is not a plain substitution.
+- **`advance` lost an item whenever `start` refused it.** It took the item off the queue, then started it; a refusal
+  (no session read yet) returned the state with the item gone. Only a window test that had not read a session found it.
+  The rule: a step that takes something out of the state to act on it puts it back when the act is refused.
+- **My first `ottermate` script selected the wrong file and did not notice.** A second path typed left `a.txt`
+  selected, so the script queued a rename of a file already queued to be deleted, and the run said so only after. It
+  showed exactly why slice 2 was needed, but a script should `await` what it selected before acting on it.
+
+### What to keep exactly as it is
+
+- **The plan as a value.** M3 made a plan something the card could state before it ran. That one decision is why the
+  queue, the claims and the projection are each a few dozen lines: nothing had to be asked of the disk again.
+- **Fates on rows, not a second list.** The list shows the folder after the queue with the rows it already has, faded,
+  barred or renamed in place, so nothing jumps, and the framework's fades do the rest.
+- **The run in flight is item 0.** Projecting it too means a row's fate never blinks off between waiting and running,
+  and a run landing shows nothing until its listing does.
+
 ## M6 · Two Folders · 2026-11-04
 
 One new finding (FN-16), small, and FN-12 met again and grown. FN-14 and FN-15 were written while M6 waited, by M8's

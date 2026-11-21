@@ -24,6 +24,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
@@ -162,6 +163,46 @@ class ViewTest {
         assertEquals(1, suggested.getLast().reach().size());
         shell.bus().publish(Messages.PICKED_TOPIC, new Messages.Picked(Messages.Slot.SELECT, 1));
         eventually("all three", () -> suggested.getLast().reach().size() == 3);
+    }
+
+    /**
+     * The queue through the window (docs/shape.md, M9): held, an archive waits, and the list shows the zip it will make
+     * as a row not there yet, while the disk has none; let go, it is made, and the row is the real one.
+     */
+    @Test
+    void aHeldArchiveIsAGhostUntilItRuns() throws Exception {
+        // A session read, as the window opening would ask for: nothing is carried out before one.
+        shell.bus().publish(Messages.RECALLED_TOPIC, new Messages.Recalled(Optional.empty(), List.of(), dir,
+                dir.resolve("trash"), List.of()));
+        List<Messages.Suggested> suggested = new CopyOnWriteArrayList<>();
+        List<Messages.Queue> queues = new CopyOnWriteArrayList<>();
+        shell.bus().subscribe(Messages.SUGGESTED_TOPIC, suggested::add);
+        shell.bus().subscribe(Messages.QUEUE_TOPIC, queues::add);
+        Path sub = Files.createDirectory(dir.resolve("notes")).toAbsolutePath().normalize();
+        Files.writeString(sub.resolve("a.txt"), "a");
+        go(sub);
+        eventually("the row", () -> wiring.ui().rows() == 1);
+        shell.bus().publish(Messages.HOLD_TOPIC, new Messages.Hold(true));
+        eventually("held", () -> !queues.isEmpty() && queues.getLast().held());
+        shell.bus().publish(Messages.CHOSEN_TOPIC, new Messages.Chosen(Messages.Side.FROM,
+                java.util.Set.of(sub.resolve("a.txt"))));
+        eventually("the rail", () -> !suggested.isEmpty() && !suggested.getLast().empty());
+        List<Messages.Chip> acts = suggested.getLast().action();
+        int archive = 0;
+        while (!acts.get(archive).label().startsWith("Archive")) {
+            archive++;
+        }
+        shell.bus().publish(Messages.PICKED_TOPIC, new Messages.Picked(Messages.Slot.ACTION, archive));
+        eventually("the card", () -> suggested.getLast().card().go().startsWith("Archive"));
+        shell.bus().publish(Messages.CARRY_TOPIC, new Messages.Carry());
+        eventually("the ghost", () -> wiring.ui().rows() == 2);
+        assertEquals(1, queues.getLast().waiting().size());
+        assertFalse(Files.exists(sub.resolve("Archive.zip")), "nothing is done while it is held");
+
+        shell.bus().publish(Messages.HOLD_TOPIC, new Messages.Hold(false));
+        eventually("the zip", () -> Files.exists(sub.resolve("Archive.zip")) && queues.getLast().waiting().isEmpty()
+                && queues.getLast().running().isEmpty());
+        eventually("the real row", () -> wiring.ui().rows() == 2);
     }
 
     @Test

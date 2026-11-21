@@ -115,7 +115,8 @@ every message is in one file. Read these in this order.
 | `CheckSame.java` | **the source** that reads pairs of copies side by side, in Two Folders, and says which match byte for byte, with a count and a Stop: what the rail reads before it offers to remove a copy as identical. |
 | `WatchFolder.java` | **the source** that watches the folder shown and says when it changed, once a burst is over, so the list follows the disk; and keeps what landed in the last twenty seconds, for the *new* tag. |
 | `PlanAction.java`, `SuggestDestinations.java` | the jobs behind a move or a copy: what going there would do, read from the destination, and the places nearby that already hold the kind. |
-| `Work.java` | the explorer's run state: the trash, the run in flight, and the journal of what can be taken back. |
+| `Work.java` | the explorer's run state: the trash, the run in flight, the queue waiting behind it, and the journal of what can be taken back. |
+| `Projection.java` | **the folder after the queue**, a pure function: the plans waiting in, each row's fate and the ghosts out, and the names a plan is checked against. The explorer runs it in a step. |
 | `Compare.java`, `Relation.java` | **the comparison** in Two Folders, a pure function: two listings in, each row's relation to the other side out (only here, newer, identical...), by name, size and time. The explorer runs it in a step. |
 | `Suggestions.java` | **the rail's engine**, a pure function: a folder's rows, the selection and the pick in, the chips to offer and the rows the effect would reach out. The explorer runs it in a step. |
 | `Preview.java`, `Previews.java`, `ReadPreview.java` | the Preview Dock's ladder: what one file is (its thumbnail if it is a picture or a video, its first lines if it is text, its bytes if not), and the job that reads it. Nothing in a file is executed. |
@@ -138,6 +139,8 @@ every message is in one file. Read these in this order.
 | `HandOff.java` | the job that hands a file or a folder to one of the suite's programs where the installer put it (Rasterware as `pix <path>`, VexelRay IDE as `text-editor <path>`, MainFrame as `--dir` and `--insert-path`), else a file to the desktop's opener, and says which opened it. Enter opens a picture or a video in Rasterware and a text or source file in the IDE; the row menu's *Open in* lines and the strip's *Open with* name one. In `-gui` because `Apps` is the framework shell's. |
 | `Journaled.java` | an entry of the journal in the window's history: applied, it asks the explorer to take it back or do it again. |
 | `RailPanel.java` | the Suggestion Rail in Orbit's words: in Two Folders, the comparison's four counts and a card per offer, each with its own button; then (Which files, Only if, Then): pills, six action tiles and the card with its round run button, every node built once and relabelled. A pill or a tile pressed is said as its row and place. |
+| `QueuePanel.java` | the rail's queue, pinned under the card: the run in flight with its bar and Stop, what waits with each line's ×, *Hold* and *Run all*; every node built once. |
+| `Fated.java` | each row's fate as the list wears it: faded, a bar across the name, a new name in italic, a note and the number of its line in the queue. |
 | `Motion.java` | the one tempo every widget moves at, on the framework's clock. |
 
 `Vexplore.java` is the entry point and the constants, and nothing else. The application edge — input, the

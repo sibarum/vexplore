@@ -490,9 +490,29 @@ final class Ui {
         dock.openWith(programs);
     }
 
-    /** Whether {@code address} is the card's Stop. */
+    /** The rail's queue: what runs and what waits. */
+    void queue(dev.sibarum.vexplore.core.Messages.Queue q) {
+        rail.queue().show(q);
+    }
+
+    /** Whether {@code address} is the run's Stop. */
     boolean stop(String address) {
-        return rail.stop(address);
+        return rail.queue().stop(address);
+    }
+
+    /** Whether {@code address} is the queue's Run all. */
+    boolean runAll(String address) {
+        return rail.queue().runAll(address);
+    }
+
+    /** Whether {@code address} is the queue's Hold. */
+    boolean hold(String address) {
+        return rail.queue().hold(address);
+    }
+
+    /** The number of the item waiting whose × {@code address} is, or 0. */
+    long unqueue(String address) {
+        return rail.queue().remove(address);
     }
 
     /** The marks kept, by name. */

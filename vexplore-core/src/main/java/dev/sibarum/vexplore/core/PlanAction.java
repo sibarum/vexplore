@@ -14,6 +14,7 @@ import java.util.Set;
 /**
  * What a move or a copy would do, worked out on the offload lane because it reads the destination: the names already
  * there are what a plan is checked against, so the card can say what would be left alone before anything moves.
+ * The names are the folder's once the queue is done ({@code Planning.queued}), not only the ones there now.
  * A destination that cannot be read plans nothing, every target left alone with the reason.
  */
 @Job
@@ -30,6 +31,8 @@ public final class PlanAction {
             return new Planned(p.ticket(), new Plan(p.op(), java.util.List.of(), p.targets().stream()
                     .map(r -> new Plan.Skip(r.path(), why)).toList(), 0L));
         }
+        taken.removeAll(p.queued().leaving());
+        taken.addAll(p.queued().arriving());
         return new Planned(p.ticket(), Plan.to(p.op(), p.targets(), p.destination(), taken));
     }
 }

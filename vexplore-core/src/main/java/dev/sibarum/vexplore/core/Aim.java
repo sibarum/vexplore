@@ -60,9 +60,10 @@ record Aim(long asked, Optional<Kind> kind, Optional<Path> near, List<Dest> offe
         return sent.map(Planning::ticket).orElse(0L) + 1;
     }
 
-    /** Whether {@code want} asks what the last plan asked, its ticket aside. */
+    /** Whether {@code want} asks what the last plan asked, its ticket aside, the queue's names included. */
     boolean asks(Planning want) {
         return sent.isPresent() && sent.get().op() == want.op() && sent.get().targets().equals(want.targets())
-                && sent.get().destination().equals(want.destination());
+                && sent.get().destination().equals(want.destination())
+                && sent.get().queued().equals(want.queued());
     }
 }

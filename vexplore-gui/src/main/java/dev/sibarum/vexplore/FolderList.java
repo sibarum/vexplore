@@ -49,6 +49,7 @@ final class FolderList {
     private final Table<Row> table;
     private final Tags<String> fresh = new Tags<>();
     private final Tags<Relation> compared = new Tags<>();
+    private final Fated fated = new Fated();
     private final Node tag;
     private final Node bar;
     private final IconButton back;
@@ -72,7 +73,7 @@ final class FolderList {
         String landmark = names.list();
         this.gui = gui;
         this.which = which;
-        table = new Table<>(gui, Columns.ROW_REM, Columns.of(fresh, compared)).name(landmark)
+        table = new Table<>(gui, Columns.ROW_REM, Columns.of(fresh, compared, fated)).name(landmark)
                 .headers(Type.MONO, Type.SMALL, Role.DIM);
         table.node().width(Length.FILL).height(Length.FILL);
         gui.landmark(landmark, table.node());
@@ -171,7 +172,10 @@ final class FolderList {
         // A row is a value, so a file that grew since the last listing is a new one, and the list would let it go. The
         // folder listed again keeps what was selected, by path, where it stands.
         Set<Path> held = table.selection().selection().stream().map(Row::path).collect(Collectors.toSet());
+        // Each row's fate first, so a row built for these items wears it; then again, for the rows already built.
+        fated.tell(s.fates(), realized());
         table.items(s.rows());
+        fated.tell(s.fates(), realized());
         List<Row> kept = s.rows().stream().filter(r -> held.contains(r.path())).toList();
         if (!kept.isEmpty() && s.select().isEmpty()) {
             table.selection().set(kept);
@@ -183,7 +187,9 @@ final class FolderList {
         }
         folder = s.folder();
         name.text(name(s.folder()));
-        count.text(s.rows().size() == 1 ? "1 item" : s.rows().size() + " items");
+        int there = s.there();
+        int coming = s.rows().size() - there;
+        count.text((there == 1 ? "1 item" : there + " items") + (coming == 0 ? "" : " · " + coming + " coming"));
         path.text(s.folder().toString());
     }
 

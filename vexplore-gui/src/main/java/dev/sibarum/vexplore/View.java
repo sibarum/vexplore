@@ -37,6 +37,9 @@ import dev.sibarum.vexplore.core.Messages.Shown;
 import dev.sibarum.vexplore.core.Messages.Side;
 import dev.sibarum.vexplore.core.Messages.Status;
 import dev.sibarum.vexplore.core.Messages.Stop;
+import dev.sibarum.vexplore.core.Messages.Hold;
+import dev.sibarum.vexplore.core.Messages.Queue;
+import dev.sibarum.vexplore.core.Messages.Unqueue;
 import dev.sibarum.vexplore.core.Messages.Suggested;
 import dev.sibarum.vexplore.core.Messages.Summary;
 import dev.sibarum.vexplore.core.Messages.Swap;
@@ -142,6 +145,8 @@ final class View {
     private final Sender<Dropped> dropped;
     private final Sender<Accept> accept;
     private final Sender<Resolve> resolve;
+    private final Sender<Unqueue> unqueue;
+    private final Sender<Hold> hold;
     private final Sender<Intent> intents;
 
     /** The dock's picture, and the one it replaced, which may still be fading out: the view's to give back. */
@@ -171,7 +176,7 @@ final class View {
          Sender<RecallMark> recallMark, Sender<ForgetMark> forgetMark, Sender<OpenWith> openWith, Sender<Menu> menu,
          Sender<Use> use, Sender<TwoFolders> twoFolders, Sender<Swap> swap,
          Sender<PlacesWanted> placesWanted, Sender<Back> back, Sender<Dropped> dropped, Sender<Accept> accept,
-         Sender<Resolve> resolve, Sender<Intent> intents) {
+         Sender<Resolve> resolve, Sender<Unqueue> unqueue, Sender<Hold> hold, Sender<Intent> intents) {
         this.gui = gui;
         this.ui = ui;
         this.go = go;
@@ -199,6 +204,8 @@ final class View {
         this.dropped = dropped;
         this.accept = accept;
         this.resolve = resolve;
+        this.unqueue = unqueue;
+        this.hold = hold;
         this.intents = intents;
         commands(keys);
         // Open with drops its menu on a left click, Enter or Space, and each line names the program.
@@ -284,6 +291,12 @@ final class View {
         offers = m;
         ui.offers(m);
         ui.reach(pair.used(), suggested, offers);
+    }
+
+    /** The rail's queue: the run in flight and what waits. */
+    @Subscribe
+    public void queue(Queue m) {
+        ui.queue(m);
     }
 
     /** Two Folders' conflict, shown in the dock in place of the preview. */
@@ -413,6 +426,10 @@ final class View {
     /** A chip of the rail pressed: its row and place, for the explorer to resolve against what it offered. */
     @Subscribe
     public void chipToggled(Button.Toggled m) {
+        if (ui.hold(m.button())) {
+            hold.send(new Hold(m.pressed()));
+            return;
+        }
         Picked p = ui.picked(m);
         if (p != null) {
             picked.send(p);
@@ -438,6 +455,10 @@ final class View {
             carry.send(new Carry());
         } else if (ui.stop(m.button())) {
             stop.send(new Stop());
+        } else if (ui.runAll(m.button())) {
+            hold.send(new Hold(false));
+        } else if (ui.unqueue(m.button()) > 0L) {
+            unqueue.send(new Unqueue(ui.unqueue(m.button())));
         } else if (ui.back(m.button())) {
             back();
         } else if (ui.up(m.button())) {

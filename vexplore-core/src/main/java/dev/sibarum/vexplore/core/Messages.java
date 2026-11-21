@@ -212,6 +212,24 @@ public final class Messages {
     }
 
     /**
+     * An item waiting in the queue taken off, by its {@code number}, with its Ã: nothing it would have done is done.
+     * One already running, or already gone, is not waiting, and nothing happens.
+     */
+    public static final Topic<Unqueue> UNQUEUE_TOPIC = Topic.edge(Unqueue.class);
+
+    public record Unqueue(long number) {
+    }
+
+    /**
+     * The queue's Hold: {@code on}, nothing waiting starts, so a batch can be put together and looked at first; off
+     * (<i>Run all</i>), what waits goes, one after another. A Stop holds it too.
+     */
+    public static final Topic<Hold> HOLD_TOPIC = Topic.edge(Hold.class);
+
+    public record Hold(boolean on) {
+    }
+
+    /**
      * An offer's button, in Two Folders' rail: check its copies, carry it out, or stop the check, as the explorer's
      * state says. The view never knows which.
      */
@@ -251,7 +269,7 @@ public final class Messages {
     public record Redo(long entry) {
     }
 
-    /** A folder picked for a move or a copy, by {@code Choose folder…}: the destination from now on. */
+    /** A folder picked for a move or a copy, by {@code Choose folderâ¦}: the destination from now on. */
     public static final Topic<Destine> DESTINE_TOPIC = Topic.edge(Destine.class);
 
     public record Destine(Path folder) {
@@ -269,7 +287,7 @@ public final class Messages {
     public record RecallMark(int index) {
     }
 
-    /** A mark's × pressed: forget it. */
+    /** A mark's Ã pressed: forget it. */
     public static final Topic<ForgetMark> FORGET_MARK_TOPIC = Topic.edge(ForgetMark.class);
 
     public record ForgetMark(int index) {
@@ -301,13 +319,55 @@ public final class Messages {
      * What a list shows: a folder, its rows in the listing's order, and the rows to select once they are in (a file
      * named on the command line or typed, or a mark's rows). Keyed by the list, so each keeps its latest. The
      * breadcrumb follows {@link Pair}, the folder of the list used.
+     *
+     * <p>It is the folder as it will be once the queue is done (docs/shape.md, M9): {@code fates} says, by path, what
+     * the queue will do to a row, and {@code rows} holds the ghosts as well, the rows something waiting will bring,
+     * each fated {@link Fate.Kind#ARRIVING}. A renamed row stands in for its old name, under its new path.
      */
     public static final Topic<Shown> SHOWN_TOPIC = Topic.state(Shown.class, Shown::side);
 
-    public record Shown(Side side, Path folder, List<Row> rows, Set<Path> select) {
+    public record Shown(Side side, Path folder, List<Row> rows, Set<Path> select, Map<Path, Fate> fates) {
         public Shown {
             rows = List.copyOf(rows);
             select = Set.copyOf(select);
+            fates = Map.copyOf(fates);
+        }
+
+        /** A folder with nothing waiting to change it. */
+        public Shown(Side side, Path folder, List<Row> rows, Set<Path> select) {
+            this(side, folder, rows, select, Map.of());
+        }
+
+        /** How many rows are there now: the ghosts are not, yet. */
+        public int there() {
+            int n = 0;
+            for (Row r : rows) {
+                Fate f = fates.get(r.path());
+                n += f == null || f.kind() != Fate.Kind.ARRIVING ? 1 : 0;
+            }
+            return n;
+        }
+    }
+
+    /**
+     * What the queue will do to a row: its {@code kind}, a few words ({@code → Archive}, {@code was notes.txt}),
+     * and the number of the item that decides it, which its line in the queue shows; 0 for the run in flight.
+     */
+    public record Fate(Kind kind, String note, long queued) {
+
+        public enum Kind {
+            /** Not there yet: moved, copied or archived into this folder. A ghost. */
+            ARRIVING,
+            /** Moved out of this folder. */
+            LEAVING,
+            /** Into the trash. */
+            DELETING,
+            /** Under a new name, which it already wears. */
+            RENAMED,
+            /** Stays, and a copy of it is made elsewhere. */
+            COPYING,
+            /** Stays, and goes into an archive. */
+            ARCHIVING
         }
     }
 
@@ -342,9 +402,9 @@ public final class Messages {
     }
 
     /**
-     * The rail's card: the effect first ({@code Move 9 files · 6.5 GB}), then the first few names. {@code go} is the
+     * The rail's card: the effect first ({@code Move 9 files Â· 6.5 GB}), then the first few names. {@code go} is the
      * button's words, or empty when there is nothing it can do yet; {@code running} is how far a run has got
-     * ({@code Deleting · 3 of 9}), or empty when none goes, and while one does the button is its Stop. {@code naming}:
+     * ({@code Deleting Â· 3 of 9}), or empty when none goes, and while one does the button is its Stop. {@code naming}:
      * the card holds a field for a new name, for a rename, whose Enter carries it out. {@code progress} is the bar
      * under the running words, 0 to 1, or NaN while the size is still being counted; it means nothing while
      * {@code running} is empty.
@@ -409,6 +469,30 @@ public final class Messages {
     }
 
     /**
+     * The rail's queue: the run in flight, if any, and what waits behind it, in the order it will run. {@code held}:
+     * nothing waiting starts until it is let go. The latest is all that matters.
+     */
+    public static final Topic<Queue> QUEUE_TOPIC = Topic.state(Queue.class);
+
+    public record Queue(Optional<Line> running, List<Line> waiting, boolean held) {
+
+        public static final Queue NONE = new Queue(Optional.empty(), List.of(), false);
+
+        public Queue {
+            waiting = List.copyOf(waiting);
+        }
+    }
+
+    /**
+     * One item of the queue: its {@code number}, which its Ã says it by, and what it is called
+     * ({@code Move 3 files to Archive}). For the run in flight, {@code going} is how far it has got
+     * ({@code Moving Â· 1 of 3}) and {@code progress} its bar, 0 to 1, or NaN while the size is counted; an item waiting
+     * has neither.
+     */
+    public record Line(long number, String words, String going, float progress) {
+    }
+
+    /**
      * A run landed that can be taken back: the view puts entry {@code entry} in the window's history, as
      * {@code words} ({@code Delete 4 files}), so Ctrl+Z sends its {@link Undo}.
      */
@@ -437,7 +521,7 @@ public final class Messages {
 
     /**
      * What the Preview Dock shows: one file's preview, or, with none, a note ({@code Select one file to see it here},
-     * {@code 3 selected · 4.2 MB}). The latest is all that matters.
+     * {@code 3 selected Â· 4.2 MB}). The latest is all that matters.
      */
     public static final Topic<Docked> DOCKED_TOPIC = Topic.state(Docked.class);
 
@@ -672,13 +756,19 @@ public final class Messages {
 
     /**
      * What a move or a copy of {@code targets} into {@code destination} would do ({@link PlanAction}): it reads the
-     * destination for names already taken.
+     * destination for names already taken. {@code queued} is what the queue will do to the destination's names
+     * (docs/shape.md, M9): a name it brings is taken, one it takes away is free.
      */
     public static final Topic<Planning> PLANNING_TOPIC = Topic.edge(Planning.class);
 
-    public record Planning(long ticket, Plan.Op op, List<Row> targets, Path destination) {
+    public record Planning(long ticket, Plan.Op op, List<Row> targets, Path destination, Projection.Delta queued) {
         public Planning {
             targets = List.copyOf(targets);
+        }
+
+        /** With nothing waiting. */
+        public Planning(long ticket, Plan.Op op, List<Row> targets, Path destination) {
+            this(ticket, op, targets, destination, Projection.Delta.NONE);
         }
     }
 

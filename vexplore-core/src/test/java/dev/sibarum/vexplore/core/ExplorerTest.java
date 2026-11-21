@@ -87,7 +87,7 @@ class ExplorerTest {
                 Messages.MARKS_TOPIC, Messages.PREVIEWING_TOPIC, Messages.DOCKED_TOPIC,
                 Messages.HANDING_TOPIC, Messages.WATCH_TOPIC, Messages.UNWATCH_TOPIC,
                 Messages.FRESH_TOPIC, Messages.PAIR_TOPIC, Messages.COMPARED_TOPIC, Messages.OFFERS_TOPIC,
-                Messages.CHECK_TOPIC, Messages.STOP_CHECK_TOPIC, Messages.CONFLICT_TOPIC)) {
+                Messages.CHECK_TOPIC, Messages.STOP_CHECK_TOPIC, Messages.CONFLICT_TOPIC, Messages.QUEUE_TOPIC)) {
             listen(heard, t);
         }
     }
@@ -537,24 +537,194 @@ class ExplorerTest {
     void theCardsButtonCarriesOutItsPlanAndTheRunIsRecorded() {
         deleteOfAPicked();
         tell(Messages.CARRY_TOPIC, new Messages.Carry());
-        assertTrue(Float.isNaN(seen(Suggested.class).getLast().card().progress()), "its size is not counted yet");
+        Messages.Line line = seen(Messages.Queue.class).getLast().running().orElseThrow();
+        assertTrue(Float.isNaN(line.progress()), "its size is not counted yet");
         Messages.Run run = took(Messages.Run.class).getFirst();
         assertEquals(Plan.Op.DELETE, run.plan().op());
         assertEquals(List.of(new Plan.Step(path("a.txt"), null)), run.plan().steps(), "the run picks the trash's place");
         assertEquals(dir.resolve("trash"), run.trash());
 
         tell(Messages.PROGRESS_TOPIC, new Messages.Progress(run.run(), 0, 1, 4L, 10L));
-        Messages.Card card = took(Suggested.class).getLast().card();
-        assertEquals("Deleting · 0 of 1", card.running());
-        assertEquals(0.4f, card.progress(), 1e-6f, "the bar is the bytes, not the steps");
+        line = took(Messages.Queue.class).getLast().running().orElseThrow();
+        assertEquals("Delete 1 file", line.words());
+        assertEquals("Deleting · 0 of 1", line.going());
+        assertEquals(0.4f, line.progress(), 1e-6f, "the bar is the bytes, not the steps");
 
         tell(Messages.PROGRESS_TOPIC, new Messages.Progress(run.run(), 1, 1, 10L, 10L));
-        assertEquals("Deleting · 1 of 1", took(Suggested.class).getLast().card().running());
+        assertEquals("Deleting · 1 of 1", took(Messages.Queue.class).getLast().running().orElseThrow().going());
 
         tell(Messages.RAN_TOPIC, new Messages.Ran(run.run(), deletedA()));
         assertEquals(List.of(new Messages.Recorded(1, "Delete 1 file")), seen(Messages.Recorded.class));
         assertTrue(seen(Status.class).getFirst().message().startsWith("Deleted 1 file into Vexplore's trash"));
         assertTrue(asks(dir), "the folder is listed again, so the list says what happened");
+        assertEquals(Messages.Queue.NONE, seen(Messages.Queue.class).getLast(), "nothing runs, nothing waits");
+    }
+
+    @Test
+    void theCardIsFreeWhileItsRunGoes() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        Messages.Card card = seen(Suggested.class).getLast().card();
+        assertEquals("", card.running(), "the run is the queue's to show, not the card's");
+    }
+
+    /** Delete picked for {@code b.txt}, with {@code a.txt}'s delete already carried. */
+    private void deleteOfBPickedToo() {
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("b.txt"))));
+        List<Messages.Chip> acts = took(Suggested.class).getLast().action();
+        int delete = 0;
+        while (!acts.get(delete).label().startsWith("Delete")) {
+            delete++;
+        }
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, delete));
+        sent.clear();
+    }
+
+    @Test
+    void whatIsCarriedOutWhileARunGoesWaitsBehindIt() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long first = took(Messages.Run.class).getFirst().run();
+        deleteOfBPickedToo();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        assertTrue(seen(Messages.Run.class).isEmpty(), "one run at a time");
+        assertFalse(seen(Status.class).getFirst().alert(), "waiting is not a refusal");
+        assertEquals("Queued: Delete 1 file, after 1 other", seen(Status.class).getFirst().message());
+        Messages.Queue q = took(Messages.Queue.class).getLast();
+        assertEquals(List.of("Delete 1 file"), q.waiting().stream().map(Messages.Line::words).toList());
+        assertTrue(q.running().isPresent());
+
+        tell(Messages.RAN_TOPIC, new Messages.Ran(first, deletedA()));
+        Messages.Run next = took(Messages.Run.class).getFirst();
+        assertEquals(List.of(new Plan.Step(path("b.txt"), null)), next.plan().steps(), "the one waiting goes next");
+    }
+
+    @Test
+    void aStopHoldsWhatWaitsUntilRunAll() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long first = took(Messages.Run.class).getFirst().run();
+        deleteOfBPickedToo();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        sent.clear();
+
+        tell(Messages.RAN_TOPIC, new Messages.Ran(first, new Done(Plan.Op.DELETE, List.of(), List.of(), 10L, true)));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "a Stop means not now");
+        Messages.Queue q = took(Messages.Queue.class).getLast();
+        assertTrue(q.held());
+        assertEquals(1, q.waiting().size());
+
+        tell(Messages.HOLD_TOPIC, new Messages.Hold(false));
+        assertEquals(1, took(Messages.Run.class).size(), "Run all lets it go");
+    }
+
+    @Test
+    void aHeldQueueGathersABatch() {
+        started();
+        tell(Messages.HOLD_TOPIC, new Messages.Hold(true));
+        sent.clear();
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        assertTrue(seen(Messages.Run.class).isEmpty(), "held, nothing starts, even with nothing under way");
+        assertEquals("Queued: Delete 1 file", took(Status.class).getFirst().message());
+    }
+
+    @Test
+    void anItemWaitingCanBeTakenOff() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long first = took(Messages.Run.class).getFirst().run();
+        deleteOfBPickedToo();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long number = took(Messages.Queue.class).getLast().waiting().getFirst().number();
+
+        tell(Messages.UNQUEUE_TOPIC, new Messages.Unqueue(number));
+        assertTrue(took(Messages.Queue.class).getLast().waiting().isEmpty());
+        tell(Messages.RAN_TOPIC, new Messages.Ran(first, deletedA()));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "what was taken off is not done");
+    }
+
+    @Test
+    void aFileQueuedToGoIsLeftAloneByWhatIsQueuedAfter() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        sent.clear();
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        Status said = took(Status.class).getFirst();
+        assertTrue(said.alert());
+        assertEquals("Nothing to do: a.txt, it is queued to go into the trash", said.message());
+    }
+
+    @Test
+    void aRenameIsCheckedAgainstTheNamesTheQueueBrings() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("b.txt"))));
+        List<Messages.Chip> acts = took(Suggested.class).getLast().action();
+        int rename = 0;
+        while (!acts.get(rename).label().startsWith("Rename")) {
+            rename++;
+        }
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, rename));
+        sent.clear();
+        tell(Messages.RENAME_TOPIC, new Messages.Rename("a.txt"));
+        assertEquals("Queued: Rename b.txt to a.txt, after 1 other", took(Status.class).getFirst().message(),
+                "a.txt is going into the trash, so its name is free");
+    }
+
+    @Test
+    void theListShowsItsFolderAsTheQueueWillLeaveIt() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        Shown run = seen(Shown.class).getLast();
+        assertEquals(Messages.Fate.Kind.DELETING, run.fates().get(path("a.txt")).kind());
+        assertEquals(0L, run.fates().get(path("a.txt")).queued(), "the run in flight is 0");
+        long first = took(Messages.Run.class).getFirst().run();
+
+        deleteOfBPickedToo();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        Shown both = took(Shown.class).getLast();
+        assertEquals(2, both.fates().size());
+        assertEquals(1L, both.fates().get(path("b.txt")).queued(), "the first item queued is 1");
+        assertEquals(2, both.there());
+
+        tell(Messages.RAN_TOPIC, new Messages.Ran(first, deletedA()));
+        assertTrue(seen(Shown.class).isEmpty(), "nothing shown until the folder is listed again");
+    }
+
+    @Test
+    void anItemThatCannotStartStaysFirstAndHeld() {
+        tell(Messages.HOLD_TOPIC, new Messages.Hold(true));
+        showing(dir, file("a.txt", 10));
+        tell(Messages.CHOSEN_TOPIC, new Chosen(Side.FROM, Set.of(path("a.txt"))));
+        List<Messages.Chip> acts = took(Suggested.class).getLast().action();
+        int delete = 0;
+        while (!acts.get(delete).label().startsWith("Delete")) {
+            delete++;
+        }
+        tell(Messages.PICKED_TOPIC, new Picked(Slot.ACTION, delete));
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        sent.clear();
+        tell(Messages.HOLD_TOPIC, new Messages.Hold(false));
+        assertTrue(seen(Messages.Run.class).isEmpty(), "no session read, so no trash yet");
+        Messages.Queue q = took(Messages.Queue.class).getLast();
+        assertEquals(1, q.waiting().size(), "not lost");
+        assertTrue(q.held());
+    }
+
+    @Test
+    void anUndoWhileARunGoesIsRefused() {
+        deleteOfAPicked();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        long first = took(Messages.Run.class).getFirst().run();
+        tell(Messages.RAN_TOPIC, new Messages.Ran(first, deletedA()));
+        deleteOfBPickedToo();
+        tell(Messages.CARRY_TOPIC, new Messages.Carry());
+        sent.clear();
+        tell(Messages.UNDO_TOPIC, new Messages.Undo(1));
+        assertTrue(seen(Messages.Run.class).isEmpty());
+        assertTrue(took(Status.class).getFirst().alert());
     }
 
     @Test
@@ -578,16 +748,6 @@ class ExplorerTest {
         tell(Messages.REDO_TOPIC, new Messages.Redo(1));
         assertEquals(List.of(new Plan.Step(path("a.txt"), dir.resolve("trash/1/a.txt"))),
                 took(Messages.Run.class).getFirst().plan().steps());
-    }
-
-    @Test
-    void oneRunAtATime() {
-        deleteOfAPicked();
-        tell(Messages.CARRY_TOPIC, new Messages.Carry());
-        sent.clear();
-        tell(Messages.CARRY_TOPIC, new Messages.Carry());
-        assertTrue(sent.stream().noneMatch(m -> m instanceof Messages.Run));
-        assertTrue(took(Status.class).getFirst().alert());
     }
 
     @Test
